@@ -34,7 +34,7 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 
 ## Phase 4 — Features
 
-- [ ] **Working open-games counter.** Decode `#AllOpenGamesData` or count table rows instead of only guarding the missing globals; the counter currently shows nothing.
-- [ ] **Turn notifications.** Show a desktop notification or a tab-title badge when it's your turn in a multi-day game, building on the existing refresh logic.
-- [ ] **Per-feature toggles** in the settings menu for every feature, not just the current 10 settings.
-- [ ] **Optional cross-browser sync** of settings and bookmarks via `GM_setValue` or a gist. This requires moving off `@grant none`, which needs care because the script relies on the page's `$.cookie`.
+- [x] **Working open-games counter.** Decode `#AllOpenGamesData` or count table rows instead of only guarding the missing globals; the counter currently shows nothing. *(Done differently: war.app now renders these counts itself. The script's refresh used to leave them stale; it now copies the fresh counts in, using a single dashboard fetch for both tables. The dead counter code is removed.)*
+- [ ] **Turn notifications.** Show a desktop notification or a tab-title badge when it's your turn in a multi-day game, building on the existing refresh logic. *(Blocked on markup: My Games rows are rendered server-side only for logged-in users, and war.app's JS has no "your turn" marker, so the logged-in dashboard HTML is needed to detect it.)*
+- [x] **Per-feature toggles** in the settings menu for every feature, not just the current 10 settings. *(Done: a Features section with a switch for each feature that has a `section`.)*
+- [ ] **Optional cross-browser sync** of settings and bookmarks via `GM_setValue` or a gist. This requires moving off `@grant none`, which needs care because the script relies on the page's `$.cookie`. *(Deferred until the `@grant` migration in Phase 3.)*

@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 3.8.0
 
+- New **Features** section in the settings menu: turn any individual feature off.
+- Refreshing games fetches the dashboard once instead of once per table, and keeps the My Games and open-games counts up to date.
+- A failed refresh no longer leaves the games table dimmed.
+- The open games list scrolls back to the top when switching between Multi-Day, Real-Time and Both, as originally intended.
+- Removed the dead open-games counter code; war.app now shows these counts itself.
 - Renamed MDL to MTL throughout, following the ladder's rename.
 
 ## 3.7.0
