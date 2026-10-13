@@ -2962,9 +2962,9 @@ function setupDashboard() {
 
     hideBlacklistedThreads();
     setupBasicDashboardStyles();
-    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
-        var filter = (f && f.value) ? f.value : 4;
-        refreshMyGames();
+    var dashboard = fetchDashboard();
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function () {
+        refreshMyGames(dashboard);
     });
     ifSettingIsEnabled('hideCoinsGlobally', function () {
         hideCoinsGlobally()
@@ -3005,7 +3005,7 @@ function setupDashboard() {
             }`)
     }, function () {
         setupRightColumn(true);
-        refreshOpenGames();
+        refreshOpenGames(dashboard);
     });
     $("label#MultiDayRadio").on("click", function () {
         registerGameTabClick()
@@ -3613,8 +3613,9 @@ function refreshAllGames(force) {
         $("#openGamesContainer tbody").scrollTop(0);
         $("#myGamesContainer tbody").scrollTop(0);
     });
-    refreshMyGames();
-    refreshOpenGames();
+    var dashboard = fetchDashboard();
+    refreshMyGames(dashboard);
+    refreshOpenGames(dashboard);
     refreshPastGames();
 }
 
@@ -3638,24 +3639,49 @@ var filters = [
     }
 ];
 
-function refreshMyGames() {
-    let myGamesTableBody = $("#MyGamesTable").find("tbody");
-
-    myGamesTableBody.fadeTo('fast', 0.1);
-    var div = $("<div>");;
-    div.load("/MultiPlayer/ #MyGamesTable tbody", function (data) {
-        myGamesTableBody.html(div);
-        myGamesTableBody.fadeTo('fast', 1);
+function fetchDashboard() {
+    return $.ajax({ url: "/MultiPlayer/", dataType: "text" }).then(function (html) {
+        return new DOMParser().parseFromString(html, "text/html");
     });
 }
 
-function refreshOpenGames() {
-    let openGamesTableBody = $("#OpenGamesTable").find("tbody");
-    openGamesTableBody.fadeTo('fast', 0.1);
-    var div = $("<div>");;
-    div.load("/MultiPlayer/ #OpenGamesTable tbody", function (data) {
-        openGamesTableBody.html(div);
-        openGamesTableBody.fadeTo('fast', 1);
+function refreshMyGames(dashboard) {
+    refreshGameTable("#MyGamesTable", dashboard);
+}
+
+function refreshOpenGames(dashboard) {
+    refreshGameTable("#OpenGamesTable", dashboard);
+}
+
+function refreshGameTable(tableSelector, dashboard) {
+    let tableBody = $(tableSelector).find("tbody");
+    tableBody.fadeTo('fast', 0.1);
+    $.when(dashboard || fetchDashboard()).done(function (page) {
+        var rows = page.querySelector(tableSelector + " tbody");
+        if (rows) {
+            $(rows).find("script").remove();
+            tableBody.html($("<div>").append(document.importNode(rows, true)));
+        }
+        updateGameCounts(page);
+    }).fail(function (xhr) {
+        log("Error refreshing " + tableSelector + ": " + (xhr && xhr.statusText));
+    }).always(function () {
+        tableBody.fadeTo('fast', 1);
+    });
+}
+
+function updateGameCounts(page) {
+    ["#NumberOfMyGamesLabel", "#MultiDayRadio", "#RealTimeRadio", "#BothRadio"].forEach(function (selector) {
+        var fresh = page.querySelector(selector);
+        var current = document.querySelector(selector);
+        if (!fresh || !current) {
+            return;
+        }
+        if (fresh.children.length === 0) {
+            current.textContent = fresh.textContent;
+        } else if (fresh.lastChild.nodeType === 3 && current.lastChild && current.lastChild.nodeType === 3) {
+            current.lastChild.nodeValue = fresh.lastChild.nodeValue;
+        }
     });
 }
 
@@ -3918,42 +3944,13 @@ function setupleftColumn(gameButtons) {
 }
 
 function registerGameTabClick() {
-    if (lastClick - new Date() > 2000) {
+    if (new Date() - lastClick > 2000) {
         $("#openGamesContainer tbody").scrollTop(0);
         lastClick = new Date();
     }
     window.setTimeout(function () {
         domRefresh();
     }, 1);
-}
-
-function updateOpenGamesCounter() {
-    if (typeof wljs_AllOpenGames === 'undefined' || typeof system_linq_Enumerable === 'undefined') {
-        return;
-    }
-    try {
-        var numMD = countGames(wljs_AllOpenGames, 1);
-        var numRT = countGames(wljs_AllOpenGames, 2);
-        var numBoth = parseInt(numMD) + parseInt(numRT);
-        $("#OpenGamesTable [for='BothRadio'] span").text('Both (' + numBoth + ')');
-        $("#OpenGamesTable [for='RealTimeRadio'] span").text('Real-Time (' + numRT + ')');
-        $("#OpenGamesTable [for='MultiDayRadio'] span").text('Multi-Day (' + numMD + ')')
-    } catch (e) {
-        log("Error updating open games counter: " + e);
-    }
-}
-
-// Type 1 : Multiday
-// Type 2 : Realtime
-function countGames(games, type) {
-    if (typeof system_linq_Enumerable === 'undefined') {
-        return 0;
-    }
-    games = system_linq_Enumerable.Where(games, function (a) {
-        if (type == 1) return !a.RealTimeGame;
-        if (type == 2) return a.RealTimeGame;
-    });
-    return system_linq_Enumerable.ToArray(games).length
 }
 
 function bindCustomContextMenu() {
