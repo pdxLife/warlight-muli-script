@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.9.0
+
+- Tab title on the dashboard shows how many games are waiting for your turn.
+- While the dashboard tab is open in the background, My Games is re-checked every 5 minutes.
+- New opt-in setting for a desktop notification when a game becomes your turn.
+
 ## 3.8.0
 
 - New **Features** section in the settings menu: turn any individual feature off.

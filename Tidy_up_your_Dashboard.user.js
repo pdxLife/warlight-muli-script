@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.8.0
+// @version 3.9.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,8 +18,9 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.8.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.9.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
+var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -1805,6 +1806,14 @@ window.userscriptSettings = [
         help: 'This option will allow you to right-click forum thread on the dashboard and use the default browser options.'
     },
     {
+        id: 'turnNotifications',
+        text: 'Desktop Notification When a Game Needs You',
+        selected: false,
+        title: 'Notifications',
+        addBreak: false,
+        help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
+    },
+    {
         id: 'useMaakServices',
         text: 'Load MTL Ladder and Community Level Records (via maak.ch)',
         selected: false,
@@ -2006,6 +2015,11 @@ function setupUserscriptMenu() {
     });
     $("#importSettings").on("click", function () {
         importSettings();
+    });
+    $("#turnNotifications").on("change", function () {
+        if (this.checked && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
     });
     $("#resetHiddenThreads").on("click", function () {
         window.undoIgnore();
@@ -3084,6 +3098,7 @@ function mainFeatures() {
         { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
     ];
@@ -3749,11 +3764,72 @@ function refreshGameTable(tableSelector, dashboard) {
             tableBody.html($("<div>").append(document.importNode(rows, true)));
         }
         updateGameCounts(page);
+        $(document).trigger("tuyd:gamesRefreshed", [tableSelector]);
     }).fail(function (xhr) {
         log("Error refreshing " + tableSelector + ": " + (xhr && xhr.statusText));
     }).always(function () {
         tableBody.fadeTo('fast', 1);
     });
+}
+
+function findGamesAwaitingTurn(root) {
+    return $(root).find("#MyGamesTable tr.GameRow").filter(function () {
+        return $(this).find("span").filter(function () {
+            return /^\s*Your turn\b/.test($(this).text());
+        }).length > 0;
+    }).map(function () {
+        var link = $(this).find("a[href*='GameID=']").last();
+        return { id: $(this).attr("gameid"), name: link.text().trim(), href: link.attr("href") };
+    }).get();
+}
+
+function updateTurnBadge(games) {
+    var title = document.title.replace(/^\(\d+\) /, "");
+    document.title = games.length > 0 ? "(" + games.length + ") " + title : title;
+}
+
+function notifyNewTurns(games, knownIds) {
+    var newGames = games.filter(function (game) {
+        return knownIds.indexOf(game.id) === -1;
+    });
+    if (newGames.length === 0 || !("Notification" in window) || Notification.permission !== "granted") {
+        return;
+    }
+    ifSettingIsEnabled("turnNotifications", function () {
+        newGames.forEach(function (game) {
+            var notification = new Notification("Your turn: " + game.name, { body: "War.app", tag: "tuyd-turn-" + game.id });
+            notification.onclick = function () {
+                window.focus();
+                location.href = game.href;
+            };
+        });
+    });
+}
+
+function setupTurnAlerts() {
+    var knownIds = findGamesAwaitingTurn(document).map(function (game) {
+        return game.id;
+    });
+    updateTurnBadge(findGamesAwaitingTurn(document));
+    $(document).on("tuyd:gamesRefreshed", function (e, tableSelector) {
+        if (tableSelector !== "#MyGamesTable") {
+            return;
+        }
+        var games = findGamesAwaitingTurn(document);
+        updateTurnBadge(games);
+        notifyNewTurns(games, knownIds);
+        knownIds = games.map(function (game) {
+            return game.id;
+        });
+    });
+    window.setInterval(function () {
+        var unattended = document.hidden || !document.hasFocus();
+        if (unattended && new Date() - lastRefresh >= TURN_CHECK_INTERVAL) {
+            lastRefresh = new Date();
+            log("Background turn check");
+            refreshMyGames();
+        }
+    }, TURN_CHECK_INTERVAL);
 }
 
 function updateGameCounts(page) {
