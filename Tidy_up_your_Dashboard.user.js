@@ -208,7 +208,7 @@ function windowError(message, source, lineno, colno, error) {
 }
 function setupMtlProfile() {
     var playerId = location.href.match(/p=(\d+)/)[1];
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/" + playerId;
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -219,7 +219,7 @@ function setupMtlProfile() {
         var data = JSON.parse(response.data);
         var player = data.player;
         if (player) {
-            var mtlStats = '<td><a target="_blank" href="https://warlight-mtl.com/player?playerId=' + playerId + '">MTL</a></td>';
+            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/player?playerId=' + playerId + '">MTL</a></td>';
             if (player.rank) {
                 mtlStats += '<td>' + htmlEscape(getRankText(player.best_rank)) + ' (' + htmlEscape(player.best_displayed_rating) + ')</td><td>' + htmlEscape(getRankText(player.rank)) + ' (' + htmlEscape(player.displayed_rating) + ')</td>'
             } else if (player.best_displayed_rating) {
@@ -228,7 +228,7 @@ function setupMtlProfile() {
                 mtlStats += `<td></td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
             }
         } else {
-            var mtlStats = '<td><a target="_blank" href="https://warlight-mtl.com/">MTL</a></td>';
+            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/">MTL</a></td>';
             mtlStats += '<td colspan="2">Currently not participating </td>'
         }
         $("h3:contains('Ladders')").next().find("table tbody").prepend('<tr>' + mtlStats + '</tr>');
@@ -292,7 +292,7 @@ function setupMtlLadderTable() {
                     <div class="bounce3"></div>
                     </div>
                     <div class="mtl-content" style="display:none">
-                        <a href="https://warlight-mtl.com/allplayers" style="float:right;margin-top:5px">Show All</a>
+                        <a href="https://www.warlight-mtl.com/allplayers" style="float:right;margin-top:5px">Show All</a>
                     </div>
                 </div>
                 <div class="mtlGames p-3 " style="flex:1">
@@ -320,7 +320,7 @@ function setupMtlLadderTable() {
 
 function getMtlGamesTable(numOfGames, cb) {
     var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://warlight-mtl.com/">MTL</a>: Recent Games</h4>');
+    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Recent Games</h4>');
     var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
     table.append(`
         <thead>
@@ -331,7 +331,7 @@ function getMtlGamesTable(numOfGames, cb) {
         </thead>
     `);
     table.append("<tbody></table>");
-    var urlParam = "https://warlight-mtl.com/api/v1.0/games/?topk=" + numOfGames;
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/games/?topk=" + numOfGames;
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -364,7 +364,7 @@ function getMtlGamesTable(numOfGames, cb) {
 
 function getMtlPlayerTable(cb) {
     var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://warlight-mtl.com/">MTL</a>: Rankings</h4>');
+    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Rankings</h4>');
     var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
     table.append(`
         <thead>
@@ -375,7 +375,7 @@ function getMtlPlayerTable(cb) {
            </tr>
         </thead>`);
     table.append("<tbody></table>");
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/?topk=10";
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/?topk=10";
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -424,8 +424,8 @@ function setupMtlForumTable() {
 function getPlayerGameString(p1, p2, winnerId) {
     var c1 = getClanIcon(p1);
     var c2 = getClanIcon(p2);
-    var p1s = c1 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
-    var p2s = c2 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
+    var p1s = c1 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
+    var p2s = c2 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
     if (p1.player_id == winnerId) {
         return p1s + " defeated " + p2s
     } else {
@@ -434,12 +434,12 @@ function getPlayerGameString(p1, p2, winnerId) {
 }
 
 function getPlayerLink(player) {
-    return "<a href='https://warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
+    return "<a href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
 }
 
 function getClanIcon(player) {
     if (player.clan_id) {
-        return '<a href="https://warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
+        return '<a href="https://www.warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
     } else {
         return ""
     }
@@ -1810,7 +1810,7 @@ window.userscriptSettings = [
         selected: false,
         title: 'Third-party data',
         addBreak: false,
-        help: 'Shows MTL ladder ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows Multi-Template Ladder (MTL) ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 

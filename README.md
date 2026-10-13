@@ -52,7 +52,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 - **Collapsible stat sections** — click any section header to expand/collapse.
 - **Global win rate** — calculated and appended next to your ranked games stats.
-- **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community MTL ladder.
+- **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — loads your private notes from the Discussion/Notes page directly onto your profile.
 - **Cleaner layout** — collapses excessive blank lines and applies background styling.

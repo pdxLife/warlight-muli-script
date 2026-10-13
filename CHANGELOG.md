@@ -7,7 +7,7 @@
 - A failed refresh no longer leaves the games table dimmed.
 - The open games list scrolls back to the top when switching between Multi-Day, Real-Time and Both, as originally intended.
 - Removed the dead open-games counter code; war.app now shows these counts itself.
-- Renamed MDL to MTL throughout, following the ladder's rename.
+- Renamed MDL to MTL (Multi-Template Ladder) throughout, following the ladder's rename, and switched its links and API calls to the canonical `www.warlight-mtl.com` address.
 
 ## 3.7.0
 
