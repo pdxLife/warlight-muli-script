@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.8.0  
+> **Version:** 3.9.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -19,6 +19,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 - **Redesigned layout** with fixed header, scrollable game area, and tabbed My / Open / Past games.
 - **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam). One request refreshes both tables, and the My Games and open-games counts stay current.
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
+- **Your-turn alerts** — the tab title shows how many games are waiting for you, e.g. `(2) Multi-Player Dashboard`. While the dashboard tab is open but not in focus, it re-checks your games every 5 minutes, and can show a desktop notification when a game becomes your turn (opt-in setting).
 - **Vacation banner** — displays a notice when your account is on vacation.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
 - **Tournament invite highlighting** — optional colored background on tournament invite rows.
@@ -107,6 +108,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Off-Topic Threads | Off | Automatically hide Off-Topic forum threads |
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
+| Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
 | Load MTL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 
 The settings menu also has a **Features** section with a switch for each individual feature, grouped by area (Dashboard, Forum, Tournaments, Profile, and so on), so you can turn off anything you don't want. Changes apply after **Close & Refresh**.
