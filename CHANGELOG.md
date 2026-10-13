@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Renamed MDL to MTL throughout, following the ladder's rename.
+
 ## 3.7.0
 
 - Community level previews in forum posts are read from war.app's own level pages instead of maak.ch.

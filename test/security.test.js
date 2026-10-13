@@ -33,7 +33,7 @@ test("normalizeBookmarkUrl keeps web and relative URLs and prefixes the rest", (
     assert.equal(normalizeBookmarkUrl("javascript:alert(1)"), "https://javascript:alert(1)");
 });
 
-test("MDL player, clan and game markup escapes API data", () => {
+test("MTL player, clan and game markup escapes API data", () => {
     const ctx = load(["getClanIcon", "getPlayerLink", "getPlayerGameString", "htmlEscape", "safeUrl"]);
     const evil = { player_id: PAYLOAD, player_name: PAYLOAD, clan_id: PAYLOAD, clan: PAYLOAD, clan_icon: "javascript:alert(1)" };
     const good = { player_id: 1, player_name: "Good", clan_id: 0 };
