@@ -34,6 +34,14 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 
 ## Phase 4 — Features
 
+- [ ] **Read MTL data directly from www.warlight-mtl.com.** *(Waiting on the MTL organizers.)* They have been asked to add `Access-Control-Allow-Origin` (matching `https://war.app`, `https://www.war.app` and `https://www.warzone.com`, or `*`, plus `Vary: Origin`) to `/api/v1.0/players/<id>`, `/api/v1.0/players/?topk=10` and `/api/v1.0/games/?topk=10`. Once the header is live, the script will:
+  1. Call those endpoints directly with plain JSON requests instead of maak.ch's JSONP relay, which also removes the code-execution risk for these features.
+  2. Parse the response directly (no `response.data` string to decode).
+  3. Move the three MTL features out of the maak.ch setting into regular Features switches (Profile, Forum, Community), on by default.
+  4. Narrow and rename the maak.ch setting to cover only the community level record count.
+  5. Update the tests.
+
+  If they decline, the fallback is the `@grant GM_xmlhttpRequest` migration (Phase 3) with `@connect www.warlight-mtl.com`, or a relay you run yourself.
 - [x] **Working open-games counter.** Decode `#AllOpenGamesData` or count table rows instead of only guarding the missing globals; the counter currently shows nothing. *(Done differently: war.app now renders these counts itself. The script's refresh used to leave them stale; it now copies the fresh counts in, using a single dashboard fetch for both tables. The dead counter code is removed.)*
 - [ ] **Turn notifications.** Show a desktop notification or a tab-title badge when it's your turn in a multi-day game, building on the existing refresh logic. *(Blocked on markup: My Games rows are rendered server-side only for logged-in users, and war.app's JS has no "your turn" marker, so the logged-in dashboard HTML is needed to detect it.)*
 - [x] **Per-feature toggles** in the settings menu for every feature, not just the current 10 settings. *(Done: a Features section with a switch for each feature that has a `section`.)*
