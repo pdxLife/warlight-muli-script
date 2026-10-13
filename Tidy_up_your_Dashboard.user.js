@@ -7,8 +7,8 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.6.0
-// @icon https://i.imgur.com/XzA5qMO.png
+// @version 3.7.0
+// @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
 // @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js#sha256-/7zo27Ll/hVKhCsE+y8m2SS5bhFPEQFheTCL87HuumA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.6.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.7.0';
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -50,9 +50,14 @@ function loadPlayerData() {
     let deferred = $.Deferred();
     let cookieValue = $.cookie('muli_wl_player');
     if (cookieValue) {
-        window.WlPlayer = JSON.parse(cookieValue);
-        log("Skipping reloading player data " + $.cookie('wlPlayerCacheValid'));
-        return deferred.resolve(window.WlPlayer).promise();
+        try {
+            window.WlPlayer = JSON.parse(cookieValue);
+            log("Skipping reloading player data " + $.cookie('wlPlayerCacheValid'));
+            return deferred.resolve(window.WlPlayer).promise();
+        } catch (e) {
+            log("Discarding unreadable player data cookie");
+            removePlayerDataCookie();
+        }
     }
 
     let $profileLink = $(".dropdown-menu a[href*='Profile']");
@@ -200,26 +205,6 @@ function windowError(message, source, lineno, colno, error) {
         window.wlerror(message, source, lineno, colno, error)
     }
 }
-window.mtlRatingCache = {};
-
-function loadMtlPlayer(playerId) {
-    var cachedRating = mtlRatingCache[playerId];
-    if (cachedRating != undefined) {
-        return $.Deferred().resolve({ data: JSON.stringify({ player: { displayed_rating: cachedRating } }) });
-    }
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
-    var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
-    return $.ajax({
-        type: 'GET',
-        url: url,
-        dataType: 'jsonp',
-        crossDomain: true,
-        timeout: 9000,
-    }).fail(function (e) {
-        log("Error loading MTL player " + playerId + ": " + e.statusText);
-    });
-}
-
 function setupMtlProfile() {
     var playerId = location.href.match(/p=(\d+)/)[1];
     var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
@@ -487,6 +472,34 @@ function setupBottomForumContainer(className) {
 function setupDatabase() {
     log("indexedDB start setup");
     var db = null;
+    var settingsCache = null;
+
+    function request(table, mode, operation) {
+        return new Promise(function (resolve, reject) {
+            var req = operation(db.transaction([table], mode).objectStore(table));
+            req.onsuccess = function (e) {
+                resolve(e.target.result);
+            };
+            req.onerror = function (e) {
+                reject(e.target.error);
+            };
+        });
+    }
+
+    function settle(promise, callback, description) {
+        promise.then(function (result) {
+            if (typeof callback === "function") {
+                callback(result);
+            }
+        }).catch(function (error) {
+            log("Database error in " + description + ": " + error);
+        });
+        return promise;
+    }
+
+    function isSettings(table) {
+        return table === Database.Table.Settings && settingsCache !== null;
+    }
     window.Database = {
         Table: {
             Bookmarks: "Bookmarks",
@@ -559,7 +572,17 @@ function setupDatabase() {
             openRequest.onsuccess = function (e) {
                 log("indexedDB init sucessful");
                 db = e.target.result;
-                callback()
+                var loadSettings = request(Database.Table.Settings, "readonly", function (store) {
+                    return store.getAll();
+                }).then(function (settings) {
+                    settingsCache = {};
+                    settings.forEach(function (setting) {
+                        settingsCache[setting.name] = setting;
+                    });
+                }, function (error) {
+                    log("Could not cache settings: " + error);
+                });
+                settle(loadSettings, callback, "init");
             };
             openRequest.onblocked = function (e) {
                 log("indexedDB blocked");
@@ -568,144 +591,84 @@ function setupDatabase() {
             openRequest.onerror = function (e) {
                 log("Error Init IndexedDB");
                 log(e.target.error)
-                //                alert("Sorry, Tidy Up Your Dashboard is not supported")
-                // $("<div>Sorry,<br> Tidy Up Your Dashboard is not supported.</div>").dialog();
             }
         },
         update: function (table, value, key, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            try {
-                if (key == undefined) {
-                    var request = store.put(value);
-                } else {
-                    var request = store.put(value, Number(key));
-                }
-                request.onerror = function (e) {
-                    log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                    log(JSON.stringify(e));
-                };
-
-                request.onsuccess = function (e) {
-                    log(`Saved ${JSON.stringify(value)} in ${table}`);
-                    callback()
-                }
-            } catch (e) {
-                log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                log(JSON.stringify(e));
+            if (isSettings(table)) {
+                settingsCache[value.name] = structuredClone(value);
             }
-
-
+            var saved = request(table, "readwrite", function (store) {
+                return key == undefined ? store.put(value) : store.put(value, Number(key));
+            }).then(function (result) {
+                log(`Saved ${JSON.stringify(value)} in ${table}`);
+                return result;
+            });
+            return settle(saved, callback, "update " + table);
         },
         read: function (table, key, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-
-            var ob = objectStore.get(Number(key));
-
-            ob.onsuccess = function (e) {
-                var result = e.target.result;
-                callback(result)
-            }
+            return settle(request(table, "readonly", function (store) {
+                return store.get(Number(key));
+            }), callback, "read " + table);
         },
         readIndex: function (table, row, value, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-
-            var index = objectStore.index(row);
-
-            //name is some value
-            var ob = index.get(value);
-
-            ob.onsuccess = function (e) {
-                var result = e.target.result;
-                callback(result)
+            if (isSettings(table) && row === Database.Row.Settings.Name) {
+                var cached = settingsCache[value];
+                return settle(Promise.resolve(cached && structuredClone(cached)), callback, "readIndex " + table);
             }
+            return settle(request(table, "readonly", function (store) {
+                return store.index(row).get(value);
+            }), callback, "readIndex " + table);
         },
         readAll: function (table, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-            var items = [];
-
-            var ob = objectStore.openCursor();
-
-            ob.onsuccess = function (e) {
-                var cursor = e.target.result;
-                if (cursor) {
-                    var item = cursor.value;
-                    item.id = cursor.primaryKey;
-                    items.push(item);
-                    cursor.continue();
-                } else {
-                    callback(items)
-                }
-            }
+            var all = new Promise(function (resolve, reject) {
+                var items = [];
+                var req = db.transaction([table], "readonly").objectStore(table).openCursor();
+                req.onsuccess = function (e) {
+                    var cursor = e.target.result;
+                    if (cursor) {
+                        var item = cursor.value;
+                        item.id = cursor.primaryKey;
+                        items.push(item);
+                        cursor.continue();
+                    } else {
+                        resolve(items);
+                    }
+                };
+                req.onerror = function (e) {
+                    reject(e.target.error);
+                };
+            });
+            return settle(all, callback, "readAll " + table);
         },
         add: function (table, value, callback) {
-
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-            try {
-                var request = store.add(value);
-                request.onerror = function (e) {
-                    log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                    log(JSON.stringify(e));
-                };
-
-                request.onsuccess = function (e) {
-                    log(`Saved ${JSON.stringify(value)} in ${table}`);
-                    callback()
-                }
-            } catch (e) {
-                log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                log(JSON.stringify(e));
+            if (isSettings(table)) {
+                settingsCache[value.name] = structuredClone(value);
             }
+            var added = request(table, "readwrite", function (store) {
+                return store.add(value);
+            }).then(function (result) {
+                log(`Saved ${JSON.stringify(value)} in ${table}`);
+                return result;
+            });
+            return settle(added, callback, "add " + table);
         },
         delete: function (table, key, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            var request = store.delete(key);
-
-            request.onerror = function (e) {
-                log("Error deleting in " + table);
-                log(e.target.error);
-                //some type of error handler
-            };
-
-            request.onsuccess = function (e) {
-                log("Deleted in " + table);
-                callback()
+            if (isSettings(table)) {
+                delete settingsCache[key];
             }
+            return settle(request(table, "readwrite", function (store) {
+                return store.delete(key);
+            }), callback, "delete " + table);
         },
         clear: function (table, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            var request = store.clear();
-
-            request.onerror = function (e) {
-                log("Error clearing " + table);
-                log(e.target.error);
-                //some type of error handler
-            };
-
-            request.onsuccess = function (e) {
-                log("Cleared " + table);
-                callback()
+            if (isSettings(table)) {
+                settingsCache = {};
             }
+            return settle(request(table, "readwrite", function (store) {
+                return store.clear();
+            }), callback, "clear " + table);
         }
-
     }
-
 }
 var mapData;
 
@@ -1687,10 +1650,7 @@ function loadClots(cb) {
         crossDomain: true
     }).done(function (response) {
         try {
-            var jsonStr = response.replace(/^\s*\w+\s*\(\s*/, '').replace(/\s*\)\s*;?\s*$/, '');
-            var parsed = JSON.parse(jsonStr);
-            console.log(parsed.data);
-            var json = parsed.data;
+            var json = parseClotList(response);
             var clotInfo = JSON.stringify(json);
             sessionStorage.setItem('clots', clotInfo);
             if (cb) {
@@ -1708,6 +1668,10 @@ function loadClots(cb) {
         log("Error loading CLOTs");
         log(e);
     });
+}
+
+function parseClotList(response) {
+    return JSON.parse(response.replace(/^\s*\w*\s*\(\s*/, '').replace(/\s*\)\s*;?\s*$/, '')).data;
 }
 
 function toWords(number) {
@@ -1750,26 +1714,16 @@ function toWords(number) {
         { value: 1, str: "one" }
     ];
 
-    var result = '';
     for (var n of NS) {
         if (number >= n.value) {
-            if (number <= 20) {
-                result += n.str;
-                number -= n.value;
-                if (number > 0) result += ' ';
-            } else {
-                var t = Math.floor(number / n.value);
-                var d = number % n.value;
-                if (d > 0) {
-                    return intToEnglish(t) + ' ' + n.str + ' ' + intToEnglish(d);
-                } else {
-                    return intToEnglish(t) + ' ' + n.str;
-                }
-
+            if (n.value >= 100) {
+                var remainder = number % n.value;
+                return toWords(Math.floor(number / n.value)) + ' ' + n.str + (remainder > 0 ? ' ' + toWords(remainder) : '');
             }
+            return n.str + (number > n.value ? ' ' + toWords(number - n.value) : '');
         }
     }
-    return result;
+    return '';
 }
 window.userscriptSettings = [
     {
@@ -1848,6 +1802,14 @@ window.userscriptSettings = [
         title: '',
         addBreak: false,
         help: 'This option will allow you to right-click forum thread on the dashboard and use the default browser options.'
+    },
+    {
+        id: 'useMaakServices',
+        text: 'Load MDL Ladder and Community Level Records (via maak.ch)',
+        selected: false,
+        title: 'Third-party data',
+        addBreak: false,
+        help: 'Shows MDL ladder ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 
@@ -2118,30 +2080,22 @@ function importSettings() {
     }
     wljs_WaitDialogJS.Start(null, "Importing Settings...")
 
-    var deferredCount = 0;
-    var resolvedCount = 0;
-    var clearPromises = [];
-    $.each(Database.Exports, function (key, table) {
-        clearPromises[deferredCount++] = $.Deferred();
-        Database.clear(table, function () {
-            clearPromises[resolvedCount++].resolve();
-        })
-    });
-    $.when.apply($, clearPromises).done(function () {
-        var deferredCount = 0;
-        var resolvedCount = 0;
-        var promises = [];
-        $.each(settings, function (key, data) {
-            $.each(data.data, function (key, value) {
-                promises[deferredCount++] = $.Deferred();
-                Database.add(data.table, value, function () {
-                    promises[resolvedCount++].resolve();
-                })
-            })
+    Promise.all(Object.values(Database.Exports).map(function (table) {
+        return Database.clear(table);
+    })).then(function () {
+        var additions = [];
+        settings.forEach(function (data) {
+            data.data.forEach(function (value) {
+                additions.push(Database.add(data.table, value));
+            });
         });
-        $.when.apply($, promises).done(function () {
-            window.location.reload();
-        })
+        return Promise.all(additions);
+    }).then(function () {
+        window.location.reload();
+    }).catch(function (e) {
+        log(e);
+        wljs_WaitDialogJS.Stop();
+        CreateModal("mulisuserscript", "Error", "There was an error importing the settings.");
     });
 }
 
@@ -2158,21 +2112,11 @@ function parseSettingsBackup(backup) {
 }
 
 function exportSettings() {
-    var settings = [];
-    var deferredCount = 0;
-    var resolvedCount = 0;
-    var promises = [];
-    $.each(Database.Exports, function (key, table) {
-        promises[deferredCount++] = $.Deferred();
-        Database.readAll(table, function (data) {
-            settings.push({
-                table: table,
-                data: data
-            });
-            promises[resolvedCount++].resolve();
-        })
-    });
-    $.when.apply($, promises).done(function () {
+    Promise.all(Object.values(Database.Exports).map(function (table) {
+        return Database.readAll(table).then(function (data) {
+            return { table: table, data: data };
+        });
+    })).then(function (settings) {
         var settingsString = btoa(JSON.stringify(settings));
         $("#exportSettingsBox").html(settingsString);
         showPopup(".exportSettings-show");
@@ -2367,18 +2311,9 @@ function storeSettingsVariables() {
 function setupSettingsDatabase() {
     wljs_WaitDialogJS.Start(null, "Setting up Muli's Userscript...")
 
-    var promises = [];
-    $.each(userscriptSettings, function (key, set) {
-        promises[key] = $.Deferred();
-        var setting = {
-            name: set.id,
-            value: set.selected
-        };
-        Database.update(Database.Table.Settings, setting, undefined, function () {
-            promises[key].resolve();
-        })
-    });
-    $.when.apply($, promises).done(function () {
+    Promise.all(userscriptSettings.map(function (set) {
+        return Database.update(Database.Table.Settings, { name: set.id, value: set.selected });
+    })).then(function () {
         sessionStorage.setItem("showUserscriptMenu", true);
         window.setTimeout(function () {
             window.location.reload();
@@ -2726,14 +2661,11 @@ function browserIsFirefox() {
 
 function setupImages() {
     window.IMAGES = {
-        EYE: 'https://i.imgur.com/kekYrsO.png',
-        CROSS: 'https://i.imgur.com/RItbpDS.png',
-        QUESTION: 'https://i.imgur.com/TUyoZOP.png',
-        PLUS: 'https://i.imgur.com/lT6SvSY.png',
-        SAVE: 'https://i.imgur.com/Ze4h3NQ.png',
-        FILTER: 'https://i.imgur.com/Q5Jq3EX.png?1',
-        BOOKMARK: 'https://i.imgur.com/c6IxAql.png'
-
+        EYE: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAUCAYAAADlep81AAAAAXNSR0IArs4c6QAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAeGVYSWZNTQAqAAAACAAEARoABQAAAAEAAAA+ARsABQAAAAEAAABGASgAAwAAAAEAAgAAh2kABAAAAAEAAABOAAAAAAAAAEgAAAABAAAASAAAAAEAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAJKADAAQAAAABAAAAFAAAAAC4oG9NAAAACXBIWXMAAAsTAAALEwEAmpwYAAADH0lEQVRIDa2WS0hWQRTHuy6KKKOSMnu4theYJYgRX/SmB21qEQSFLVxkREgFRUEtW0hQRFBRC2tRm0LMoOj9IiGKHiBkYWQZFZGImalfv/91Rqe5k35oB37fOfM/M/eeO3dm7heNGKKl0+lChk4cYPiTKIraBsgHU1FQDYgUUIxcBJtNej5+tIlD7hXid2iCanhIga344RmFlMJF6IDhWAODd8CEIVXEwBRcht/g200EMZh1BTo0olVC8HUHXxmdy3iKU5DlPM0N4no4D6+NfgX/BbpNWy4fVpr2W/wBWAXLYQpYu0+wkdfYYoWEp5BcuA7dYO0DwSFIFI82DhbBBofpxCn4BLLboH55cBJc+0ijPFGIBBI5UO/2Jj4Gk4MDjEj+gTemhXYZzIH3Jldj7hHRTkGz0eV6IFkU4n5lHatyC0FfB9thmqevRXNnlGZsW/hNgXKdUGLHEReCLZYw3QQzbF6zs1OqY0f7kgToeg32qRYT6xXNhFHqhw8tcN1Q4+6AzK6r+NK0NYOflTD2Ap+ji+WD1ok1JfxZWGqT+BLQTdrgKWyC1fATfNORcdWItXElzg/6PnCPk9PaRQXgFlDDym92xins8drttMfAPLgAR0C7zTeNs5sh20/SPgvfHH2bCtIWfu6I8YJ02gp/QafR5Eea2LrZBP1rwKq9vss0f/wtx609/E41uvr1LhWmbaGZVuv0/vWtio04Cx6b5EG8TtzBrJEORaAFK9NZ1Ge0q2K1/6fOTUboFaAtaE2LeIHtRLzbJLStZ8Fd0/6X09o6bJLv8Hm6Fl730nHimo6b5AwjloO7hXXzZaAZygY9tewEzIW9YGeAMB5bi18D2o1fQVZhiskj9g/HR2i59sETnmQZuEXRTJ+BAtgKrSDTzlwCxbDesAKv4+A4WKsjUPHaifb0trl7BJMSRfgCnVJwC3y7hnDJEzWL5wzKu/aGhmbEnmE2pw92JQQ/sH49cZvO40GLtwFcc9eZq4dif6Y76KS/MqXBm2YiMlgfRq0tTW87DMVeMqga9Cfv/xkX1DdI6+YZZGK76KT+YzOt4g/tMcO6R7Vx2QAAAABJRU5ErkJggg==',
+        EYE_ICON: 'data:image/png;base64,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',
+        EYE_ICON_HOVER: 'data:image/png;base64,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',
+        QUESTION: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAeGVYSWZNTQAqAAAACAAEARoABQAAAAEAAAA+ARsABQAAAAEAAABGASgAAwAAAAEAAgAAh2kABAAAAAEAAABOAAAAAAAAAwwAAAABAAADDAAAAAEAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAIKADAAQAAAABAAAAIAAAAABguP1VAAAACXBIWXMAAHf1AAB39QG+gBuGAAADrElEQVRYCb2XzUtUURiHZ0pTCFEKgjAQo2iRH+QiBEUXbQq1P6D+gShxqRGBi1pUzCJatRFpVQvBTUg7wYQIRKLPZWhtooWafYHZ9Pyu972893rvnZmCXnjmvOf9OmfmnnvOmUKhBimXyy0wCGOwBibSZRuElhpKVhdK0T6YglWoJIpRbF911XOiKNINM7AFSZFtMyTLr9zunCGyXSTqJ/0CXl7SuQPnoQPaQqTLJp9ivKjGWPZIKR4SSr4C+iKMwL6U8JhJMWGscryUYoFpHaKL4Af/Tn8cKg6crKecMPcnrYlqF5OxUR/nqEXSrsO5yOkU7I1wFHpCjjh3TMU/DP6NuRILsA5BnaBFJfkBZ81nLTbF3IO38A22QzTZeRixWN9iHwL7JTbQO7w/0DHOgsn4rgAMOK9ZQEart+FiRu6Ey5mNxeDoBXuVnqGnPnPsHaBvnScrOHdtRti0JlRborF6o0nQmQaJig9FjoSCT0Vm4Dr0wwA8hKSkbkIE6VHYF5gOymNoho8geQ31iXFjXfyxVUy/FbQevAzEksIOAfWgMSQas3kPvi5oDWPmisXiVqinNvjLCcdx+g3Oton+3vUjNaw9Fxo0Zpcm0BNFFAoLTq+o8g0aCboBe13wIwb64PpJ9akz9Ghl6xWSaGGcdM6KKvF3lejkHfqhvET8XWALfl0TMPmK0p6X7H3Eamv+bcm0n+GUj0nTiWkHjRXIX02ATC2m5zslgk9N5ELagEkbcbsmUPMjoMgJsJ0NtbwEfh0kx436xMUegRbhZOito632ERwk1q/8Fyy87bBOpaaNAI0lmZSyHKg7H3p/H7t+lrqK4yboldU3X4Jqpd8FLmsN1LQRWTJ5++E0HDZbpZbYBngDkmAjCnLoTMuC5G7FNgBxZ8B2T52gl82X1xKno9nenOkoFmNVh5ESiNWlZR68fKJzICqYouDPPozCwv44nkipEZgoVAf2M6IGovuDFlem4M8+jpVFgL+Q6BXLOxV1KfGiY9a/FbGJ4PMXEj2yzliAdXCMgskayrD5fIu9CW7DAjyAY97vdXx67qplMur9MZ0IPd+SRdLql/h/l1KbTWISms8iaO9PvSlZnlpidGHVfwTleCn5ONNjlwszqiXzEs0taFY/lFe0T2ARVkBnv6QJtAi1yegm3QEmGyhX2Snvm6Hqlklo354BOz5RI/mFppuQkJ4U5ShXF55/E4r0wRT83z+nyWkzgRYYhDHwK1u6bIOw60acrOP7fwAawRQpHCf63QAAAABJRU5ErkJggg==',
+        PLUS: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAeGVYSWZNTQAqAAAACAAEARoABQAAAAEAAAA+ARsABQAAAAEAAABGASgAAwAAAAEAAgAAh2kABAAAAAEAAABOAAAAAAAABuwAAAABAAAG7AAAAAEAA6ABAAMAAAABAAEAAKACAAQAAAABAAAAIKADAAQAAAABAAAAIAAAAACi3Qz1AAAACXBIWXMAARCEAAEQhAE/RUVgAAABbUlEQVRYCe2Xu0oDURCGPRo0oFgErKzsfAPBh0jrU1iKL2Fr4VMIgp2dD6GlhaRMIUm8RY/fv8rKCXtuZtdA2IEpZs4/lx1mfhKzkinW2g4hfXRvJnSAfWmMeZnx12vSwAnqk7N6q1Vko/Ktrzr+O1QTSpbVZGQa0AIzadBvVN0N5NQusG0D7QSWcgKfOadQkgYEskbgekJwaGrigE1yvUfyTKHsAlOQBgFHBJyi25FAPe+iXQ/uDf8jKkIKyYTHc5q4MBTvYdyjO6GIBt5eybmvceqrtxooEEu5AaCnBjSurMWJZU58V10bWqjEPPPB1IAWcRGNqK5R4Sd0hP63aAmHHU5hyCUcYyziDB8KHtCn00QqEd0AP1RMheicD9BkIiqZkEl8EPhckdRx0WjoYrTZ459cTpzPaGL5snJmgX1fMY+/baCdwNJNQMQW+zHiHM1fJnDlZHCNa0ho6rrCVknFYdjvK0wo9qzt7/kXIMaNW1QFn78AAAAASUVORK5CYII='
     }
 }
 
@@ -2979,118 +2911,139 @@ function displayTrophies() {
 }
 function databaseReady() {
     log("Running main");
-    if (pageIsForumOverview()) {
-        ifSettingIsEnabled("hideOffTopic", function () {
-            hideOffTopicThreads()
-        });
-        ifSettingIsEnabled("hideWarzoneIdle", function () {
-            hideWarzoneIdleThreads()
-        });
-        formatHiddenThreads();
-    }
-    if (pageIsCommunityLevels()) {
-        setupCommunityLevels()
-    }
+    runFeatures([
+        { name: "forum overview filters", match: pageIsForumOverview, run: setupForumOverviewFilters },
+        { name: "community levels banner", match: pageIsCommunityLevels, run: setupCommunityLevels },
+        { name: "forum thread hiding", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
+        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
+        { name: "community forum list", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
+        { name: "blacklist counter", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "total points", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
+        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
+        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
+    ]);
+}
 
-    if (pageIsForumOverview() || pageIsSubForum()) {
-        setupSpammersBeGone();
+function setupMaakFeatures() {
+    runFeatures([
+        { name: "MDL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
+        { name: "MDL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
+        { name: "MDL profile stats", match: pageIsProfile, run: setupMtlProfile },
+        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
+    ]);
+}
+
+function setupForumOverviewFilters() {
+    ifSettingIsEnabled("hideOffTopic", function () {
+        hideOffTopicThreads()
+    });
+    ifSettingIsEnabled("hideWarzoneIdle", function () {
+        hideWarzoneIdleThreads()
+    });
+    formatHiddenThreads();
+}
+
+function setupForumThreadHiding() {
+    setupSpammersBeGone();
+    addCSS(`
+        #MainSiteContent > table table tr td:nth-of-type(4), #MainSiteContent > table table tr td:nth-of-type(5) {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+    `)
+}
+
+function setupDashboard() {
+    captureTournamentInviters();
+    playerDataReady.done(setupVacationAlert);
+
+    hideBlacklistedThreads();
+    setupBasicDashboardStyles();
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
+        var filter = (f && f.value) ? f.value : 4;
+        refreshMyGames();
+    });
+    ifSettingIsEnabled('hideCoinsGlobally', function () {
+        hideCoinsGlobally()
+    });
+    ifSettingIsEnabled('useDefaultBootLabel', function () {
+        createSelector(".BootTimeLabel", "z-index:50;");
+    }, function () {
+        createSelector(".BootTimeLabel", "color:white !important;font-weight:normal!important;font-style:italic;font-size:13px!important;z-index:50;");
+    });
+    ifSettingIsEnabled("highlightTournaments", function () {
+        createSelector("#MyTournamentsTable tbody", "background:#4C4C33;");
+    });
+    ifSettingIsEnabled("hideMyGamesIcons", function () {
+        createSelector("#MyGamesTable td div > img, #MyGamesTable td div a > img", "display:none;");
+    });
+    ifSettingIsEnabled("scrollGames", function () {
+        setupFixedWindowWithScrollableGames();
+    }, function () {
+        createSelector("body", "overflow: auto");
+        createSelector("#MainSiteContent > table", "width: 100%;max-width: 1400px;");
         addCSS(`
-            #MainSiteContent > table table tr td:nth-of-type(4), #MainSiteContent > table table tr td:nth-of-type(5) {
-                max-width: 200px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-    
-        `)
-    }
-    if (pageIsProfile() && $("#BlockListLink").length > 0) {
-        ifSettingIsEnabled('showPrivateNotesOnProfile', function () {
-            loadPrivateNotes();
-        })
-    }
-    if (pageIsCommunity()) {
-        hideIgnoredForumThreadsFromCommnuityList();
-    }
-    if (pageIsBlacklistPage()) {
-        setupBlacklistCounter();
-    }
-    if (pageIsPointsPage()) {
-        playerDataReady.done(displayTotalPointsEarned);
-    }
-    if (pageIsDashboard()) {
-        captureTournamentInviters();
-        playerDataReady.done(setupVacationAlert);
-
-        hideBlacklistedThreads();
-        setupBasicDashboardStyles();
-        Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
-            var filter = (f && f.value) ? f.value : 4;
-            refreshMyGames();
-        });
-        ifSettingIsEnabled('hideCoinsGlobally', function () {
-            hideCoinsGlobally()
-        });
-        ifSettingIsEnabled('useDefaultBootLabel', function () {
-            createSelector(".BootTimeLabel", "z-index:50;");
-        }, function () {
-            createSelector(".BootTimeLabel", "color:white !important;font-weight:normal!important;font-style:italic;font-size:13px!important;z-index:50;");
-        });
-        ifSettingIsEnabled("highlightTournaments", function () {
-            createSelector("#MyTournamentsTable tbody", "background:#4C4C33;");
-        });
-        ifSettingIsEnabled("hideMyGamesIcons", function () {
-            createSelector("#MyGamesTable td div > img, #MyGamesTable td div a > img", "display:none;");
-        });
-        ifSettingIsEnabled("scrollGames", function () {
-            setupFixedWindowWithScrollableGames();
-        }, function () {
-            createSelector("body", "overflow: auto");
-            createSelector("#MainSiteContent > table", "width: 100%;max-width: 1400px;");
-            addCSS(`
-                @media (max-width: 1050px) {
-                   #MyGamesTable > thead > tr * {
-                        font-size: 14px;
-                    }
-                    #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
-                        margin-top: 5px!important;
-                        display: block;
-                        float: left;
-                        padding-right: 5px;
-                    }
+            @media (max-width: 1050px) {
+               #MyGamesTable > thead > tr * {
+                    font-size: 14px;
                 }
+                #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
+                    margin-top: 5px!important;
+                    display: block;
+                    float: left;
+                    padding-right: 5px;
+                }
+            }
 
-                @media (max-width: 750px) {
-                    #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
-                        display:none;
-                    }
-                }`)
-        }, function () {
-            setupRightColumn(true);
-            refreshOpenGames();
-        });
-        $("label#MultiDayRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $("label#RealTimeRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $("label#BothRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $(window).resize(function () {
-            ifSettingIsEnabled("scrollGames", function () {
-                refreshSingleColumnSize();
-            }, undefined, function () {
-                makePopupVisible()
-            })
-        });
-        window.setTimeout(setupRefreshFunction, 0);
-    } else {
-        ifSettingIsEnabled('hideCoinsGlobally', function () {
-            hideCoinsGlobally();
+            @media (max-width: 750px) {
+                #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
+                    display:none;
+                }
+            }`)
+    }, function () {
+        setupRightColumn(true);
+        refreshOpenGames();
+    });
+    $("label#MultiDayRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $("label#RealTimeRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $("label#BothRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $(window).resize(function () {
+        ifSettingIsEnabled("scrollGames", function () {
+            refreshSingleColumnSize();
+        }, undefined, function () {
+            makePopupVisible()
         })
+    });
+    window.setTimeout(setupRefreshFunction, 0);
+}
+
+function runFeature(name, run) {
+    try {
+        run();
+    } catch (e) {
+        logError("Feature \"" + name + "\" failed: " + (e && e.stack ? e.stack : e));
     }
 }
+
+function runFeatures(features) {
+    features.forEach(function (feature) {
+        runFeature(feature.name, function () {
+            if (!feature.match || feature.match()) {
+                feature.run();
+            }
+        });
+    });
+}
+
 function setupBlacklistCounter() {
     var $blacklist = $("#MainSiteContent ul");
     $blacklist.first().before(`<span id="numBlacklisted">You have <b></b> players on your blacklist.</span>`);
@@ -3115,6 +3068,59 @@ function DOM_ContentReady() {
         return;
     }
 
+    runFeature("DataTables sorting", registerDataTableSorting);
+    setupWLError();
+    createSelector('body > footer', 'display:none');
+
+    $.fn.outerHTML = function (s) {
+        return s ? this.before(s).remove() : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    window.playerDataReady = loadPlayerData();
+
+    runFeatures([
+        { name: "new thread cleanup", match: pageIsNewThread, run: cleanUpNewThreadPage },
+        { name: "my games filter", run: setupMyGamesFilter },
+        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
+        { name: "editor toolbar", match: pageIsThread, run: setupTextarea },
+        { name: "rate map link", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
+        { name: "forum thread tweaks", match: isAnyForumThread, run: setupForumThreadTweaks },
+        { name: "level previews", match: isAnyForumThread, run: parseForumSPLevels },
+        { name: "tournament page", match: pageIsTournament, run: setupTournamentPage },
+        { name: "tournament creator chat", match: pageIsTournament, run: colorTournamentCreatorInChat },
+        { name: "find me", match: pageIsTournament, run: setupFindMeInTournament },
+        { name: "tournament inviter", match: pageIsTournament, run: displayTournamentInviter },
+        { name: "common games", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
+        { name: "tournament overview", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
+        { name: "clan list search", match: pageIsClanList, run: setupClanListSearch },
+        { name: "clan creator", match: pageIsClanPage, run: setupClanPageCreator },
+        { name: "community events", match: pageIsLadderOverview, run: setupLadderClotOverview },
+        { name: "map search", match: pageIsMapsPage, run: setupMapSearch },
+        { name: "level bookmark", match: pageIsLevelOverview, run: setupLevelBookmark },
+        { name: "profile box style", match: pageIsProfile, run: styleProfileBoxes },
+        { name: "profile blank lines", match: pageIsProfile, run: hideExtraBlanks },
+        { name: "trophies", match: pageIsProfile, run: displayTrophies },
+        { name: "foldable profile stats", match: pageIsProfile, run: foldProfileStats },
+        { name: "global win rate", match: pageIsProfile, run: showGlobalWinRate },
+        { name: "global styles", run: setGlobalStyles },
+        { name: "map of the week styles", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
+    ]);
+
+    Database.init(function () {
+        log("database is ready");
+        if (pageIsDashboard()) {
+            wljs_WaitDialogJS.Start(null, "Tidying Up...")
+        }
+        runFeatures([
+            { name: "userscript menu", run: setupUserscriptMenu },
+            { name: "bookmark menu", run: setupBookmarkMenu },
+            { name: "version check", run: checkVersion },
+            { name: "main", run: databaseReady }
+        ]);
+    });
+}
+
+function registerDataTableSorting() {
     $.extend($$$.fn.dataTableExt.oSort, {
         "rank-pre": function (a) {
             return a.match(/([0-9]*)/)[1] || 9999;
@@ -3138,19 +3144,14 @@ function DOM_ContentReady() {
             return a > b;
         }
     });
+}
 
-    setupWLError();
-    createSelector('body > footer', 'display:none');
+function cleanUpNewThreadPage() {
+    $("[onclick='undoIgnore()']").closest("th").remove();
+    $(".checkbox").closest("td").remove()
+}
 
-    $.fn.outerHTML = function (s) {
-        return s ? this.before(s).remove() : jQuery("<p>").append(this.eq(0).clone()).html();
-    };
-
-    if (pageIsNewThread()) {
-        $("[onclick='undoIgnore()']").closest("th").remove();
-        $(".checkbox").closest("td").remove()
-    }
-
+function setupMyGamesFilter() {
     if (document.getElementById("MyGamesFilter") != null) {
         document.getElementById("MyGamesFilter").onchange = null
     }
@@ -3163,153 +3164,92 @@ function DOM_ContentReady() {
             refreshMyGames();
         })
     });
+}
 
-    if (pageIsDashboard()) {
-        $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
-        $(".container-fluid").show();
-        window.lastRefresh;
-        window.lastClick = new Date();
-    }
+function showDashboardLoader() {
+    $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
+    $(".container-fluid").show();
+    window.lastRefresh;
+    window.lastClick = new Date();
+}
 
-    if (pageIsThread()) {
-        setupTextarea()
-    }
+function addRateMapLink() {
+    var id = location.href.match(/[^\d]*([\d]*)/)[1];
+    $("#MainSiteContent ul").append(`<li><a href="https://war.app/RateMap?ID=${id}" target="_blank">Rate Map</a></li>`)
+}
 
-    if (pageIsMapPage() && mapIsPublic()) {
-        var id = location.href.match(/[^\d]*([\d]*)/)[1];
-        $("#MainSiteContent ul").append(`<li><a href="https://war.app/RateMap?ID=${id}" target="_blank">Rate Map</a></li>`)
-    }
+function isAnyForumThread() {
+    return pageIsForumThread() || pageIsClanForumThread();
+}
 
-    if (pageIsCommunity()) {
-        setupMtlLadderTable();
-    }
-
-    if (pageIsForumThread() || pageIsClanForumThread()) {
-        $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
-        $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
-        $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
-        setupMtlForumTable();
-        $(".region a[href='/Profile?u=Muli_1']:contains('Muli')").closest("td").find("br:nth-of-type(5)").remove();
-        $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
-        parseForumSPLevels();
-        $('img[src*="https://s3.amazonaws.com/data.warlight.net/Data/Players"]').prev().remove();
-        $(".region td:first-of-type").css("padding-top", "10px");
-        addCSS(`
-            img[src*='Images/Thumbs'] {
-                height: 25px;
-                width: 25px;
-            }
-        `)
-    }
-    window.playerDataReady = loadPlayerData();
-    if (pageIsTournament()) {
-        window.setTimeout(function () {
-            setupPlayerDataTable();
-        }, 50);
-        $("#HostLabel").after(" | <a style='cursor:pointer' href='#' onclick='bookmarkTournament()'>Bookmark</a> | <a style='cursor:pointer' href='#' id='findMeInTournament'>Find Me</a>");
-        $("#HostLabel").css("display", "inline-block");
-        $("#LeftToStartMessage").text(" | " + $("#LeftToStartMessage").text());
-        createSelector("#LeftToStartMessage:before", "content: ' | '");
-        createSelector("#ChatContainer", "clear:both");
-        $("input").on("keypress keyup keydown", function (e) {
-            e.stopPropagation()
-        });
-        addCSS(`
-            #ChatContainer div {
-                margin-bottom: 10px;
-            }
-            .findme-highlight {
-                background: rgba(255,215,0,0.35) !important;
-                outline: 2px solid gold;
-                border-radius: 3px;
-            }
-            @keyframes findmePulse {
-                0% { outline-color: gold; }
-                50% { outline-color: transparent; }
-                100% { outline-color: gold; }
-            }
-            .findme-pulse {
-                animation: findmePulse 1.2s ease-in-out 3;
-            }
-        `);
-        colorTournamentCreatorInChat();
-        setupFindMeInTournament();
-        displayTournamentInviter();
-
-    }
-
-    if (pageIsCommonGames()) {
-        window.$ = $$$;
-        setupCommonGamesDataTable()
-    }
-
-    if (pageIsTournamentOverview()) {
-        setupTournamentTableStyles();
-        $(window).resize(function () {
-            setTournamentTableHeight();
-        });
-        $(window).on("scroll", function () {
-            $(window).scrollTop(0)
-        })
-    }
-
-    if (pageIsClanList()) {
-        setupClanListSearch();
-    }
-
-    if (pageIsClanPage()) {
-        setupClanPageCreator();
-    }
-
-    if (pageIsLadderOverview()) {
-        setupLadderClotOverview();
-
-    }
-
-    if (pageIsMapsPage()) {
-        setupMapSearch()
-    }
-
-    if (pageIsLevelPlayLog()) {
-        setupPlayerAttempDataTable();
-    }
-
-    if (pageIsLevelOverview()) {
-        setupLevelBookmark();
-    }
-
-    if (pageIsProfile()) {
-        createSelector(".profileBox", "background-image: url(\'https://d2wcw7vp66n8b3.cloudfront.net/Images/ProfileSpeedBackground.png\'); background-repeat: no-repeat; text-align: left; padding:10px;margin-top: 12px;");
-        hideExtraBlanks();
-        displayTrophies();
-        foldProfileStats();
-        showGlobalWinRate();
-        setupMtlProfile();
-        loadCommunityLevelRecords();
-    }
-
-    setGlobalStyles();
-    if (pageIsMapOfTheWeek()) {
-        addCSS(`
-            .dataTable table {
-            display: block;
-            }
-        `)
-    }
-    Database.init(function () {
-        log("database is ready");
-        if (pageIsDashboard()) {
-            wljs_WaitDialogJS.Start(null, "Tidying Up...")
+function setupForumThreadTweaks() {
+    $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
+    $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
+    $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
+    $(".region a[href='/Profile?u=Muli_1']:contains('Muli')").closest("td").find("br:nth-of-type(5)").remove();
+    $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
+    $('img[src*="https://s3.amazonaws.com/data.warlight.net/Data/Players"]').prev().remove();
+    $(".region td:first-of-type").css("padding-top", "10px");
+    addCSS(`
+        img[src*='Images/Thumbs'] {
+            height: 25px;
+            width: 25px;
         }
-        setupUserscriptMenu();
-        setupBookmarkMenu();
-        checkVersion();
-        databaseReady();
-    });
+    `)
+}
 
-    if (pageIsMultiplayer() && $("#UjsContainer").length == 0) {
-        // setupDashboardSearch() // remove search as it is broken
-    }
+function setupTournamentPage() {
+    window.setTimeout(function () {
+        setupPlayerDataTable();
+    }, 50);
+    $("#HostLabel").after(" | <a style='cursor:pointer' href='#' onclick='bookmarkTournament()'>Bookmark</a> | <a style='cursor:pointer' href='#' id='findMeInTournament'>Find Me</a>");
+    $("#HostLabel").css("display", "inline-block");
+    $("#LeftToStartMessage").text(" | " + $("#LeftToStartMessage").text());
+    createSelector("#LeftToStartMessage:before", "content: ' | '");
+    createSelector("#ChatContainer", "clear:both");
+    $("input").on("keypress keyup keydown", function (e) {
+        e.stopPropagation()
+    });
+    addCSS(`
+        #ChatContainer div {
+            margin-bottom: 10px;
+        }
+        .findme-highlight {
+            background: rgba(255,215,0,0.35) !important;
+            outline: 2px solid gold;
+            border-radius: 3px;
+        }
+        @keyframes findmePulse {
+            0% { outline-color: gold; }
+            50% { outline-color: transparent; }
+            100% { outline-color: gold; }
+        }
+        .findme-pulse {
+            animation: findmePulse 1.2s ease-in-out 3;
+        }
+    `);
+}
+
+function setupTournamentOverviewPage() {
+    setupTournamentTableStyles();
+    $(window).resize(function () {
+        setTournamentTableHeight();
+    });
+    $(window).on("scroll", function () {
+        $(window).scrollTop(0)
+    })
+}
+
+function styleProfileBoxes() {
+    createSelector(".profileBox", "background-image: url(\'https://d2wcw7vp66n8b3.cloudfront.net/Images/ProfileSpeedBackground.png\'); background-repeat: no-repeat; text-align: left; padding:10px;margin-top: 12px;");
+}
+
+function setupMapOfTheWeekStyles() {
+    addCSS(`
+        .dataTable table {
+        display: block;
+        }
+    `)
 }
 
 window.undoIgnore = function () {
@@ -3504,7 +3444,7 @@ function showIgnoreCheckBox(columnCountOnPage) {
 
 addCSS(`
 .eye-icon {
-    background-image: url(https://i.imgur.com/1i3UVSb.png);
+    background-image: url(${IMAGES.EYE_ICON});
     height: 17px;
     width: 17px;
     cursor: pointer;
@@ -3513,7 +3453,7 @@ addCSS(`
     background-repeat: no-repeat;
 }
 .eye-icon:hover {
-    background-image: url(https://i.imgur.com/4muX9IA.png);
+    background-image: url(${IMAGES.EYE_ICON_HOVER});
 }`);
 
 /**
@@ -4169,24 +4109,12 @@ function renderLevelRow(level) {
                     href="/SinglePlayer/Level?ID=${htmlEscape(level.ID)}">${htmlEscape(level.NAME)}
                 </a> &nbsp;&nbsp;
                 <font color="gray">${htmlEscape(level.LIKES)} likes, ${htmlEscape(level.WINS)} wins in ${htmlEscape(level.ATTEMPTS)} attempts</font><br>
-                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(decode(level.CREATOR_NAME))}</a><br>
-                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(decode(level.RECORD_HOLDER_NAME)) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
+                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(level.CREATOR_NAME)}</a><br>
+                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(level.RECORD_HOLDER_NAME) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
                 <font color="gray">Win rate: </font>${htmlEscape(level.WIN_RATE)}%<br>
             </td>
             <td><span style="font-size: 17px"><a href="/SinglePlayer?Level=${htmlEscape(level.ID)}">Play</a></span></td>
         </tr>`
-}
-
-function decode(str) {
-    var decoded = "";
-    try {
-        decoded = decodeURIComponent((str + '').replace(/%(?![\da-f]{2})/gi, function () {
-            return '%25'
-        }).replace(/\+/g, '%20'))
-    } catch (e) {
-        decoded = unescape(str);
-    }
-    return decoded;
 }
 
 function getTurnText(turns) {
@@ -4226,19 +4154,15 @@ function parseSPLevel(elem, href) {
     if (levelId) {
         $.ajax({
             type: 'GET',
-            url: `https://maak.ch/wl/v2/api.php?id=` + levelId,
-            dataType: 'jsonp',
-            crossDomain: true
+            url: "/SinglePlayer/Level?ID=" + levelId,
+            dataType: 'text'
         }).done(function (response) {
-            if (response.data) {
-                var level = response.data;
-                var row = renderLevelRow(level);
-                if (row !== undefined) {
-                    var table = $("<table class='SPTable'></table>");
-                    table.append(row);
-                    $(elem).replaceWith(table);
-                    table.find("tr td").css("text-align", "left");
-                }
+            var row = renderLevelRow(parseLevelPage(response, levelId));
+            if (row !== undefined) {
+                var table = $("<table class='SPTable'></table>");
+                table.append(row);
+                $(elem).replaceWith(table);
+                table.find("tr td").css("text-align", "left");
             }
         }).fail(function (e) {
             log("Error parsing SP level " + levelId + ": " + e.statusText);
@@ -4246,8 +4170,66 @@ function parseSPLevel(elem, href) {
     }
 }
 
+function parseLevelPage(html, levelId) {
+    var container = new DOMParser().parseFromString(html, "text/html").getElementById("AutoContainer");
+    var title = container && container.querySelector("h1");
+    if (!title) {
+        return undefined;
+    }
+    var level = { ID: levelId, NAME: title.textContent.trim() };
+    var image = container.querySelector("img");
+    level.MAP_IMAGE = image ? image.getAttribute("src") : "";
+
+    container.querySelectorAll("font.text-muted").forEach(function (label) {
+        var nodes = [];
+        for (var node = label.nextSibling; node && node.nodeName !== "BR"; node = node.nextSibling) {
+            nodes.push(node);
+        }
+        var text = nodes.map(function (n) { return n.textContent; }).join("").trim();
+        var key = label.textContent.trim();
+        if (key === "Number of attempts:") {
+            level.ATTEMPTS = text;
+        } else if (key === "Number of wins:") {
+            level.WINS = text;
+        } else if (key === "Number of likes:") {
+            level.LIKES = text;
+        } else if (key === "Created by") {
+            readLevelPlayer(nodes, level, "CREATOR");
+        } else if (key === "Record holder:") {
+            readLevelPlayer(nodes, level, "RECORD_HOLDER");
+            var turns = text.match(/in (\d+) turns?/);
+            level.RECORD_TURNS = turns ? Number(turns[1]) : undefined;
+        }
+    });
+
+    var attempts = Number(String(level.ATTEMPTS).replace(/,/g, ""));
+    var wins = Number(String(level.WINS).replace(/,/g, ""));
+    level.WIN_RATE = attempts > 0 ? (wins / attempts * 100).toFixed(2) : "0";
+    return level;
+}
+
+function readLevelPlayer(nodes, level, prefix) {
+    nodes.forEach(function (node) {
+        if (node.nodeName !== "A") {
+            return;
+        }
+        var href = node.getAttribute("href") || "";
+        var clan = href.match(/Clans\/\?ID=(\d+)/i);
+        var profile = href.match(/Profile\?p=(\d+)/i);
+        if (clan) {
+            var icon = node.querySelector("img");
+            level[prefix + "_CLAN_ID"] = clan[1];
+            level[prefix + "_CLAN_NAME"] = node.getAttribute("title") || "";
+            level[prefix + "_CLAN_IMAGE"] = icon ? icon.getAttribute("src") : "";
+        } else if (profile && !level[prefix + "_ID"]) {
+            level[prefix + "_ID"] = profile[1];
+            level[prefix + "_NAME"] = node.textContent.trim();
+        }
+    });
+}
+
 function getLevelId(href) {
-    var match = href.match(/level\?id=(.*)/i) || href.match(/level=(.*)/i);
+    var match = href.match(/level\?id=(\d+)/i) || href.match(/level=(\d+)/i);
     if (match) {
         return match[1]
     }

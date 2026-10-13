@@ -36,14 +36,8 @@ test("getLevelId reads both level URL formats", () => {
     const { getLevelId } = load(["getLevelId"]);
     assert.equal(getLevelId("https://war.app/SinglePlayer/Level?ID=123"), "123");
     assert.equal(getLevelId("https://war.app/SinglePlayer?Level=456"), "456");
+    assert.equal(getLevelId("https://war.app/SinglePlayer/Level?ID=789#comments"), "789");
     assert.equal(getLevelId("https://war.app/Forum"), undefined);
-});
-
-test("decode handles plus signs and stray percent signs", () => {
-    const { decode } = load(["decode"]);
-    assert.equal(decode("hello+world"), "hello world");
-    assert.equal(decode("100%"), "100%");
-    assert.equal(decode("caf%C3%A9"), "café");
 });
 
 test("compareTable sorts by order", () => {

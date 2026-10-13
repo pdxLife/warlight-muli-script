@@ -46,11 +46,11 @@ test("MDL player, clan and game markup escapes API data", () => {
 });
 
 test("community level cards escape API data", () => {
-    const ctx = load(["renderLevelRow", "htmlEscape", "safeUrl", "decode", "getTurnText"]);
+    const ctx = load(["renderLevelRow", "htmlEscape", "safeUrl", "getTurnText"]);
     const row = ctx.renderLevelRow({
         ID: PAYLOAD, NAME: PAYLOAD, MAP_IMAGE: "javascript:alert(1)", LIKES: PAYLOAD, WINS: 1, ATTEMPTS: 2,
-        CREATOR_CLAN_ID: 5, CREATOR_CLAN_NAME: PAYLOAD, CREATOR_CLAN_IMAGE: "data:x", CREATOR_ID: PAYLOAD, CREATOR_NAME: encodeURIComponent(PAYLOAD),
-        RECORD_HOLDER_CLAN_ID: 0, RECORD_HOLDER_NAME: encodeURIComponent(PAYLOAD), RECORD_HOLDER_ID: 3, RECORD_TURNS: 4, WIN_RATE: PAYLOAD
+        CREATOR_CLAN_ID: 5, CREATOR_CLAN_NAME: PAYLOAD, CREATOR_CLAN_IMAGE: "data:x", CREATOR_ID: PAYLOAD, CREATOR_NAME: PAYLOAD,
+        RECORD_HOLDER_CLAN_ID: 0, RECORD_HOLDER_NAME: PAYLOAD, RECORD_HOLDER_ID: 3, RECORD_TURNS: 4, WIN_RATE: PAYLOAD
     });
     const container = render(`<table>${row}</table>`);
     assertInert(container);

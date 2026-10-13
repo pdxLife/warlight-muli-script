@@ -22,7 +22,7 @@ function setup({ html = PROFILE_LINK, cookie } = {}) {
         return ajaxResult.promise();
     };
     const ctx = load(
-        ["loadPlayerData", "getVacationEndDate", "extractPlayerId", "extractProfileId", "extractProfileToken"],
+        ["loadPlayerData", "removePlayerDataCookie", "getVacationEndDate", "extractPlayerId", "extractProfileId", "extractProfileToken"],
         { ...domGlobals(dom, $), log: () => { } }
     );
     return { ctx, cookies, ajaxCalls, ajax: ajaxResult };
@@ -36,6 +36,15 @@ test("cached cookie resolves immediately without a request", () => {
     assert.equal(state(ready), "resolved");
     assert.equal(ctx.WlPlayer.Name, "Muli");
     assert.equal(ajaxCalls.length, 0);
+});
+
+test("unreadable cookie is discarded and the profile is fetched again", () => {
+    const { ctx, ajaxCalls, cookies } = setup({ cookie: "{not json" });
+    ctx.$.removeCookie = (name) => { delete cookies[name]; };
+    const ready = ctx.loadPlayerData();
+    assert.equal(state(ready), "pending");
+    assert.equal(ajaxCalls.length, 1);
+    assert.equal(cookies.muli_wl_player, undefined);
 });
 
 test("missing profile link rejects so dependent features skip", () => {
