@@ -2,6 +2,8 @@
 
 ## 3.7.0
 
+- Community level previews in forum posts are read from war.app's own level pages instead of maak.ch.
+- MDL ladder stats and tables and the community level record count are now opt-in (new setting, off by default), so by default the script never contacts maak.ch.
 - Each startup feature runs in isolation, so one broken feature no longer stops the rest of the script.
 - Fixed a crash that stopped the script on level play-log pages.
 - Fixed the community events count for more than 20 events, and parsing of the events feed's current format.

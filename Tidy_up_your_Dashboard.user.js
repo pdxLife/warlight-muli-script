@@ -205,26 +205,6 @@ function windowError(message, source, lineno, colno, error) {
         window.wlerror(message, source, lineno, colno, error)
     }
 }
-window.mtlRatingCache = {};
-
-function loadMtlPlayer(playerId) {
-    var cachedRating = mtlRatingCache[playerId];
-    if (cachedRating != undefined) {
-        return $.Deferred().resolve({ data: JSON.stringify({ player: { displayed_rating: cachedRating } }) });
-    }
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
-    var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
-    return $.ajax({
-        type: 'GET',
-        url: url,
-        dataType: 'jsonp',
-        crossDomain: true,
-        timeout: 9000,
-    }).fail(function (e) {
-        log("Error loading MTL player " + playerId + ": " + e.statusText);
-    });
-}
-
 function setupMtlProfile() {
     var playerId = location.href.match(/p=(\d+)/)[1];
     var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
@@ -1822,6 +1802,14 @@ window.userscriptSettings = [
         title: '',
         addBreak: false,
         help: 'This option will allow you to right-click forum thread on the dashboard and use the default browser options.'
+    },
+    {
+        id: 'useMaakServices',
+        text: 'Load MDL Ladder and Community Level Records (via maak.ch)',
+        selected: false,
+        title: 'Third-party data',
+        addBreak: false,
+        help: 'Shows MDL ladder ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 
@@ -2932,7 +2920,17 @@ function databaseReady() {
         { name: "blacklist counter", match: pageIsBlacklistPage, run: setupBlacklistCounter },
         { name: "total points", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
-        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } }
+        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
+        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
+    ]);
+}
+
+function setupMaakFeatures() {
+    runFeatures([
+        { name: "MDL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
+        { name: "MDL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
+        { name: "MDL profile stats", match: pageIsProfile, run: setupMtlProfile },
+        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
     ]);
 }
 
@@ -3086,9 +3084,7 @@ function DOM_ContentReady() {
         { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
         { name: "editor toolbar", match: pageIsThread, run: setupTextarea },
         { name: "rate map link", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
-        { name: "MDL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
         { name: "forum thread tweaks", match: isAnyForumThread, run: setupForumThreadTweaks },
-        { name: "MDL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
         { name: "level previews", match: isAnyForumThread, run: parseForumSPLevels },
         { name: "tournament page", match: pageIsTournament, run: setupTournamentPage },
         { name: "tournament creator chat", match: pageIsTournament, run: colorTournamentCreatorInChat },
@@ -3106,8 +3102,6 @@ function DOM_ContentReady() {
         { name: "trophies", match: pageIsProfile, run: displayTrophies },
         { name: "foldable profile stats", match: pageIsProfile, run: foldProfileStats },
         { name: "global win rate", match: pageIsProfile, run: showGlobalWinRate },
-        { name: "MDL profile stats", match: pageIsProfile, run: setupMtlProfile },
-        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords },
         { name: "global styles", run: setGlobalStyles },
         { name: "map of the week styles", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ]);
@@ -4115,24 +4109,12 @@ function renderLevelRow(level) {
                     href="/SinglePlayer/Level?ID=${htmlEscape(level.ID)}">${htmlEscape(level.NAME)}
                 </a> &nbsp;&nbsp;
                 <font color="gray">${htmlEscape(level.LIKES)} likes, ${htmlEscape(level.WINS)} wins in ${htmlEscape(level.ATTEMPTS)} attempts</font><br>
-                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(decode(level.CREATOR_NAME))}</a><br>
-                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(decode(level.RECORD_HOLDER_NAME)) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
+                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(level.CREATOR_NAME)}</a><br>
+                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(level.RECORD_HOLDER_NAME) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
                 <font color="gray">Win rate: </font>${htmlEscape(level.WIN_RATE)}%<br>
             </td>
             <td><span style="font-size: 17px"><a href="/SinglePlayer?Level=${htmlEscape(level.ID)}">Play</a></span></td>
         </tr>`
-}
-
-function decode(str) {
-    var decoded = "";
-    try {
-        decoded = decodeURIComponent((str + '').replace(/%(?![\da-f]{2})/gi, function () {
-            return '%25'
-        }).replace(/\+/g, '%20'))
-    } catch (e) {
-        decoded = unescape(str);
-    }
-    return decoded;
 }
 
 function getTurnText(turns) {
@@ -4172,19 +4154,15 @@ function parseSPLevel(elem, href) {
     if (levelId) {
         $.ajax({
             type: 'GET',
-            url: `https://maak.ch/wl/v2/api.php?id=` + levelId,
-            dataType: 'jsonp',
-            crossDomain: true
+            url: "/SinglePlayer/Level?ID=" + levelId,
+            dataType: 'text'
         }).done(function (response) {
-            if (response.data) {
-                var level = response.data;
-                var row = renderLevelRow(level);
-                if (row !== undefined) {
-                    var table = $("<table class='SPTable'></table>");
-                    table.append(row);
-                    $(elem).replaceWith(table);
-                    table.find("tr td").css("text-align", "left");
-                }
+            var row = renderLevelRow(parseLevelPage(response, levelId));
+            if (row !== undefined) {
+                var table = $("<table class='SPTable'></table>");
+                table.append(row);
+                $(elem).replaceWith(table);
+                table.find("tr td").css("text-align", "left");
             }
         }).fail(function (e) {
             log("Error parsing SP level " + levelId + ": " + e.statusText);
@@ -4192,8 +4170,66 @@ function parseSPLevel(elem, href) {
     }
 }
 
+function parseLevelPage(html, levelId) {
+    var container = new DOMParser().parseFromString(html, "text/html").getElementById("AutoContainer");
+    var title = container && container.querySelector("h1");
+    if (!title) {
+        return undefined;
+    }
+    var level = { ID: levelId, NAME: title.textContent.trim() };
+    var image = container.querySelector("img");
+    level.MAP_IMAGE = image ? image.getAttribute("src") : "";
+
+    container.querySelectorAll("font.text-muted").forEach(function (label) {
+        var nodes = [];
+        for (var node = label.nextSibling; node && node.nodeName !== "BR"; node = node.nextSibling) {
+            nodes.push(node);
+        }
+        var text = nodes.map(function (n) { return n.textContent; }).join("").trim();
+        var key = label.textContent.trim();
+        if (key === "Number of attempts:") {
+            level.ATTEMPTS = text;
+        } else if (key === "Number of wins:") {
+            level.WINS = text;
+        } else if (key === "Number of likes:") {
+            level.LIKES = text;
+        } else if (key === "Created by") {
+            readLevelPlayer(nodes, level, "CREATOR");
+        } else if (key === "Record holder:") {
+            readLevelPlayer(nodes, level, "RECORD_HOLDER");
+            var turns = text.match(/in (\d+) turns?/);
+            level.RECORD_TURNS = turns ? Number(turns[1]) : undefined;
+        }
+    });
+
+    var attempts = Number(String(level.ATTEMPTS).replace(/,/g, ""));
+    var wins = Number(String(level.WINS).replace(/,/g, ""));
+    level.WIN_RATE = attempts > 0 ? (wins / attempts * 100).toFixed(2) : "0";
+    return level;
+}
+
+function readLevelPlayer(nodes, level, prefix) {
+    nodes.forEach(function (node) {
+        if (node.nodeName !== "A") {
+            return;
+        }
+        var href = node.getAttribute("href") || "";
+        var clan = href.match(/Clans\/\?ID=(\d+)/i);
+        var profile = href.match(/Profile\?p=(\d+)/i);
+        if (clan) {
+            var icon = node.querySelector("img");
+            level[prefix + "_CLAN_ID"] = clan[1];
+            level[prefix + "_CLAN_NAME"] = node.getAttribute("title") || "";
+            level[prefix + "_CLAN_IMAGE"] = icon ? icon.getAttribute("src") : "";
+        } else if (profile && !level[prefix + "_ID"]) {
+            level[prefix + "_ID"] = profile[1];
+            level[prefix + "_NAME"] = node.textContent.trim();
+        }
+    });
+}
+
 function getLevelId(href) {
-    var match = href.match(/level\?id=(.*)/i) || href.match(/level=(.*)/i);
+    var match = href.match(/level\?id=(\d+)/i) || href.match(/level=(\d+)/i);
     if (match) {
         return match[1]
     }
