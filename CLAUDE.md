@@ -16,16 +16,17 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 
 - **Header:** `@grant none`, so the script runs in the page context. The site's own globals (`$.cookie`, `wljs_WaitDialogJS`, `CreateModal`, Bootstrap's `.modal()`) are available. Switching to any `GM_*` grant sandboxes the script and breaks these.
 - **Two jQuerys:** `$` is the site's jQuery, which has the cookie plugin. `$$$` is the `@require`d jQuery 1.11.2 plus jQuery UI, used for the log dialog. `window.$` is reassigned to `$$$` on the Common Games page so DataTables works there.
-- **Startup flow:** `DOM_ContentReady()` runs page-specific setup and starts `loadPlayerData()`. It then calls `Database.init()`, whose callback runs `checkVersion()` and `databaseReady()`, where most settings-driven features start.
+- **Startup flow:** `DOM_ContentReady()` starts `loadPlayerData()` and runs a list of page features through `runFeatures()`. It then calls `Database.init()`, whose callback runs the menu setup, `checkVersion()` and `databaseReady()`, which is a second feature list for settings-driven features. Each feature is `{ name, match, run }` and runs in its own try/catch. Add new features as entries pointing at named top-level functions, not as inline blocks. List order is execution order.
 - **Page routing:** done with the `pageIs*()` helpers, which match against `location.href` for both `war.app` and `warzone.com`.
 - **Player data:** `loadPlayerData()` returns a jQuery promise, stored as `window.playerDataReady`. Anything that reads `WlPlayer` must wait on it. It rejects when the user is logged out.
-- **Storage:** IndexedDB `TidyUpYourDashboard_v3`, wrapped by the callback-based `window.Database` from `setupDatabase()`. Tables are listed in `Database.Table`; only `Database.Exports` tables are included in settings export and import. Player data is cached in the `muli_wl_player` cookie for 1 hour.
+- **Storage:** IndexedDB `TidyUpYourDashboard_v3`, wrapped by `window.Database` from `setupDatabase()`. Every method takes an optional callback and also returns a Promise; failures and callback exceptions are logged. Settings are cached at `init`, and `readIndex` on the Settings name index is served from the cache. Writes update the cache when issued, and callbacks still run asynchronously. Tables are listed in `Database.Table`; only `Database.Exports` tables are included in settings export and import. Player data is cached in the `muli_wl_player` cookie for 1 hour.
 - **Third-party services:** maak.ch (proxy and API), warlight-mtl.com (MDL ladder), raw.githubusercontent.com (CLOT list), communitylevels.online. Any of these can be down, so every request needs a `.fail()` handler. maak.ch and warlight-mtl.com send no CORS headers, so under `@grant none` they can only be reached through maak.ch's JSONP endpoints.
 
 ## Tests
 
 `test/harness.js` parses the userscript with acorn and evaluates individual top-level function declarations in a `vm` sandbox. Loading the whole file would run page setup. Each test passes in only the globals the function under test needs. Common ones are `$` (npm jQuery 1.11.2 bound to a jsdom window, via `createDom()` and `domGlobals()`), `log`, `Database` and `location`.
 
+- `test/startup.test.js` checks statically that every called or feature-registered function exists. If it flags a new site or browser global, add that name to its allowlist.
 - A function becomes testable once it is a **top-level `function` declaration**. Inline logic in `databaseReady()` or `DOM_ContentReady()` has to be extracted first, as was done with `setupBlacklistCounter()`.
 - Values created in the sandbox come from another realm. Copy arrays with `Array.from` or a JSON round-trip before using `deepStrictEqual`.
 - jsdom has no layout. The harness patches `offsetWidth` so jQuery's `:visible` respects `display: none`.

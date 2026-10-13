@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 3.7.0
 
+- Each startup feature runs in isolation, so one broken feature no longer stops the rest of the script.
+- Fixed a crash that stopped the script on level play-log pages.
+- Fixed the community events count for more than 20 events, and parsing of the events feed's current format.
+- Database calls return promises and log their errors; settings are cached after startup.
+- An unreadable player data cookie is discarded instead of breaking player features.
 - Icons are inlined into the script instead of hot-linked from imgur; the install icon is served from this repo.
 - Removed the stale `.backup` copy of the script and the completed `plan.md`.
 

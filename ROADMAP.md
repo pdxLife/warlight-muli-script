@@ -22,11 +22,15 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 ## Phase 3 — Maintainability
 
 - [ ] **Split into modules.** Break the ~4,300-line file into modules (dashboard, forum, tournaments, clans, db, settings) and bundle them into a single `.user.js` with esbuild or `vite-plugin-monkey`. This also enables modern JS and linting.
-- [ ] **Promise-based IndexedDB wrapper.** Replace the hand-rolled `$.Deferred` counters and nested `ifSettingIsEnabled` callbacks. Load settings once at startup into a single object.
-- [ ] **Feature registry with isolation.** Use `{ name, match, run }` entries, each run inside its own try/catch, so one broken selector after a site redesign doesn't break every feature.
+- [x] **Promise-based IndexedDB wrapper.** Replace the hand-rolled `$.Deferred` counters and nested `ifSettingIsEnabled` callbacks. Load settings once at startup into a single object. *(Done. Every `Database` method still takes a callback but also returns a Promise, and errors are logged. Settings are cached at init. Import, export and first-run setup use `Promise.all`.)*
+- [x] **Feature registry with isolation.** Use `{ name, match, run }` entries, each run inside its own try/catch, so one broken selector after a site redesign doesn't break every feature. *(Done via `runFeatures()` in `DOM_ContentReady` and `databaseReady`. This turned up two crashes: a call to the nonexistent `setupPlayerAttempDataTable` on level play-log pages, and `toWords` calling an undefined `intToEnglish`. A test now checks that every called function is defined.)*
 - [ ] **Move off `@grant none`.** Use `GM_xmlhttpRequest` + `@connect` for the third-party APIs, which removes JSONP and the maak.ch proxy, and reach page globals through `unsafeWindow`. This also enables the jQuery 3 / jQuery UI 1.13 / DataTables 1.13 upgrades, and the odd `jQuery.noConflict(true)` call in `setupCommonGamesDataTable()` should be revisited at the same time.
-- [ ] **Self-host the icons.** Icons are hot-linked from imgur (line 2709), which often blocks or deletes images. Inline them as SVG or data URIs.
-- [ ] **Repo hygiene.** Delete `Tidy_up_your_Dashboard.user.js.backup` (git history already has it), move `plan.md` items into issues, and add a CHANGELOG.
+- [x] **Self-host the icons.** Icons are hot-linked from imgur (line 2709), which often blocks or deletes images. Inline them as SVG or data URIs. *(Done. Only 3 of the 7 were used; they're downscaled and inlined. The install icon is in `assets/`.)*
+- [x] **Repo hygiene.** Delete `Tidy_up_your_Dashboard.user.js.backup` (git history already has it), move `plan.md` items into issues, and add a CHANGELOG. *(Done. Every `plan.md` item was already complete, so it was deleted rather than turned into issues.)*
+
+### Upstream issue
+
+- **The community events feed is malformed upstream.** Since its last edit (2026-08-31), `psenough/wl_clot` `hub/list.jsonp` has an entry missing its closing `}`, so the ladders page can't list events. The script now accepts the feed's anonymous `({...})` wrapper, so the list comes back once upstream fixes the file.
 
 ## Phase 4 — Features
 
