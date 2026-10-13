@@ -19,6 +19,7 @@
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
 var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.7.0';
+var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -1881,6 +1882,11 @@ function setupUserscriptMenu() {
             padding-top: 25px;
             font-size: 15px;
         }
+        .featureSection {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #C1C1C1;
+        }
     `);
     var inputs = '';
     $.each(userscriptSettings, function (key, setting) {
@@ -1944,6 +1950,7 @@ function setupUserscriptMenu() {
             margin-top: 25px;
         }
     `);
+    $("#userscriptMenu .modal-body").append(renderFeatureToggles());
     $("#userscriptMenu .modal-body").append("<div class='userscriptSettingsButtons'></div>");
     //Export settings button
     $(".userscriptSettingsButtons").append('<button data-target="#userscriptExportSettings" data-toggle="modal" id="exportSettings" class="btn btn-primary">Export Settings</button>');
@@ -2296,7 +2303,34 @@ function checkUserscriptMenuButtons() {
 /**
  * Stores User-Settings to local Storage
  */
+function renderFeatureToggles() {
+    var disabled = disabledFeatures();
+    var sections = {};
+    toggleableFeatures().forEach(function (feature) {
+        (sections[feature.section] = sections[feature.section] || []).push(feature.name);
+    });
+    var html = '<div class="title">Features</div><p class="text-muted" style="font-size: 13px">Turn individual features off. Changes apply after Close & Refresh.</p>';
+    $.each(sections, function (section, names) {
+        html += '<div class="featureSection">' + htmlEscape(section) + '</div>';
+        names.forEach(function (name) {
+            html += '<div class="settingsListItem">' + htmlEscape(name) + '<label class="switch"><input class="featureToggle" data-feature="' + htmlEscape(name) + '" type="checkbox"' + (disabled.indexOf(name) === -1 ? ' checked' : '') + '><div class="slider round"></div></label></div>';
+        });
+    });
+    return html;
+}
+
+function storeFeatureToggles() {
+    var disabled = [];
+    $("#userscriptMenu .featureToggle").each(function () {
+        if (!$(this).prop("checked")) {
+            disabled.push($(this).attr("data-feature"));
+        }
+    });
+    return saveDisabledFeatures(disabled);
+}
+
 function storeSettingsVariables() {
+    storeFeatureToggles();
     $.each(userscriptSettings, function (key, set) {
         var isEnabled = $("#" + set.id).prop("checked");
         var setting = {
@@ -2911,27 +2945,11 @@ function displayTrophies() {
 }
 function databaseReady() {
     log("Running main");
-    runFeatures([
-        { name: "forum overview filters", match: pageIsForumOverview, run: setupForumOverviewFilters },
-        { name: "community levels banner", match: pageIsCommunityLevels, run: setupCommunityLevels },
-        { name: "forum thread hiding", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
-        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
-        { name: "community forum list", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
-        { name: "blacklist counter", match: pageIsBlacklistPage, run: setupBlacklistCounter },
-        { name: "total points", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
-        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
-        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
-        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
-    ]);
+    runFeatures(mainFeatures());
 }
 
 function setupMaakFeatures() {
-    runFeatures([
-        { name: "MTL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
-        { name: "MTL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
-        { name: "MTL profile stats", match: pageIsProfile, run: setupMtlProfile },
-        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
-    ]);
+    runFeatures(maakFeatures());
 }
 
 function setupForumOverviewFilters() {
@@ -3026,6 +3044,94 @@ function setupDashboard() {
     window.setTimeout(setupRefreshFunction, 0);
 }
 
+function pageFeatures() {
+    return [
+        { name: "Hide thread controls when posting", section: "Forum", match: pageIsNewThread, run: cleanUpNewThreadPage },
+        { name: "Remember My Games filter", section: "Dashboard", run: setupMyGamesFilter },
+        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
+        { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
+        { name: "Rate Map link", section: "Maps & levels", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
+        { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
+        { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
+        { name: "Bookmark and Find Me links", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
+        { name: "Highlight creator in chat", section: "Tournaments", match: pageIsTournament, run: colorTournamentCreatorInChat },
+        { name: "Find Me", section: "Tournaments", match: pageIsTournament, run: setupFindMeInTournament },
+        { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
+        { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
+        { name: "Fixed-height tournament list", section: "Tournaments", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
+        { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
+        { name: "Clan creator banner", section: "Clans", match: pageIsClanPage, run: setupClanPageCreator },
+        { name: "Community events list", section: "Community", match: pageIsLadderOverview, run: setupLadderClotOverview },
+        { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
+        { name: "Level bookmark link", section: "Maps & levels", match: pageIsLevelOverview, run: setupLevelBookmark },
+        { name: "Profile box styling", section: "Profile", match: pageIsProfile, run: styleProfileBoxes },
+        { name: "Collapse blank lines", section: "Profile", match: pageIsProfile, run: hideExtraBlanks },
+        { name: "Trophies", section: "Profile", match: pageIsProfile, run: displayTrophies },
+        { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
+        { name: "Global win rate", section: "Profile", match: pageIsProfile, run: showGlobalWinRate },
+        { name: "global styles", run: setGlobalStyles },
+        { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
+    ];
+}
+
+function mainFeatures() {
+    return [
+        { name: "Hidden thread formatting", section: "Forum", match: pageIsForumOverview, run: setupForumOverviewFilters },
+        { name: "communitylevels.online banner", section: "Maps & levels", match: pageIsCommunityLevels, run: setupCommunityLevels },
+        { name: "Hide-thread buttons", section: "Forum", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
+        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
+        { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
+        { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
+        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
+        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
+    ];
+}
+
+function maakFeatures() {
+    return [
+        { name: "MTL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
+        { name: "MTL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
+        { name: "MTL profile stats", match: pageIsProfile, run: setupMtlProfile },
+        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
+    ];
+}
+
+function toggleableFeatures() {
+    return pageFeatures().concat(mainFeatures()).filter(function (feature) {
+        return feature.section;
+    });
+}
+
+function disabledFeatures() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(DISABLED_FEATURES_KEY));
+        return Array.isArray(stored) ? stored : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveDisabledFeatures(names) {
+    try {
+        localStorage.setItem(DISABLED_FEATURES_KEY, JSON.stringify(names));
+    } catch (e) {
+        log("Could not mirror disabled features: " + e);
+    }
+    return Database.update(Database.Table.Settings, { name: "disabledFeatures", value: names }, undefined);
+}
+
+function syncDisabledFeatures() {
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "disabledFeatures", function (setting) {
+        try {
+            localStorage.setItem(DISABLED_FEATURES_KEY, JSON.stringify(setting && Array.isArray(setting.value) ? setting.value : []));
+        } catch (e) {
+            log("Could not mirror disabled features: " + e);
+        }
+    });
+}
+
 function runFeature(name, run) {
     try {
         run();
@@ -3035,7 +3141,12 @@ function runFeature(name, run) {
 }
 
 function runFeatures(features) {
+    var disabled = disabledFeatures();
     features.forEach(function (feature) {
+        if (feature.section && disabled.indexOf(feature.name) !== -1) {
+            log("Feature \"" + feature.name + "\" is turned off");
+            return;
+        }
         runFeature(feature.name, function () {
             if (!feature.match || feature.match()) {
                 feature.run();
@@ -3078,33 +3189,7 @@ function DOM_ContentReady() {
 
     window.playerDataReady = loadPlayerData();
 
-    runFeatures([
-        { name: "new thread cleanup", match: pageIsNewThread, run: cleanUpNewThreadPage },
-        { name: "my games filter", run: setupMyGamesFilter },
-        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
-        { name: "editor toolbar", match: pageIsThread, run: setupTextarea },
-        { name: "rate map link", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
-        { name: "forum thread tweaks", match: isAnyForumThread, run: setupForumThreadTweaks },
-        { name: "level previews", match: isAnyForumThread, run: parseForumSPLevels },
-        { name: "tournament page", match: pageIsTournament, run: setupTournamentPage },
-        { name: "tournament creator chat", match: pageIsTournament, run: colorTournamentCreatorInChat },
-        { name: "find me", match: pageIsTournament, run: setupFindMeInTournament },
-        { name: "tournament inviter", match: pageIsTournament, run: displayTournamentInviter },
-        { name: "common games", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
-        { name: "tournament overview", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
-        { name: "clan list search", match: pageIsClanList, run: setupClanListSearch },
-        { name: "clan creator", match: pageIsClanPage, run: setupClanPageCreator },
-        { name: "community events", match: pageIsLadderOverview, run: setupLadderClotOverview },
-        { name: "map search", match: pageIsMapsPage, run: setupMapSearch },
-        { name: "level bookmark", match: pageIsLevelOverview, run: setupLevelBookmark },
-        { name: "profile box style", match: pageIsProfile, run: styleProfileBoxes },
-        { name: "profile blank lines", match: pageIsProfile, run: hideExtraBlanks },
-        { name: "trophies", match: pageIsProfile, run: displayTrophies },
-        { name: "foldable profile stats", match: pageIsProfile, run: foldProfileStats },
-        { name: "global win rate", match: pageIsProfile, run: showGlobalWinRate },
-        { name: "global styles", run: setGlobalStyles },
-        { name: "map of the week styles", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
-    ]);
+    runFeatures(pageFeatures());
 
     Database.init(function () {
         log("database is ready");
@@ -3114,6 +3199,7 @@ function DOM_ContentReady() {
         runFeatures([
             { name: "userscript menu", run: setupUserscriptMenu },
             { name: "bookmark menu", run: setupBookmarkMenu },
+            { name: "feature toggle sync", run: syncDisabledFeatures },
             { name: "version check", run: checkVersion },
             { name: "main", run: databaseReady }
         ]);
