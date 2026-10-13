@@ -40,7 +40,7 @@ test("every function the script calls or registers as a feature is defined", () 
 
 test("a failing feature is logged and later features still run", () => {
     const logs = [];
-    const ctx = load(["runFeatures", "runFeature"], { logError: (entry) => logs.push(entry) });
+    const ctx = load(["runFeatures", "runFeature", "disabledFeatures"], { logError: (entry) => logs.push(entry), log: () => { }, localStorage: new Map() });
     const ran = [];
     ctx.runFeatures([
         { name: "first", run: () => ran.push("first") },

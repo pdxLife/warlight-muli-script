@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.8.0
+
+- New **Features** section in the settings menu: turn any individual feature off.
+- Refreshing games fetches the dashboard once instead of once per table, and keeps the My Games and open-games counts up to date.
+- A failed refresh no longer leaves the games table dimmed.
+- The open games list scrolls back to the top when switching between Multi-Day, Real-Time and Both, as originally intended.
+- Removed the dead open-games counter code; war.app now shows these counts itself.
+- Renamed MDL to MTL (Multi-Template Ladder) throughout, following the ladder's rename, and switched its links and API calls to the canonical `www.warlight-mtl.com` address.
+
 ## 3.7.0
 
 - Community level previews in forum posts are read from war.app's own level pages instead of maak.ch.

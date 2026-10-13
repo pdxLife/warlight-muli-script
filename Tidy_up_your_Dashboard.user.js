@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.7.0
+// @version 3.8.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,8 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.7.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.8.0';
+var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -207,7 +208,7 @@ function windowError(message, source, lineno, colno, error) {
 }
 function setupMtlProfile() {
     var playerId = location.href.match(/p=(\d+)/)[1];
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/" + playerId;
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/" + playerId;
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -218,19 +219,19 @@ function setupMtlProfile() {
         var data = JSON.parse(response.data);
         var player = data.player;
         if (player) {
-            var mdlStats = '<td><a target="_blank" href="https://warlight-mtl.com/player?playerId=' + playerId + '">MDL</a></td>';
+            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/player?playerId=' + playerId + '">MTL</a></td>';
             if (player.rank) {
-                mdlStats += '<td>' + htmlEscape(getRankText(player.best_rank)) + ' (' + htmlEscape(player.best_displayed_rating) + ')</td><td>' + htmlEscape(getRankText(player.rank)) + ' (' + htmlEscape(player.displayed_rating) + ')</td>'
+                mtlStats += '<td>' + htmlEscape(getRankText(player.best_rank)) + ' (' + htmlEscape(player.best_displayed_rating) + ')</td><td>' + htmlEscape(getRankText(player.rank)) + ' (' + htmlEscape(player.displayed_rating) + ')</td>'
             } else if (player.best_displayed_rating) {
-                mdlStats += `<td> ${htmlEscape(getRankText(player.best_rank))} (${htmlEscape(player.best_displayed_rating)}) </td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
+                mtlStats += `<td> ${htmlEscape(getRankText(player.best_rank))} (${htmlEscape(player.best_displayed_rating)}) </td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
             } else if (player.displayed_rating) {
-                mdlStats += `<td></td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
+                mtlStats += `<td></td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
             }
         } else {
-            var mdlStats = '<td><a target="_blank" href="https://warlight-mtl.com/">MDL</a></td>';
-            mdlStats += '<td colspan="2">Currently not participating </td>'
+            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/">MTL</a></td>';
+            mtlStats += '<td colspan="2">Currently not participating </td>'
         }
-        $("h3:contains('Ladders')").next().find("table tbody").prepend('<tr>' + mdlStats + '</tr>');
+        $("h3:contains('Ladders')").next().find("table tbody").prepend('<tr>' + mtlStats + '</tr>');
     }).fail(function (e) {
         log("Error loading MTL profile: " + e.statusText);
     })
@@ -284,18 +285,18 @@ function setupMtlLadderTable() {
     <section class="container" id="mtlData">
         <div class="p-3"> 
             <div class="row bg-gray p-3 br-4">
-                <div class="mdlPlayers p-3 " style="flex:1">
-                    <div class="spinner mdlPlayerTable-loading" style="min-width:265px">
+                <div class="mtlPlayers p-3 " style="flex:1">
+                    <div class="spinner mtlPlayerTable-loading" style="min-width:265px">
                     <div class="bounce1"></div>
                     <div class="bounce2"></div>
                     <div class="bounce3"></div>
                     </div>
-                    <div class="mdl-content" style="display:none">
-                        <a href="https://warlight-mtl.com/allplayers" style="float:right;margin-top:5px">Show All</a>
+                    <div class="mtl-content" style="display:none">
+                        <a href="https://www.warlight-mtl.com/allplayers" style="float:right;margin-top:5px">Show All</a>
                     </div>
                 </div>
-                <div class="mdlGames p-3 " style="flex:1">
-                    <div class="spinner mdlGamesTable-loading">
+                <div class="mtlGames p-3 " style="flex:1">
+                    <div class="spinner mtlGamesTable-loading">
                     <div class="bounce1"></div>
                     <div class="bounce2"></div>
                     <div class="bounce3"></div>
@@ -306,20 +307,20 @@ function setupMtlLadderTable() {
     </section>`;
     $(".container:nth-of-type(1)").after(mtlData);
     getMtlPlayerTable(function (table) {
-        $(".mdlPlayers .mdl-content").prepend(table);
-        $(".mdlPlayerTable-loading").remove();
-        $(".mdlPlayers .mdl-content").show();
+        $(".mtlPlayers .mtl-content").prepend(table);
+        $(".mtlPlayerTable-loading").remove();
+        $(".mtlPlayers .mtl-content").show();
     });
     getMtlGamesTable(10, function (table) {
-        $(".mdlGames").prepend(table);
-        $(".mdlGamesTable-loading").remove();
-        $("#DashboardLadderTabs-6 .mdlGames table").show();
+        $(".mtlGames").prepend(table);
+        $(".mtlGamesTable-loading").remove();
+        $("#DashboardLadderTabs-6 .mtlGames table").show();
     });
 }
 
 function getMtlGamesTable(numOfGames, cb) {
     var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://warlight-mtl.com/">Multi-day ladder</a>: Recent Games</h4>');
+    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Recent Games</h4>');
     var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
     table.append(`
         <thead>
@@ -330,7 +331,7 @@ function getMtlGamesTable(numOfGames, cb) {
         </thead>
     `);
     table.append("<tbody></table>");
-    var urlParam = "https://warlight-mtl.com/api/v1.0/games/?topk=" + numOfGames;
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/games/?topk=" + numOfGames;
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -363,7 +364,7 @@ function getMtlGamesTable(numOfGames, cb) {
 
 function getMtlPlayerTable(cb) {
     var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://warlight-mtl.com/">Multi-day ladder</a>: Rankings</h4>');
+    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Rankings</h4>');
     var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
     table.append(`
         <thead>
@@ -374,7 +375,7 @@ function getMtlPlayerTable(cb) {
            </tr>
         </thead>`);
     table.append("<tbody></table>");
-    var urlParam = "https://warlight-mtl.com/api/v1.0/players/?topk=10";
+    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/?topk=10";
     var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
     $.ajax({
         type: 'GET',
@@ -410,12 +411,12 @@ function setupMtlForumTable() {
     let title = $("title").text().toLowerCase();
     title = title.replace(/[^a-zA-Z]/g, '');
     if (title.includes("mtl") || title.includes("multitemplate") || title.includes("mdl") || title.includes("multiday")) {
-        var mdlContainer = setupBottomForumContainer("mdl");
+        var mtlContainer = setupBottomForumContainer("mtl");
         getMtlPlayerTable(function (table) {
-            mdlContainer.prepend(table)
+            mtlContainer.prepend(table)
         });
         getMtlGamesTable(10, function (table) {
-            mdlContainer.append(table);
+            mtlContainer.append(table);
         })
     }
 }
@@ -423,8 +424,8 @@ function setupMtlForumTable() {
 function getPlayerGameString(p1, p2, winnerId) {
     var c1 = getClanIcon(p1);
     var c2 = getClanIcon(p2);
-    var p1s = c1 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
-    var p2s = c2 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
+    var p1s = c1 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
+    var p2s = c2 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
     if (p1.player_id == winnerId) {
         return p1s + " defeated " + p2s
     } else {
@@ -433,12 +434,12 @@ function getPlayerGameString(p1, p2, winnerId) {
 }
 
 function getPlayerLink(player) {
-    return "<a href='https://warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
+    return "<a href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
 }
 
 function getClanIcon(player) {
     if (player.clan_id) {
-        return '<a href="https://warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
+        return '<a href="https://www.warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
     } else {
         return ""
     }
@@ -1805,11 +1806,11 @@ window.userscriptSettings = [
     },
     {
         id: 'useMaakServices',
-        text: 'Load MDL Ladder and Community Level Records (via maak.ch)',
+        text: 'Load MTL Ladder and Community Level Records (via maak.ch)',
         selected: false,
         title: 'Third-party data',
         addBreak: false,
-        help: 'Shows MDL ladder ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows Multi-Template Ladder (MTL) ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 
@@ -1881,6 +1882,11 @@ function setupUserscriptMenu() {
             padding-top: 25px;
             font-size: 15px;
         }
+        .featureSection {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #C1C1C1;
+        }
     `);
     var inputs = '';
     $.each(userscriptSettings, function (key, setting) {
@@ -1944,6 +1950,7 @@ function setupUserscriptMenu() {
             margin-top: 25px;
         }
     `);
+    $("#userscriptMenu .modal-body").append(renderFeatureToggles());
     $("#userscriptMenu .modal-body").append("<div class='userscriptSettingsButtons'></div>");
     //Export settings button
     $(".userscriptSettingsButtons").append('<button data-target="#userscriptExportSettings" data-toggle="modal" id="exportSettings" class="btn btn-primary">Export Settings</button>');
@@ -2296,7 +2303,34 @@ function checkUserscriptMenuButtons() {
 /**
  * Stores User-Settings to local Storage
  */
+function renderFeatureToggles() {
+    var disabled = disabledFeatures();
+    var sections = {};
+    toggleableFeatures().forEach(function (feature) {
+        (sections[feature.section] = sections[feature.section] || []).push(feature.name);
+    });
+    var html = '<div class="title">Features</div><p class="text-muted" style="font-size: 13px">Turn individual features off. Changes apply after Close & Refresh.</p>';
+    $.each(sections, function (section, names) {
+        html += '<div class="featureSection">' + htmlEscape(section) + '</div>';
+        names.forEach(function (name) {
+            html += '<div class="settingsListItem">' + htmlEscape(name) + '<label class="switch"><input class="featureToggle" data-feature="' + htmlEscape(name) + '" type="checkbox"' + (disabled.indexOf(name) === -1 ? ' checked' : '') + '><div class="slider round"></div></label></div>';
+        });
+    });
+    return html;
+}
+
+function storeFeatureToggles() {
+    var disabled = [];
+    $("#userscriptMenu .featureToggle").each(function () {
+        if (!$(this).prop("checked")) {
+            disabled.push($(this).attr("data-feature"));
+        }
+    });
+    return saveDisabledFeatures(disabled);
+}
+
 function storeSettingsVariables() {
+    storeFeatureToggles();
     $.each(userscriptSettings, function (key, set) {
         var isEnabled = $("#" + set.id).prop("checked");
         var setting = {
@@ -2911,27 +2945,11 @@ function displayTrophies() {
 }
 function databaseReady() {
     log("Running main");
-    runFeatures([
-        { name: "forum overview filters", match: pageIsForumOverview, run: setupForumOverviewFilters },
-        { name: "community levels banner", match: pageIsCommunityLevels, run: setupCommunityLevels },
-        { name: "forum thread hiding", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
-        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
-        { name: "community forum list", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
-        { name: "blacklist counter", match: pageIsBlacklistPage, run: setupBlacklistCounter },
-        { name: "total points", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
-        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
-        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
-        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
-    ]);
+    runFeatures(mainFeatures());
 }
 
 function setupMaakFeatures() {
-    runFeatures([
-        { name: "MDL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
-        { name: "MDL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
-        { name: "MDL profile stats", match: pageIsProfile, run: setupMtlProfile },
-        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
-    ]);
+    runFeatures(maakFeatures());
 }
 
 function setupForumOverviewFilters() {
@@ -2962,9 +2980,9 @@ function setupDashboard() {
 
     hideBlacklistedThreads();
     setupBasicDashboardStyles();
-    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
-        var filter = (f && f.value) ? f.value : 4;
-        refreshMyGames();
+    var dashboard = fetchDashboard();
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function () {
+        refreshMyGames(dashboard);
     });
     ifSettingIsEnabled('hideCoinsGlobally', function () {
         hideCoinsGlobally()
@@ -3005,7 +3023,7 @@ function setupDashboard() {
             }`)
     }, function () {
         setupRightColumn(true);
-        refreshOpenGames();
+        refreshOpenGames(dashboard);
     });
     $("label#MultiDayRadio").on("click", function () {
         registerGameTabClick()
@@ -3026,6 +3044,94 @@ function setupDashboard() {
     window.setTimeout(setupRefreshFunction, 0);
 }
 
+function pageFeatures() {
+    return [
+        { name: "Hide thread controls when posting", section: "Forum", match: pageIsNewThread, run: cleanUpNewThreadPage },
+        { name: "Remember My Games filter", section: "Dashboard", run: setupMyGamesFilter },
+        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
+        { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
+        { name: "Rate Map link", section: "Maps & levels", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
+        { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
+        { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
+        { name: "Bookmark and Find Me links", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
+        { name: "Highlight creator in chat", section: "Tournaments", match: pageIsTournament, run: colorTournamentCreatorInChat },
+        { name: "Find Me", section: "Tournaments", match: pageIsTournament, run: setupFindMeInTournament },
+        { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
+        { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
+        { name: "Fixed-height tournament list", section: "Tournaments", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
+        { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
+        { name: "Clan creator banner", section: "Clans", match: pageIsClanPage, run: setupClanPageCreator },
+        { name: "Community events list", section: "Community", match: pageIsLadderOverview, run: setupLadderClotOverview },
+        { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
+        { name: "Level bookmark link", section: "Maps & levels", match: pageIsLevelOverview, run: setupLevelBookmark },
+        { name: "Profile box styling", section: "Profile", match: pageIsProfile, run: styleProfileBoxes },
+        { name: "Collapse blank lines", section: "Profile", match: pageIsProfile, run: hideExtraBlanks },
+        { name: "Trophies", section: "Profile", match: pageIsProfile, run: displayTrophies },
+        { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
+        { name: "Global win rate", section: "Profile", match: pageIsProfile, run: showGlobalWinRate },
+        { name: "global styles", run: setGlobalStyles },
+        { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
+    ];
+}
+
+function mainFeatures() {
+    return [
+        { name: "Hidden thread formatting", section: "Forum", match: pageIsForumOverview, run: setupForumOverviewFilters },
+        { name: "communitylevels.online banner", section: "Maps & levels", match: pageIsCommunityLevels, run: setupCommunityLevels },
+        { name: "Hide-thread buttons", section: "Forum", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
+        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
+        { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
+        { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
+        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
+        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
+    ];
+}
+
+function maakFeatures() {
+    return [
+        { name: "MTL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
+        { name: "MTL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
+        { name: "MTL profile stats", match: pageIsProfile, run: setupMtlProfile },
+        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
+    ];
+}
+
+function toggleableFeatures() {
+    return pageFeatures().concat(mainFeatures()).filter(function (feature) {
+        return feature.section;
+    });
+}
+
+function disabledFeatures() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(DISABLED_FEATURES_KEY));
+        return Array.isArray(stored) ? stored : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveDisabledFeatures(names) {
+    try {
+        localStorage.setItem(DISABLED_FEATURES_KEY, JSON.stringify(names));
+    } catch (e) {
+        log("Could not mirror disabled features: " + e);
+    }
+    return Database.update(Database.Table.Settings, { name: "disabledFeatures", value: names }, undefined);
+}
+
+function syncDisabledFeatures() {
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "disabledFeatures", function (setting) {
+        try {
+            localStorage.setItem(DISABLED_FEATURES_KEY, JSON.stringify(setting && Array.isArray(setting.value) ? setting.value : []));
+        } catch (e) {
+            log("Could not mirror disabled features: " + e);
+        }
+    });
+}
+
 function runFeature(name, run) {
     try {
         run();
@@ -3035,7 +3141,12 @@ function runFeature(name, run) {
 }
 
 function runFeatures(features) {
+    var disabled = disabledFeatures();
     features.forEach(function (feature) {
+        if (feature.section && disabled.indexOf(feature.name) !== -1) {
+            log("Feature \"" + feature.name + "\" is turned off");
+            return;
+        }
         runFeature(feature.name, function () {
             if (!feature.match || feature.match()) {
                 feature.run();
@@ -3078,33 +3189,7 @@ function DOM_ContentReady() {
 
     window.playerDataReady = loadPlayerData();
 
-    runFeatures([
-        { name: "new thread cleanup", match: pageIsNewThread, run: cleanUpNewThreadPage },
-        { name: "my games filter", run: setupMyGamesFilter },
-        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
-        { name: "editor toolbar", match: pageIsThread, run: setupTextarea },
-        { name: "rate map link", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
-        { name: "forum thread tweaks", match: isAnyForumThread, run: setupForumThreadTweaks },
-        { name: "level previews", match: isAnyForumThread, run: parseForumSPLevels },
-        { name: "tournament page", match: pageIsTournament, run: setupTournamentPage },
-        { name: "tournament creator chat", match: pageIsTournament, run: colorTournamentCreatorInChat },
-        { name: "find me", match: pageIsTournament, run: setupFindMeInTournament },
-        { name: "tournament inviter", match: pageIsTournament, run: displayTournamentInviter },
-        { name: "common games", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
-        { name: "tournament overview", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
-        { name: "clan list search", match: pageIsClanList, run: setupClanListSearch },
-        { name: "clan creator", match: pageIsClanPage, run: setupClanPageCreator },
-        { name: "community events", match: pageIsLadderOverview, run: setupLadderClotOverview },
-        { name: "map search", match: pageIsMapsPage, run: setupMapSearch },
-        { name: "level bookmark", match: pageIsLevelOverview, run: setupLevelBookmark },
-        { name: "profile box style", match: pageIsProfile, run: styleProfileBoxes },
-        { name: "profile blank lines", match: pageIsProfile, run: hideExtraBlanks },
-        { name: "trophies", match: pageIsProfile, run: displayTrophies },
-        { name: "foldable profile stats", match: pageIsProfile, run: foldProfileStats },
-        { name: "global win rate", match: pageIsProfile, run: showGlobalWinRate },
-        { name: "global styles", run: setGlobalStyles },
-        { name: "map of the week styles", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
-    ]);
+    runFeatures(pageFeatures());
 
     Database.init(function () {
         log("database is ready");
@@ -3114,6 +3199,7 @@ function DOM_ContentReady() {
         runFeatures([
             { name: "userscript menu", run: setupUserscriptMenu },
             { name: "bookmark menu", run: setupBookmarkMenu },
+            { name: "feature toggle sync", run: syncDisabledFeatures },
             { name: "version check", run: checkVersion },
             { name: "main", run: databaseReady }
         ]);
@@ -3613,8 +3699,9 @@ function refreshAllGames(force) {
         $("#openGamesContainer tbody").scrollTop(0);
         $("#myGamesContainer tbody").scrollTop(0);
     });
-    refreshMyGames();
-    refreshOpenGames();
+    var dashboard = fetchDashboard();
+    refreshMyGames(dashboard);
+    refreshOpenGames(dashboard);
     refreshPastGames();
 }
 
@@ -3638,24 +3725,49 @@ var filters = [
     }
 ];
 
-function refreshMyGames() {
-    let myGamesTableBody = $("#MyGamesTable").find("tbody");
-
-    myGamesTableBody.fadeTo('fast', 0.1);
-    var div = $("<div>");;
-    div.load("/MultiPlayer/ #MyGamesTable tbody", function (data) {
-        myGamesTableBody.html(div);
-        myGamesTableBody.fadeTo('fast', 1);
+function fetchDashboard() {
+    return $.ajax({ url: "/MultiPlayer/", dataType: "text" }).then(function (html) {
+        return new DOMParser().parseFromString(html, "text/html");
     });
 }
 
-function refreshOpenGames() {
-    let openGamesTableBody = $("#OpenGamesTable").find("tbody");
-    openGamesTableBody.fadeTo('fast', 0.1);
-    var div = $("<div>");;
-    div.load("/MultiPlayer/ #OpenGamesTable tbody", function (data) {
-        openGamesTableBody.html(div);
-        openGamesTableBody.fadeTo('fast', 1);
+function refreshMyGames(dashboard) {
+    refreshGameTable("#MyGamesTable", dashboard);
+}
+
+function refreshOpenGames(dashboard) {
+    refreshGameTable("#OpenGamesTable", dashboard);
+}
+
+function refreshGameTable(tableSelector, dashboard) {
+    let tableBody = $(tableSelector).find("tbody");
+    tableBody.fadeTo('fast', 0.1);
+    $.when(dashboard || fetchDashboard()).done(function (page) {
+        var rows = page.querySelector(tableSelector + " tbody");
+        if (rows) {
+            $(rows).find("script").remove();
+            tableBody.html($("<div>").append(document.importNode(rows, true)));
+        }
+        updateGameCounts(page);
+    }).fail(function (xhr) {
+        log("Error refreshing " + tableSelector + ": " + (xhr && xhr.statusText));
+    }).always(function () {
+        tableBody.fadeTo('fast', 1);
+    });
+}
+
+function updateGameCounts(page) {
+    ["#NumberOfMyGamesLabel", "#MultiDayRadio", "#RealTimeRadio", "#BothRadio"].forEach(function (selector) {
+        var fresh = page.querySelector(selector);
+        var current = document.querySelector(selector);
+        if (!fresh || !current) {
+            return;
+        }
+        if (fresh.children.length === 0) {
+            current.textContent = fresh.textContent;
+        } else if (fresh.lastChild.nodeType === 3 && current.lastChild && current.lastChild.nodeType === 3) {
+            current.lastChild.nodeValue = fresh.lastChild.nodeValue;
+        }
     });
 }
 
@@ -3918,42 +4030,13 @@ function setupleftColumn(gameButtons) {
 }
 
 function registerGameTabClick() {
-    if (lastClick - new Date() > 2000) {
+    if (new Date() - lastClick > 2000) {
         $("#openGamesContainer tbody").scrollTop(0);
         lastClick = new Date();
     }
     window.setTimeout(function () {
         domRefresh();
     }, 1);
-}
-
-function updateOpenGamesCounter() {
-    if (typeof wljs_AllOpenGames === 'undefined' || typeof system_linq_Enumerable === 'undefined') {
-        return;
-    }
-    try {
-        var numMD = countGames(wljs_AllOpenGames, 1);
-        var numRT = countGames(wljs_AllOpenGames, 2);
-        var numBoth = parseInt(numMD) + parseInt(numRT);
-        $("#OpenGamesTable [for='BothRadio'] span").text('Both (' + numBoth + ')');
-        $("#OpenGamesTable [for='RealTimeRadio'] span").text('Real-Time (' + numRT + ')');
-        $("#OpenGamesTable [for='MultiDayRadio'] span").text('Multi-Day (' + numMD + ')')
-    } catch (e) {
-        log("Error updating open games counter: " + e);
-    }
-}
-
-// Type 1 : Multiday
-// Type 2 : Realtime
-function countGames(games, type) {
-    if (typeof system_linq_Enumerable === 'undefined') {
-        return 0;
-    }
-    games = system_linq_Enumerable.Where(games, function (a) {
-        if (type == 1) return !a.RealTimeGame;
-        if (type == 2) return a.RealTimeGame;
-    });
-    return system_linq_Enumerable.ToArray(games).length
 }
 
 function bindCustomContextMenu() {

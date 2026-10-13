@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.7.0  
+> **Version:** 3.8.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -17,7 +17,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 ### Dashboard
 
 - **Redesigned layout** with fixed header, scrollable game area, and tabbed My / Open / Past games.
-- **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam).
+- **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam). One request refreshes both tables, and the My Games and open-games counts stay current.
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
 - **Vacation banner** — displays a notice when your account is on vacation.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
@@ -52,7 +52,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 - **Collapsible stat sections** — click any section header to expand/collapse.
 - **Global win rate** — calculated and appended next to your ranked games stats.
-- **MDL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community MDL ladder.
+- **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — loads your private notes from the Discussion/Notes page directly onto your profile.
 - **Cleaner layout** — collapses excessive blank lines and applies background styling.
@@ -64,7 +64,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 - **BBCode editor toolbar** — adds formatting buttons (bold, italic, code, image, quote, list, etc.) above reply textareas.
 - **Tab key support** — inserts a tab character in textareas instead of moving focus.
 - **Community level previews** — single-player level links in forum posts are expanded into info cards, read from the level's page on war.app.
-- **MDL rankings in ladder threads** *(opt-in, via maak.ch)* — MTL-themed forum threads get a live rankings + recent games table below the reply area.
+- **MTL rankings in ladder threads** *(opt-in, via maak.ch)* — MTL-themed forum threads get a live rankings + recent games table below the reply area.
 
 ### Maps & Levels
 
@@ -107,7 +107,9 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Off-Topic Threads | Off | Automatically hide Off-Topic forum threads |
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
-| Load MDL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
+| Load MTL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
+
+The settings menu also has a **Features** section with a switch for each individual feature, grouped by area (Dashboard, Forum, Tournaments, Profile, and so on), so you can turn off anything you don't want. Changes apply after **Close & Refresh**.
 
 Settings also include **Import / Export** (Base64-encoded backup of bookmarks, settings, and hidden threads) and **Reset Hidden Threads**.
 
