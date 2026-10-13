@@ -7,19 +7,19 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.4.4
+// @version 3.5.0
 // @icon http://i.imgur.com/XzA5qMO.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js
 // @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js
 // @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap.min.js
 // @require https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js
-// @downloadURL https://update.greasyfork.org/scripts/8936/Tidy%20up%20your%20Dashboard.user.js
-// @updateURL https://update.greasyfork.org/scripts/8936/Tidy%20up%20your%20Dashboard.meta.js
+// @downloadURL https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
+// @updateURL https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.4.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.5.0';
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -48,17 +48,18 @@ function removePlayerDataCookie() {
     $.removeCookie("muli_wl_player");
 }
 function loadPlayerData() {
+    let deferred = $.Deferred();
     let cookieValue = $.cookie('muli_wl_player');
     if (cookieValue) {
         window.WlPlayer = JSON.parse(cookieValue);
         log("Skipping reloading player data " + $.cookie('wlPlayerCacheValid'));
-        return;
+        return deferred.resolve(window.WlPlayer).promise();
     }
 
     let $profileLink = $(".dropdown-menu a[href*='Profile']");
     if (!$profileLink.length) {
         log("Profile link not found — user may not be logged in");
-        return;
+        return deferred.reject().promise();
     }
 
     let player = {
@@ -72,31 +73,33 @@ function loadPlayerData() {
         PointsThisLevel: null
     }
     let profileUrl = "https://war.app" + $profileLink.attr('href');
-    try {
-        $.ajax({
-            url: profileUrl,
-            async: false,
-            success: function (response) {
-                let page = $(response);
-                player.Name = page.find("#AccountDropDown").text().trim();
-                player.PlayerId = extractPlayerId(profileUrl);
-                player.ProfileId = extractProfileId(profileUrl);
-                player.ProfileToken = extractProfileToken(profileUrl);
-                player.isMember = page.find("#MemberIcon").length > 0;
-                player.OnVacationUntil = getVacationEndDate(page);
-                player.Level = page.find("#LevelLink").text().trim().replace("L", "")
-                var titleAttr = page.find("#LevelLink").attr("title");
-                var pointsMatch = titleAttr ? titleAttr.match(/Progress to next:\s*([\d,]+)/) : null;
-                player.PointsThisLevel = pointsMatch ? Number(pointsMatch[1].replace(/[^\d]/g, '')) : 0;
+    $.ajax({ url: profileUrl }).done(function (response) {
+        try {
+            let page = $(response);
+            player.Name = page.find("#AccountDropDown").text().trim();
+            player.PlayerId = extractPlayerId(profileUrl);
+            player.ProfileId = extractProfileId(profileUrl);
+            player.ProfileToken = extractProfileToken(profileUrl);
+            player.isMember = page.find("#MemberIcon").length > 0;
+            player.OnVacationUntil = getVacationEndDate(page);
+            player.Level = page.find("#LevelLink").text().trim().replace("L", "")
+            var titleAttr = page.find("#LevelLink").attr("title");
+            var pointsMatch = titleAttr ? titleAttr.match(/Progress to next:\s*([\d,]+)/) : null;
+            player.PointsThisLevel = pointsMatch ? Number(pointsMatch[1].replace(/[^\d]/g, '')) : 0;
 
-                window.WlPlayer = player;
+            window.WlPlayer = player;
 
-                $.cookie("muli_wl_player", JSON.stringify(player), { expires: new Date(new Date().getTime() + 1 * 60 * 60 * 1000) });
-            }
-        });
-    } catch (e) {
-        log("Error loading player data: " + e);
-    }
+            $.cookie("muli_wl_player", JSON.stringify(player), { expires: new Date(new Date().getTime() + 1 * 60 * 60 * 1000) });
+            deferred.resolve(player);
+        } catch (e) {
+            log("Error loading player data: " + e);
+            deferred.reject();
+        }
+    }).fail(function (xhr) {
+        log("Error loading player data: " + xhr.statusText);
+        deferred.reject();
+    });
+    return deferred.promise();
 }
 
 function getVacationEndDate(page) {
@@ -484,8 +487,8 @@ function setupBottomForumContainer(className) {
 }
 function setupDatabase() {
     log("indexedDB start setup");
+    var db = null;
     window.Database = {
-        db: null,
         Table: {
             Bookmarks: "Bookmarks",
             Settings: "Settings",
@@ -518,7 +521,7 @@ function setupDatabase() {
         },
         init: function (callback) {
             log("indexedDB start init");
-            if (!"indexedDB" in window) {
+            if (!("indexedDB" in window)) {
                 log("IndexedDB not supported");
                 return;
             }
@@ -2100,45 +2103,55 @@ function setupUserscriptMenu() {
 }
 
 function importSettings() {
+    $('.modal').modal("hide");
+    var settings;
+    try {
+        settings = parseSettingsBackup($("#importSettingsBox").val().trim());
+    } catch (e) {
+        log(e);
+        CreateModal("mulisuserscript", "Error", "There was an error importing the settings.");
+        $(".overlay").fadeOut();
+        return;
+    }
+    wljs_WaitDialogJS.Start(null, "Importing Settings...")
+
     var deferredCount = 0;
     var resolvedCount = 0;
     var clearPromises = [];
-    $.each(Database.Table, function (key, table) {
+    $.each(Database.Exports, function (key, table) {
         clearPromises[deferredCount++] = $.Deferred();
         Database.clear(table, function () {
             clearPromises[resolvedCount++].resolve();
         })
     });
-    wljs_WaitDialogJS.Start(null, "Importing Settings...")
-
-    $('.modal').modal("hide");
-    var settings = $("#importSettingsBox").val().trim();
     $.when.apply($, clearPromises).done(function () {
         var deferredCount = 0;
         var resolvedCount = 0;
         var promises = [];
-        try {
-            settings = JSON.parse(atob(settings));
-            $.each(settings, function (key, data) {
-                var table = data.table;
-                var content = data.data;
-                $.each(content, function (key, value) {
-                    promises[deferredCount++] = $.Deferred();
-                    Database.add(table, value, function () {
-                        promises[resolvedCount++].resolve();
-                    })
+        $.each(settings, function (key, data) {
+            $.each(data.data, function (key, value) {
+                promises[deferredCount++] = $.Deferred();
+                Database.add(data.table, value, function () {
+                    promises[resolvedCount++].resolve();
                 })
-            });
-            $.when.apply($, promises).done(function () {
-                window.location.reload();
             })
-        } catch (e) {
-            log(e);
-            wljs_WaitDialogJS.Stop();
-            CreateModal("mulisuserscript", "Error", "There was an error importing the settings.");
-            $(".overlay").fadeOut();
-        }
+        });
+        $.when.apply($, promises).done(function () {
+            window.location.reload();
+        })
     });
+}
+
+function parseSettingsBackup(backup) {
+    var settings = JSON.parse(atob(backup));
+    var importableTables = Object.values(Database.Exports);
+    var isValid = Array.isArray(settings) && settings.every(function (entry) {
+        return entry && importableTables.indexOf(entry.table) !== -1 && Array.isArray(entry.data);
+    });
+    if (!isValid) {
+        throw new Error("Invalid settings backup");
+    }
+    return settings;
 }
 
 function exportSettings() {
@@ -2364,7 +2377,9 @@ function setupSettingsDatabase() {
     });
     $.when.apply($, promises).done(function () {
         sessionStorage.setItem("showUserscriptMenu", true);
-        window.setTimeout(window.location.reload(), 2000)
+        window.setTimeout(function () {
+            window.location.reload();
+        }, 2000)
     })
 }
 
@@ -2992,17 +3007,14 @@ function databaseReady() {
         hideIgnoredForumThreadsFromCommnuityList();
     }
     if (pageIsBlacklistPage()) {
-        $("#MainSiteContent ul").before(`<span id="numBlacklisted">You have <b>${$("#MainSiteContent ul li:visible").length}</b> players on your blacklist.</span>`);
-        window.setInterval(function () {
-            $("#numBlacklisted").replaceWith(`<span id="numBlacklisted">You have <b>${$("#MainSiteContent ul li:visible").length}</b> players on your blacklist.</span>`)
-        }, 500)
+        setupBlacklistCounter();
     }
     if (pageIsPointsPage()) {
-        displayTotalPointsEarned();
+        playerDataReady.done(displayTotalPointsEarned);
     }
     if (pageIsDashboard()) {
         captureTournamentInviters();
-        setupVacationAlert();
+        playerDataReady.done(setupVacationAlert);
 
         hideBlacklistedThreads();
         setupBasicDashboardStyles();
@@ -3074,6 +3086,19 @@ function databaseReady() {
         })
     }
 }
+function setupBlacklistCounter() {
+    var $blacklist = $("#MainSiteContent ul");
+    $blacklist.first().before(`<span id="numBlacklisted">You have <b></b> players on your blacklist.</span>`);
+    var updateBlacklistCount = function () {
+        $("#numBlacklisted b").text($blacklist.find("li:visible").length);
+    };
+    updateBlacklistCount();
+    var blacklistObserver = new MutationObserver(updateBlacklistCount);
+    $blacklist.each(function () {
+        blacklistObserver.observe(this, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class"] });
+    });
+}
+
 function DOM_ContentReady() {
     $(".order-xl-2").addClass("SideColumn");
 
@@ -3171,7 +3196,7 @@ function DOM_ContentReady() {
             }
         `)
     }
-    loadPlayerData();
+    window.playerDataReady = loadPlayerData();
     if (pageIsTournament()) {
         window.setTimeout(function () {
             setupPlayerDataTable();
@@ -3271,7 +3296,9 @@ function DOM_ContentReady() {
         if (pageIsDashboard()) {
             wljs_WaitDialogJS.Start(null, "Tidying Up...")
         }
-        window.setTimeout(validateUser, 2000);
+        playerDataReady.done(function () {
+            window.setTimeout(validateUser, 2000);
+        });
         setupUserscriptMenu();
         setupBookmarkMenu();
         checkVersion();
