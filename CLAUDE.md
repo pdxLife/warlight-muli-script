@@ -20,7 +20,7 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 - **Page routing:** done with the `pageIs*()` helpers, which match against `location.href` for both `war.app` and `warzone.com`.
 - **Player data:** `loadPlayerData()` returns a jQuery promise, stored as `window.playerDataReady`. Anything that reads `WlPlayer` must wait on it. It rejects when the user is logged out.
 - **Storage:** IndexedDB `TidyUpYourDashboard_v3`, wrapped by the callback-based `window.Database` from `setupDatabase()`. Tables are listed in `Database.Table`; only `Database.Exports` tables are included in settings export and import. Player data is cached in the `muli_wl_player` cookie for 1 hour.
-- **Third-party services:** maak.ch (proxy and API), warlight-mtl.com (MDL ladder), raw.githubusercontent.com (CLOT list), communitylevels.online. Any of these can be down, so every request needs a `.fail()` handler.
+- **Third-party services:** maak.ch (proxy and API), warlight-mtl.com (MDL ladder), raw.githubusercontent.com (CLOT list), communitylevels.online. Any of these can be down, so every request needs a `.fail()` handler. maak.ch and warlight-mtl.com send no CORS headers, so under `@grant none` they can only be reached through maak.ch's JSONP endpoints.
 
 ## Tests
 
@@ -34,5 +34,6 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 
 - When bumping the version, update `@version`, the `GM_info` fallback near the top of the script, and the version line in `README.md` together. A test checks that they match.
 - `@downloadURL` and `@updateURL` must point at this repo's raw file, not Greasy Fork. Otherwise upstream releases overwrite this fork.
-- Escape third-party and user-supplied strings with `htmlEscape()` before putting them into HTML.
+- Escape third-party and user-supplied strings with `htmlEscape()` before putting them into HTML. URLs from outside (API data, bookmarks) go through `htmlEscape(safeUrl(url))`; `safeUrl` allows only `http(s)://` and same-site `/` paths. `test/security.test.js` covers each renderer with an injection payload, so add a case there when adding a new one.
+- Every `@require` must carry a `#sha256-` hash. A test enforces this.
 - `ROADMAP.md` tracks planned work. Tick items off there when they land.

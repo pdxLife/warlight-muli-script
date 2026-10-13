@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.5.0  
+> **Version:** 3.6.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -123,7 +123,6 @@ Loaded via `@require` in the userscript header:
 - [jQuery 1.11.2](https://jquery.com/)
 - [jQuery UI 1.11.3](https://jqueryui.com/)
 - [DataTables 1.10.21](https://datatables.net/)
-- [Moment.js 2.8.4](https://momentjs.com/)
 
 ## Development
 

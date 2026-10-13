@@ -7,19 +7,18 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.5.0
-// @icon http://i.imgur.com/XzA5qMO.png
-// @require https://code.jquery.com/jquery-1.11.2.min.js
-// @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js
-// @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js
-// @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap.min.js
-// @require https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js
+// @version 3.6.0
+// @icon https://i.imgur.com/XzA5qMO.png
+// @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
+// @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
+// @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js#sha256-/7zo27Ll/hVKhCsE+y8m2SS5bhFPEQFheTCL87HuumA=
+// @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/dataTables.bootstrap.min.js#sha256-c0sghAryOuWj4sftUftYNtoAyyI4bahkv1+wopyUhFU=
 // @downloadURL https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
 // @updateURL https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.5.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.6.0';
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -162,12 +161,12 @@ if (typeof wljs_WaitDialogJS === 'undefined') {
 var logData = "";
 
 function log(entry) {
-    var time = moment(new Date()).format('h:mm:ss');
+    var time = new Date().toTimeString().slice(0, 8);
     logData += `\n${time} | ${entry}`;
 }
 
 function logError(entry) {
-    var time = moment(new Date()).format('h:mm:ss');
+    var time = new Date().toTimeString().slice(0, 8);
     logData += `\n${time} | ${entry}`;
 }
 
@@ -181,10 +180,10 @@ $$$(document).keydown(function (e) {
 window.logDialog = undefined;
 window.getLog = function () {
     if (logDialog) {
-        logDialog.html(`<textarea style="height:100%;width:100%">${logData}</textarea>`);
+        logDialog.html($$$('<textarea style="height:100%;width:100%">').val(logData));
         logDialog.dialog('open')
     } else {
-        logDialog = $$$(`<div style="overflow:hidden"><textarea style="height:100%;width:100%">${logData}</textarea></div>`).dialog({
+        logDialog = $$$('<div style="overflow:hidden">').append($$$('<textarea style="height:100%;width:100%">').val(logData)).dialog({
             width: 800,
             title: "Userscript log",
             height: 400
@@ -236,11 +235,11 @@ function setupMtlProfile() {
         if (player) {
             var mdlStats = '<td><a target="_blank" href="https://warlight-mtl.com/player?playerId=' + playerId + '">MDL</a></td>';
             if (player.rank) {
-                mdlStats += '<td>' + getRankText(player.best_rank) + ' (' + player.best_displayed_rating + ')</td><td>' + getRankText(player.rank) + ' (' + player.displayed_rating + ')</td>'
+                mdlStats += '<td>' + htmlEscape(getRankText(player.best_rank)) + ' (' + htmlEscape(player.best_displayed_rating) + ')</td><td>' + htmlEscape(getRankText(player.rank)) + ' (' + htmlEscape(player.displayed_rating) + ')</td>'
             } else if (player.best_displayed_rating) {
-                mdlStats += `<td> ${getRankText(player.best_rank)} (${player.best_displayed_rating}) </td><td> Unranked (${player.displayed_rating}) </td>`;
+                mdlStats += `<td> ${htmlEscape(getRankText(player.best_rank))} (${htmlEscape(player.best_displayed_rating)}) </td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
             } else if (player.displayed_rating) {
-                mdlStats += `<td></td><td> Unranked (${player.displayed_rating}) </td>`;
+                mdlStats += `<td></td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
             }
         } else {
             var mdlStats = '<td><a target="_blank" href="https://warlight-mtl.com/">MDL</a></td>';
@@ -364,7 +363,7 @@ function getMtlGamesTable(numOfGames, cb) {
             if (game.is_game_deleted) {
                 rowData += "<td>DELETED</td>"
             } else {
-                rowData += "<td><a href='https://war.app/MultiPlayer?GameID=" + game.game_id + "'>" + game.game_id + "</a></td>"
+                rowData += "<td><a href='https://war.app/MultiPlayer?GameID=" + htmlEscape(game.game_id) + "'>" + htmlEscape(game.game_id) + "</a></td>"
             }
             table.append("<tr>" + rowData + "</tr>")
         });
@@ -406,11 +405,11 @@ function getMtlPlayerTable(cb) {
             return p1.rank - p2.rank
         });
         $.each(players, function (key, player) {
-            var rowData = "<td>" + player.rank + "</td>";
+            var rowData = "<td>" + htmlEscape(player.rank) + "</td>";
             var playerLink = getPlayerLink(player);
             var clanIcon = getClanIcon(player);
             rowData += "<td>" + clanIcon + playerLink + "</td>";
-            rowData += "<td>" + player.displayed_rating + "</td>";
+            rowData += "<td>" + htmlEscape(player.displayed_rating) + "</td>";
             $(table).find("tbody").append("<tr>" + rowData + "</tr>")
         });
         if (cb) {
@@ -439,8 +438,8 @@ function setupMtlForumTable() {
 function getPlayerGameString(p1, p2, winnerId) {
     var c1 = getClanIcon(p1);
     var c2 = getClanIcon(p2);
-    var p1s = c1 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + p1.player_id + "'> " + p1.player_name + "</a>";
-    var p2s = c2 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + p2.player_id + "'> " + p2.player_name + "</a>";
+    var p1s = c1 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
+    var p2s = c2 + "<a target='_blank' href='https://warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
     if (p1.player_id == winnerId) {
         return p1s + " defeated " + p2s
     } else {
@@ -449,12 +448,12 @@ function getPlayerGameString(p1, p2, winnerId) {
 }
 
 function getPlayerLink(player) {
-    return "<a href='https://warlight-mtl.com/player?playerId=" + player.player_id + "'> " + player.player_name + "</a>"
+    return "<a href='https://warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
 }
 
 function getClanIcon(player) {
     if (player.clan_id) {
-        return '<a href="https://warlight-mtl.com/clan?clanId=' + player.clan_id + '" title="' + player.clan + '"><img border="0" style="vertical-align: middle" src="' + player.clan_icon + '"></a>'
+        return '<a href="https://warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
     } else {
         return ""
     }
@@ -1074,7 +1073,7 @@ function displayTournamentInviter() {
 
     Database.readIndex(Database.Table.TournamentData, Database.Row.TournamentData.Id, tournamentId, function (data) {
         if (data && data.invitedBy) {
-            $("#HostLabel").after(' | <span style="color:#aaa;font-size:13px">Invited by: <strong style="color:#e0c060">' + data.invitedBy + '</strong></span>');
+            $("#HostLabel").after(' | <span style="color:#aaa;font-size:13px">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span>');
         }
     });
 }
@@ -1409,8 +1408,8 @@ function refreshBookmarks() {
         });
         var data = "<tbody>";
         $.each(bookmarks, function (key, bookmark) {
-            data += '<tr data-bookmarkId="' + bookmark.id + '" data-order="' + bookmark.order + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + bookmark.url + '">' + bookmark.name + '</a>';
-            data += '<a onclick="deleteBookmark(' + bookmark.id + ')" style="display:inline-block;float:right; opacity: 0.6;cursor: pointer;margin-right:5px">';
+            data += '<tr data-bookmarkId="' + htmlEscape(bookmark.id) + '" data-order="' + htmlEscape(bookmark.order) + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + htmlEscape(safeUrl(bookmark.url)) + '">' + htmlEscape(bookmark.name) + '</a>';
+            data += '<a onclick="deleteBookmark(' + Number(bookmark.id) + ')" style="display:inline-block;float:right; opacity: 0.6;cursor: pointer;margin-right:5px">';
             data += '<span class="ui-icon ui-icon-trash"></span></a></td></tr>';
         });
 
@@ -1512,7 +1511,7 @@ window.saveBookmark = function () {
     $("#bookmarkMenu").hide();
     var $bookmarkURL = $("#bookmarkURL");
     var url = $bookmarkURL.val().trim();
-    url = (url.lastIndexOf('http', 0) !== 0) && (url.lastIndexOf('javascript', 0) !== 0) ? "http://" + url : url;
+    url = normalizeBookmarkUrl(url);
 
     var $bookmarkName = $("#bookmarkName");
     var name = $bookmarkName.val().trim();
@@ -1553,6 +1552,10 @@ window.saveBookmark = function () {
     $bookmarkNewWindow.prop('checked', false);
     $(".overlay").fadeOut();
 };
+
+function normalizeBookmarkUrl(url) {
+    return /^(https?:\/\/|\/(?!\/))/i.test(url) ? url : "https://" + url;
+}
 
 function showBookmarkTable() {
     var $bookmarkTable = $("#BookmarkTable");
@@ -1646,13 +1649,13 @@ function setupLadderClotOverview() {
         var counter = 0;
         $.each(ladders, function (key, val) {
             if (val.type == "realtime") {
-                rt += "<li><big><a target='_blank' href=" + val.url + ">" + val.name + "</a> using Real-Time boot times</big></li><br><br>";
+                rt += "<li><big><a target='_blank' href='" + htmlEscape(safeUrl(val.url)) + "'>" + htmlEscape(val.name) + "</a> using Real-Time boot times</big></li><br><br>";
                 counter++
             } else if (val.type == "multiday") {
-                md += "<li><big><a target='_blank' href = " + val.url + ">" + val.name + "</a> using Multi-Day boot times</big></li><br><br>";
+                md += "<li><big><a target='_blank' href='" + htmlEscape(safeUrl(val.url)) + "'>" + htmlEscape(val.name) + "</a> using Multi-Day boot times</big></li><br><br>";
                 counter++
             } else {
-                leagues += `<li><big><a target='_blank' href="${val.url}">${val.name}</a> ${getPlayerString(val.players)}</big></li><br><br>`;
+                leagues += `<li><big><a target='_blank' href="${htmlEscape(safeUrl(val.url))}">${htmlEscape(val.name)}</a> ${getPlayerString(val.players)}</big></li><br><br>`;
                 counter++
             }
 
@@ -1670,7 +1673,7 @@ function setupLadderClotOverview() {
 
 function getPlayerString(players) {
     if (players) {
-        return `<span class='clotPlayers'>${players} players participating</span>`
+        return `<span class='clotPlayers'>${htmlEscape(players)} players participating</span>`
     }
     return ""
 }
@@ -2452,9 +2455,6 @@ function pageIsLadderOverview() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Ladders/);
 }
 
-function pageIsLogin() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/LogIn.*/);
-}
 
 function pageIsClanForumThread() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Discussion\/\?ID=[0-9]+.*/);
@@ -2711,6 +2711,11 @@ function htmlEscape(str) {
         .replace(/>/g, '&gt;');
 }
 
+function safeUrl(url) {
+    var value = String(url == null ? "" : url).trim();
+    return /^(https?:\/\/|\/(?!\/))/i.test(value) ? value : "#";
+}
+
 function hideTable(selector) {
     $(selector).closest("table").remove()
 }
@@ -2936,7 +2941,7 @@ function loadCommunityLevelRecords() {
     }).done(function (response) {
         if (response.data) {
             var records = response.data;
-            $("h3:contains('Single-player stats')").after(`<font class="text-muted">Community Levels:</font> <span><a href="http://communitylevels.online" target="_blank"> ${records} record${records != 1 ? "s" : ""}</a></span>`);
+            $("h3:contains('Single-player stats')").after(`<font class="text-muted">Community Levels:</font> <span><a href="http://communitylevels.online" target="_blank"> ${htmlEscape(records)} record${records != 1 ? "s" : ""}</a></span>`);
         }
     }).fail(function (e) {
         log("Error loading community level records: " + e.statusText);
@@ -3296,9 +3301,6 @@ function DOM_ContentReady() {
         if (pageIsDashboard()) {
             wljs_WaitDialogJS.Start(null, "Tidying Up...")
         }
-        playerDataReady.done(function () {
-            window.setTimeout(validateUser, 2000);
-        });
         setupUserscriptMenu();
         setupBookmarkMenu();
         checkVersion();
@@ -3658,38 +3660,6 @@ function addTagInEditor(area, start, end, tag) {
     }
 
     $(area).focus();
-}
-function validateUser() {
-    if (pageIsLogin()) {
-        setUserInvalid();
-    }
-    ifSettingIsEnabled("wlUserIsValid", function () {
-    }, function () {
-        $.ajax({
-            type: 'GET',
-            url: 'https://maak.ch/wl/wlpost.php?n=' + btoa(encodeURI(WlPlayer.Name)) + '&i=' + WlPlayer.PlayerId + '&v=' + version,
-            dataType: 'jsonp',
-            crossDomain: true
-        }).done(function (response) {
-            if (response.data.valid) {
-                log(atob(response.data.name) + " was validated on " + new Date(response.data.timestamp * 1000));
-                setUserValid();
-            }
-        }).fail(function (e) {
-            log("Error validating user: " + e.statusText);
-        });
-    })
-}
-
-
-function setUserInvalid() {
-    Database.update(Database.Table.Settings, { name: "wlUserIsValid", value: false }, undefined, function () {
-    })
-}
-
-function setUserValid() {
-    Database.update(Database.Table.Settings, { name: "wlUserIsValid", value: true }, undefined, function () {
-    })
 }
 /**
  * Reloads all Games
@@ -4150,7 +4120,6 @@ function checkVersion() {
             addDefaultBookmark();
             setupSettingsDatabase();
         } else {
-            setUserInvalid();
             removePlayerDataCookie();
             //Script Updated
             //            $("label[for='showPrivateNotesOnProfile']").addClass('newSetting');
@@ -4193,18 +4162,18 @@ function renderLevelRow(level) {
     return `
         <tr>
             <td style="position: relative">
-                <img src="${level.MAP_IMAGE}" width="140" height="80" style="position:relative">
+                <img src="${htmlEscape(safeUrl(level.MAP_IMAGE))}" width="140" height="80" style="position:relative">
             </td>
             <td>
                 <a style="font-size: 17px; color: white" 
-                    href="/SinglePlayer/Level?ID=${level.ID}">${level.NAME}
+                    href="/SinglePlayer/Level?ID=${htmlEscape(level.ID)}">${htmlEscape(level.NAME)}
                 </a> &nbsp;&nbsp;
-                <font color="gray">${level.LIKES} likes, ${level.WINS} wins in ${level.ATTEMPTS} attempts</font><br>
-                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + level.CREATOR_CLAN_ID + '" title="' + level.CREATOR_CLAN_NAME + '"><img border="0" style="vertical-align: middle" src="' + level.CREATOR_CLAN_IMAGE + '"></a>' : ''} <a href="https://war.app/Profile?p=${level.CREATOR_ID}">${decode(level.CREATOR_NAME)}</a><br>
-                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + level.RECORD_HOLDER_CLAN_ID + '" title="' + level.RECORD_HOLDER_CLAN_ID + '"><img border="0" style="vertical-align: middle" src="' + level.RECORD_HOLDER_CLAN_IMAGE + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + level.RECORD_HOLDER_ID + '">' + decode(level.RECORD_HOLDER_NAME) + '</a>' + getTurnText(level.RECORD_TURNS) : 'None'}<br>
-                <font color="gray">Win rate: </font>${level.WIN_RATE}%<br>
+                <font color="gray">${htmlEscape(level.LIKES)} likes, ${htmlEscape(level.WINS)} wins in ${htmlEscape(level.ATTEMPTS)} attempts</font><br>
+                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(decode(level.CREATOR_NAME))}</a><br>
+                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(decode(level.RECORD_HOLDER_NAME)) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
+                <font color="gray">Win rate: </font>${htmlEscape(level.WIN_RATE)}%<br>
             </td>
-            <td><span style="font-size: 17px"><a href="/SinglePlayer?Level=${level.ID}">Play</a></span></td>
+            <td><span style="font-size: 17px"><a href="/SinglePlayer?Level=${htmlEscape(level.ID)}">Play</a></span></td>
         </tr>`
 }
 
