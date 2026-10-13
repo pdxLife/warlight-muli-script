@@ -34,7 +34,7 @@ function createDom(html = "", url = "https://war.app/MultiPlayer/") {
 }
 
 function load(names, globals = {}) {
-    const context = vm.createContext({ console, atob, btoa, ...globals });
+    const context = vm.createContext({ console, atob, btoa, structuredClone, ...globals });
     vm.runInContext("globalThis.window = globalThis;", context);
     for (const name of names) {
         const fn = functionSources.get(name);
@@ -54,6 +54,6 @@ function domGlobals(dom, $) {
     };
 }
 
-const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+const flush = () => new Promise((resolve) => setImmediate(resolve));
 
 module.exports = { source, functionSources, createDom, load, domGlobals, flush };

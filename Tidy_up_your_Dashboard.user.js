@@ -487,6 +487,34 @@ function setupBottomForumContainer(className) {
 function setupDatabase() {
     log("indexedDB start setup");
     var db = null;
+    var settingsCache = null;
+
+    function request(table, mode, operation) {
+        return new Promise(function (resolve, reject) {
+            var req = operation(db.transaction([table], mode).objectStore(table));
+            req.onsuccess = function (e) {
+                resolve(e.target.result);
+            };
+            req.onerror = function (e) {
+                reject(e.target.error);
+            };
+        });
+    }
+
+    function settle(promise, callback, description) {
+        promise.then(function (result) {
+            if (typeof callback === "function") {
+                callback(result);
+            }
+        }).catch(function (error) {
+            log("Database error in " + description + ": " + error);
+        });
+        return promise;
+    }
+
+    function isSettings(table) {
+        return table === Database.Table.Settings && settingsCache !== null;
+    }
     window.Database = {
         Table: {
             Bookmarks: "Bookmarks",
@@ -559,7 +587,17 @@ function setupDatabase() {
             openRequest.onsuccess = function (e) {
                 log("indexedDB init sucessful");
                 db = e.target.result;
-                callback()
+                var loadSettings = request(Database.Table.Settings, "readonly", function (store) {
+                    return store.getAll();
+                }).then(function (settings) {
+                    settingsCache = {};
+                    settings.forEach(function (setting) {
+                        settingsCache[setting.name] = setting;
+                    });
+                }, function (error) {
+                    log("Could not cache settings: " + error);
+                });
+                settle(loadSettings, callback, "init");
             };
             openRequest.onblocked = function (e) {
                 log("indexedDB blocked");
@@ -568,144 +606,84 @@ function setupDatabase() {
             openRequest.onerror = function (e) {
                 log("Error Init IndexedDB");
                 log(e.target.error)
-                //                alert("Sorry, Tidy Up Your Dashboard is not supported")
-                // $("<div>Sorry,<br> Tidy Up Your Dashboard is not supported.</div>").dialog();
             }
         },
         update: function (table, value, key, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            try {
-                if (key == undefined) {
-                    var request = store.put(value);
-                } else {
-                    var request = store.put(value, Number(key));
-                }
-                request.onerror = function (e) {
-                    log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                    log(JSON.stringify(e));
-                };
-
-                request.onsuccess = function (e) {
-                    log(`Saved ${JSON.stringify(value)} in ${table}`);
-                    callback()
-                }
-            } catch (e) {
-                log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                log(JSON.stringify(e));
+            if (isSettings(table)) {
+                settingsCache[value.name] = structuredClone(value);
             }
-
-
+            var saved = request(table, "readwrite", function (store) {
+                return key == undefined ? store.put(value) : store.put(value, Number(key));
+            }).then(function (result) {
+                log(`Saved ${JSON.stringify(value)} in ${table}`);
+                return result;
+            });
+            return settle(saved, callback, "update " + table);
         },
         read: function (table, key, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-
-            var ob = objectStore.get(Number(key));
-
-            ob.onsuccess = function (e) {
-                var result = e.target.result;
-                callback(result)
-            }
+            return settle(request(table, "readonly", function (store) {
+                return store.get(Number(key));
+            }), callback, "read " + table);
         },
         readIndex: function (table, row, value, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-
-            var index = objectStore.index(row);
-
-            //name is some value
-            var ob = index.get(value);
-
-            ob.onsuccess = function (e) {
-                var result = e.target.result;
-                callback(result)
+            if (isSettings(table) && row === Database.Row.Settings.Name) {
+                var cached = settingsCache[value];
+                return settle(Promise.resolve(cached && structuredClone(cached)), callback, "readIndex " + table);
             }
+            return settle(request(table, "readonly", function (store) {
+                return store.index(row).get(value);
+            }), callback, "readIndex " + table);
         },
         readAll: function (table, callback) {
-            var transaction = db.transaction([table], "readonly");
-            var objectStore = transaction.objectStore(table);
-            var items = [];
-
-            var ob = objectStore.openCursor();
-
-            ob.onsuccess = function (e) {
-                var cursor = e.target.result;
-                if (cursor) {
-                    var item = cursor.value;
-                    item.id = cursor.primaryKey;
-                    items.push(item);
-                    cursor.continue();
-                } else {
-                    callback(items)
-                }
-            }
+            var all = new Promise(function (resolve, reject) {
+                var items = [];
+                var req = db.transaction([table], "readonly").objectStore(table).openCursor();
+                req.onsuccess = function (e) {
+                    var cursor = e.target.result;
+                    if (cursor) {
+                        var item = cursor.value;
+                        item.id = cursor.primaryKey;
+                        items.push(item);
+                        cursor.continue();
+                    } else {
+                        resolve(items);
+                    }
+                };
+                req.onerror = function (e) {
+                    reject(e.target.error);
+                };
+            });
+            return settle(all, callback, "readAll " + table);
         },
         add: function (table, value, callback) {
-
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-            try {
-                var request = store.add(value);
-                request.onerror = function (e) {
-                    log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                    log(JSON.stringify(e));
-                };
-
-                request.onsuccess = function (e) {
-                    log(`Saved ${JSON.stringify(value)} in ${table}`);
-                    callback()
-                }
-            } catch (e) {
-                log(`Error saving ${JSON.stringify(value)} in ${table}`);
-                log(JSON.stringify(e));
+            if (isSettings(table)) {
+                settingsCache[value.name] = structuredClone(value);
             }
+            var added = request(table, "readwrite", function (store) {
+                return store.add(value);
+            }).then(function (result) {
+                log(`Saved ${JSON.stringify(value)} in ${table}`);
+                return result;
+            });
+            return settle(added, callback, "add " + table);
         },
         delete: function (table, key, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            var request = store.delete(key);
-
-            request.onerror = function (e) {
-                log("Error deleting in " + table);
-                log(e.target.error);
-                //some type of error handler
-            };
-
-            request.onsuccess = function (e) {
-                log("Deleted in " + table);
-                callback()
+            if (isSettings(table)) {
+                delete settingsCache[key];
             }
+            return settle(request(table, "readwrite", function (store) {
+                return store.delete(key);
+            }), callback, "delete " + table);
         },
         clear: function (table, callback) {
-            var transaction = db.transaction([table], "readwrite");
-            var store = transaction.objectStore(table);
-
-
-            //Perform the add
-            var request = store.clear();
-
-            request.onerror = function (e) {
-                log("Error clearing " + table);
-                log(e.target.error);
-                //some type of error handler
-            };
-
-            request.onsuccess = function (e) {
-                log("Cleared " + table);
-                callback()
+            if (isSettings(table)) {
+                settingsCache = {};
             }
+            return settle(request(table, "readwrite", function (store) {
+                return store.clear();
+            }), callback, "clear " + table);
         }
-
     }
-
 }
 var mapData;
 
@@ -2118,30 +2096,22 @@ function importSettings() {
     }
     wljs_WaitDialogJS.Start(null, "Importing Settings...")
 
-    var deferredCount = 0;
-    var resolvedCount = 0;
-    var clearPromises = [];
-    $.each(Database.Exports, function (key, table) {
-        clearPromises[deferredCount++] = $.Deferred();
-        Database.clear(table, function () {
-            clearPromises[resolvedCount++].resolve();
-        })
-    });
-    $.when.apply($, clearPromises).done(function () {
-        var deferredCount = 0;
-        var resolvedCount = 0;
-        var promises = [];
-        $.each(settings, function (key, data) {
-            $.each(data.data, function (key, value) {
-                promises[deferredCount++] = $.Deferred();
-                Database.add(data.table, value, function () {
-                    promises[resolvedCount++].resolve();
-                })
-            })
+    Promise.all(Object.values(Database.Exports).map(function (table) {
+        return Database.clear(table);
+    })).then(function () {
+        var additions = [];
+        settings.forEach(function (data) {
+            data.data.forEach(function (value) {
+                additions.push(Database.add(data.table, value));
+            });
         });
-        $.when.apply($, promises).done(function () {
-            window.location.reload();
-        })
+        return Promise.all(additions);
+    }).then(function () {
+        window.location.reload();
+    }).catch(function (e) {
+        log(e);
+        wljs_WaitDialogJS.Stop();
+        CreateModal("mulisuserscript", "Error", "There was an error importing the settings.");
     });
 }
 
@@ -2158,21 +2128,11 @@ function parseSettingsBackup(backup) {
 }
 
 function exportSettings() {
-    var settings = [];
-    var deferredCount = 0;
-    var resolvedCount = 0;
-    var promises = [];
-    $.each(Database.Exports, function (key, table) {
-        promises[deferredCount++] = $.Deferred();
-        Database.readAll(table, function (data) {
-            settings.push({
-                table: table,
-                data: data
-            });
-            promises[resolvedCount++].resolve();
-        })
-    });
-    $.when.apply($, promises).done(function () {
+    Promise.all(Object.values(Database.Exports).map(function (table) {
+        return Database.readAll(table).then(function (data) {
+            return { table: table, data: data };
+        });
+    })).then(function (settings) {
         var settingsString = btoa(JSON.stringify(settings));
         $("#exportSettingsBox").html(settingsString);
         showPopup(".exportSettings-show");
@@ -2367,18 +2327,9 @@ function storeSettingsVariables() {
 function setupSettingsDatabase() {
     wljs_WaitDialogJS.Start(null, "Setting up Muli's Userscript...")
 
-    var promises = [];
-    $.each(userscriptSettings, function (key, set) {
-        promises[key] = $.Deferred();
-        var setting = {
-            name: set.id,
-            value: set.selected
-        };
-        Database.update(Database.Table.Settings, setting, undefined, function () {
-            promises[key].resolve();
-        })
-    });
-    $.when.apply($, promises).done(function () {
+    Promise.all(userscriptSettings.map(function (set) {
+        return Database.update(Database.Table.Settings, { name: set.id, value: set.selected });
+    })).then(function () {
         sessionStorage.setItem("showUserscriptMenu", true);
         window.setTimeout(function () {
             window.location.reload();

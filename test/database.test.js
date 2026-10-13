@@ -60,3 +60,64 @@ test("bookmarks can be added, listed, deleted and cleared", async () => {
     await call(Database.clear, Database.Table.Bookmarks);
     assert.equal((await call(Database.readAll, Database.Table.Bookmarks)).length, 0);
 });
+
+test("methods return promises as well as calling callbacks", async () => {
+    const { ctx, ready } = openDatabase();
+    await ready;
+    const { Database } = ctx;
+    await Database.add(Database.Table.Bookmarks, { name: "A", order: 0 });
+    const bookmarks = await Database.readAll(Database.Table.Bookmarks);
+    assert.equal(bookmarks.length, 1);
+    assert.equal((await Database.read(Database.Table.Bookmarks, bookmarks[0].id)).name, "A");
+});
+
+test("settings saved earlier are cached at init", async () => {
+    const indexedDB = new IDBFactory();
+    const first = openDatabase({ indexedDB });
+    await first.ready;
+    await first.ctx.Database.update("Settings", { name: "scrollGames", value: true }, undefined);
+
+    const second = openDatabase({ indexedDB });
+    await second.ready;
+    const { Database } = second.ctx;
+    const setting = await Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "scrollGames");
+    assert.equal(setting.value, true);
+});
+
+test("settings reads see writes issued before them and return copies", async () => {
+    const { ctx, ready } = openDatabase();
+    await ready;
+    const { Database } = ctx;
+    const name = Database.Row.Settings.Name;
+    Database.update(Database.Table.Settings, { name: "tableSort", value: [{ id: 1 }] }, undefined);
+    const read = await Database.readIndex(Database.Table.Settings, name, "tableSort");
+    assert.equal(read.value[0].id, 1);
+
+    read.value[0].id = 99;
+    assert.equal((await Database.readIndex(Database.Table.Settings, name, "tableSort")).value[0].id, 1);
+
+    Database.clear(Database.Table.Settings);
+    assert.equal(await Database.readIndex(Database.Table.Settings, name, "tableSort"), undefined);
+});
+
+test("settings callbacks still run asynchronously", async () => {
+    const { ctx, ready } = openDatabase();
+    await ready;
+    const { Database } = ctx;
+    const order = [];
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "x", () => order.push("callback"));
+    order.push("after call");
+    await new Promise(setImmediate);
+    assert.deepEqual(order, ["after call", "callback"]);
+});
+
+test("errors in callbacks and failed requests are logged", async () => {
+    const { ctx, logs, ready } = openDatabase();
+    await ready;
+    const { Database } = ctx;
+    Database.readAll(Database.Table.Bookmarks, () => { throw new Error("boom"); });
+    await assert.rejects(Database.readAll("NoSuchTable"));
+    await new Promise(setImmediate);
+    assert.ok(logs.some((l) => l.includes("readAll Bookmarks") && l.includes("boom")), logs.join("\n"));
+    assert.ok(logs.some((l) => l.includes("readAll NoSuchTable")), logs.join("\n"));
+});
