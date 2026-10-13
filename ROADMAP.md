@@ -13,17 +13,18 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 
 ## Phase 2 — Security and privacy
 
-- [ ] **Escape third-party data before inserting it as HTML.** MDL API player and clan names and icon URLs are concatenated into HTML (lines 439–454). Use `htmlEscape()` or build elements with `.text()` / `.attr()`.
-- [ ] **Reject `javascript:` bookmark URLs** (line 1512). Together with import, a shared settings backup could plant code that runs on click. Allow only `http(s):` and relative URLs.
-- [ ] **Remove `validateUser()` telemetry** (line 3643). It sends the username and player ID to maak.ch, and nothing depends on it. Remove it or make it opt-in.
-- [ ] **Drop the maak.ch HTTP→HTTPS proxy** (line 209) if warlight-mtl.com now serves HTTPS with CORS. As it stands, maak.ch is a single point of failure.
-- [ ] **Update dependencies and pin them with hashes.** jQuery 1.11.2 and moment 2.8.4 both have known security issues. moment is only used for log timestamps (line 162), so drop it. Add `#sha256=` integrity hashes to the remaining `@require` lines.
+- [x] **Escape third-party data before inserting it as HTML.** MDL API player and clan names and icon URLs are concatenated into HTML (lines 439–454). Use `htmlEscape()` or build elements with `.text()` / `.attr()`. *(Done. Also covered: community level cards, the community-level record count, the CLOT event list, and the tournament inviter name, which was a live XSS from player names. Image and link URLs go through the new `safeUrl()`. The log dialog now sets its text with `.val()`.)*
+- [x] **Reject `javascript:` bookmark URLs** (line 1512). Together with import, a shared settings backup could plant code that runs on click. Allow only `http(s):` and relative URLs. *(Done. Bookmarks are also sanitized when rendered, so stored or imported bad URLs render as `#`, and names are escaped.)*
+- [x] **Remove `validateUser()` telemetry** (line 3643). It sends the username and player ID to maak.ch, and nothing depends on it. Remove it or make it opt-in. *(Removed, along with `setUserValid` / `setUserInvalid` / `pageIsLogin`.)*
+- [ ] **Drop the maak.ch HTTP→HTTPS proxy** (line 209). *(Blocked.)* warlight-mtl.com serves HTTPS but sends no CORS header, and every maak.ch endpoint (MDL proxy, community levels) answers JSONP only. Under `@grant none` the browser can't call these directly. JSONP also means maak.ch can run arbitrary script on war.app with your session. Fixing it means fetching through `GM_xmlhttpRequest` with `@connect`, which moves the script into the userscript sandbox. Track it under Phase 3.
+- [x] **Update dependencies and pin them with hashes.** *(Partly done.)* moment is dropped, and every `@require` is pinned with `#sha256-` (the DataTables hashes were cross-checked with cdnjs, and jQuery with the official CDN build in the npm package). The jQuery, jQuery UI and DataTables major upgrades are deferred. war.app itself runs jQuery 1.9.1, so most DOM work never touches the `@require`d copy. The known CVEs in these versions need untrusted input passed to the vulnerable APIs, which this script doesn't do. And on Common Games the script hands its jQuery to the site as `window.$`, so a jQuery 3 upgrade needs live testing.
 
 ## Phase 3 — Maintainability
 
 - [ ] **Split into modules.** Break the ~4,300-line file into modules (dashboard, forum, tournaments, clans, db, settings) and bundle them into a single `.user.js` with esbuild or `vite-plugin-monkey`. This also enables modern JS and linting.
 - [ ] **Promise-based IndexedDB wrapper.** Replace the hand-rolled `$.Deferred` counters and nested `ifSettingIsEnabled` callbacks. Load settings once at startup into a single object.
 - [ ] **Feature registry with isolation.** Use `{ name, match, run }` entries, each run inside its own try/catch, so one broken selector after a site redesign doesn't break every feature.
+- [ ] **Move off `@grant none`.** Use `GM_xmlhttpRequest` + `@connect` for the third-party APIs, which removes JSONP and the maak.ch proxy, and reach page globals through `unsafeWindow`. This also enables the jQuery 3 / jQuery UI 1.13 / DataTables 1.13 upgrades, and the odd `jQuery.noConflict(true)` call in `setupCommonGamesDataTable()` should be revisited at the same time.
 - [ ] **Self-host the icons.** Icons are hot-linked from imgur (line 2709), which often blocks or deletes images. Inline them as SVG or data URIs.
 - [ ] **Repo hygiene.** Delete `Tidy_up_your_Dashboard.user.js.backup` (git history already has it), move `plan.md` items into issues, and add a CHANGELOG.
 
