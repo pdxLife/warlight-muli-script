@@ -50,9 +50,14 @@ function loadPlayerData() {
     let deferred = $.Deferred();
     let cookieValue = $.cookie('muli_wl_player');
     if (cookieValue) {
-        window.WlPlayer = JSON.parse(cookieValue);
-        log("Skipping reloading player data " + $.cookie('wlPlayerCacheValid'));
-        return deferred.resolve(window.WlPlayer).promise();
+        try {
+            window.WlPlayer = JSON.parse(cookieValue);
+            log("Skipping reloading player data " + $.cookie('wlPlayerCacheValid'));
+            return deferred.resolve(window.WlPlayer).promise();
+        } catch (e) {
+            log("Discarding unreadable player data cookie");
+            removePlayerDataCookie();
+        }
     }
 
     let $profileLink = $(".dropdown-menu a[href*='Profile']");
@@ -1665,10 +1670,7 @@ function loadClots(cb) {
         crossDomain: true
     }).done(function (response) {
         try {
-            var jsonStr = response.replace(/^\s*\w+\s*\(\s*/, '').replace(/\s*\)\s*;?\s*$/, '');
-            var parsed = JSON.parse(jsonStr);
-            console.log(parsed.data);
-            var json = parsed.data;
+            var json = parseClotList(response);
             var clotInfo = JSON.stringify(json);
             sessionStorage.setItem('clots', clotInfo);
             if (cb) {
@@ -1686,6 +1688,10 @@ function loadClots(cb) {
         log("Error loading CLOTs");
         log(e);
     });
+}
+
+function parseClotList(response) {
+    return JSON.parse(response.replace(/^\s*\w*\s*\(\s*/, '').replace(/\s*\)\s*;?\s*$/, '')).data;
 }
 
 function toWords(number) {
@@ -1728,26 +1734,16 @@ function toWords(number) {
         { value: 1, str: "one" }
     ];
 
-    var result = '';
     for (var n of NS) {
         if (number >= n.value) {
-            if (number <= 20) {
-                result += n.str;
-                number -= n.value;
-                if (number > 0) result += ' ';
-            } else {
-                var t = Math.floor(number / n.value);
-                var d = number % n.value;
-                if (d > 0) {
-                    return intToEnglish(t) + ' ' + n.str + ' ' + intToEnglish(d);
-                } else {
-                    return intToEnglish(t) + ' ' + n.str;
-                }
-
+            if (n.value >= 100) {
+                var remainder = number % n.value;
+                return toWords(Math.floor(number / n.value)) + ' ' + n.str + (remainder > 0 ? ' ' + toWords(remainder) : '');
             }
+            return n.str + (number > n.value ? ' ' + toWords(number - n.value) : '');
         }
     }
-    return result;
+    return '';
 }
 window.userscriptSettings = [
     {
@@ -2927,118 +2923,129 @@ function displayTrophies() {
 }
 function databaseReady() {
     log("Running main");
-    if (pageIsForumOverview()) {
-        ifSettingIsEnabled("hideOffTopic", function () {
-            hideOffTopicThreads()
-        });
-        ifSettingIsEnabled("hideWarzoneIdle", function () {
-            hideWarzoneIdleThreads()
-        });
-        formatHiddenThreads();
-    }
-    if (pageIsCommunityLevels()) {
-        setupCommunityLevels()
-    }
+    runFeatures([
+        { name: "forum overview filters", match: pageIsForumOverview, run: setupForumOverviewFilters },
+        { name: "community levels banner", match: pageIsCommunityLevels, run: setupCommunityLevels },
+        { name: "forum thread hiding", match: function () { return pageIsForumOverview() || pageIsSubForum(); }, run: setupForumThreadHiding },
+        { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
+        { name: "community forum list", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
+        { name: "blacklist counter", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "total points", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
+        { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } }
+    ]);
+}
 
-    if (pageIsForumOverview() || pageIsSubForum()) {
-        setupSpammersBeGone();
+function setupForumOverviewFilters() {
+    ifSettingIsEnabled("hideOffTopic", function () {
+        hideOffTopicThreads()
+    });
+    ifSettingIsEnabled("hideWarzoneIdle", function () {
+        hideWarzoneIdleThreads()
+    });
+    formatHiddenThreads();
+}
+
+function setupForumThreadHiding() {
+    setupSpammersBeGone();
+    addCSS(`
+        #MainSiteContent > table table tr td:nth-of-type(4), #MainSiteContent > table table tr td:nth-of-type(5) {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+    `)
+}
+
+function setupDashboard() {
+    captureTournamentInviters();
+    playerDataReady.done(setupVacationAlert);
+
+    hideBlacklistedThreads();
+    setupBasicDashboardStyles();
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
+        var filter = (f && f.value) ? f.value : 4;
+        refreshMyGames();
+    });
+    ifSettingIsEnabled('hideCoinsGlobally', function () {
+        hideCoinsGlobally()
+    });
+    ifSettingIsEnabled('useDefaultBootLabel', function () {
+        createSelector(".BootTimeLabel", "z-index:50;");
+    }, function () {
+        createSelector(".BootTimeLabel", "color:white !important;font-weight:normal!important;font-style:italic;font-size:13px!important;z-index:50;");
+    });
+    ifSettingIsEnabled("highlightTournaments", function () {
+        createSelector("#MyTournamentsTable tbody", "background:#4C4C33;");
+    });
+    ifSettingIsEnabled("hideMyGamesIcons", function () {
+        createSelector("#MyGamesTable td div > img, #MyGamesTable td div a > img", "display:none;");
+    });
+    ifSettingIsEnabled("scrollGames", function () {
+        setupFixedWindowWithScrollableGames();
+    }, function () {
+        createSelector("body", "overflow: auto");
+        createSelector("#MainSiteContent > table", "width: 100%;max-width: 1400px;");
         addCSS(`
-            #MainSiteContent > table table tr td:nth-of-type(4), #MainSiteContent > table table tr td:nth-of-type(5) {
-                max-width: 200px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-    
-        `)
-    }
-    if (pageIsProfile() && $("#BlockListLink").length > 0) {
-        ifSettingIsEnabled('showPrivateNotesOnProfile', function () {
-            loadPrivateNotes();
-        })
-    }
-    if (pageIsCommunity()) {
-        hideIgnoredForumThreadsFromCommnuityList();
-    }
-    if (pageIsBlacklistPage()) {
-        setupBlacklistCounter();
-    }
-    if (pageIsPointsPage()) {
-        playerDataReady.done(displayTotalPointsEarned);
-    }
-    if (pageIsDashboard()) {
-        captureTournamentInviters();
-        playerDataReady.done(setupVacationAlert);
-
-        hideBlacklistedThreads();
-        setupBasicDashboardStyles();
-        Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function (f) {
-            var filter = (f && f.value) ? f.value : 4;
-            refreshMyGames();
-        });
-        ifSettingIsEnabled('hideCoinsGlobally', function () {
-            hideCoinsGlobally()
-        });
-        ifSettingIsEnabled('useDefaultBootLabel', function () {
-            createSelector(".BootTimeLabel", "z-index:50;");
-        }, function () {
-            createSelector(".BootTimeLabel", "color:white !important;font-weight:normal!important;font-style:italic;font-size:13px!important;z-index:50;");
-        });
-        ifSettingIsEnabled("highlightTournaments", function () {
-            createSelector("#MyTournamentsTable tbody", "background:#4C4C33;");
-        });
-        ifSettingIsEnabled("hideMyGamesIcons", function () {
-            createSelector("#MyGamesTable td div > img, #MyGamesTable td div a > img", "display:none;");
-        });
-        ifSettingIsEnabled("scrollGames", function () {
-            setupFixedWindowWithScrollableGames();
-        }, function () {
-            createSelector("body", "overflow: auto");
-            createSelector("#MainSiteContent > table", "width: 100%;max-width: 1400px;");
-            addCSS(`
-                @media (max-width: 1050px) {
-                   #MyGamesTable > thead > tr * {
-                        font-size: 14px;
-                    }
-                    #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
-                        margin-top: 5px!important;
-                        display: block;
-                        float: left;
-                        padding-right: 5px;
-                    }
+            @media (max-width: 1050px) {
+               #MyGamesTable > thead > tr * {
+                    font-size: 14px;
                 }
+                #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
+                    margin-top: 5px!important;
+                    display: block;
+                    float: left;
+                    padding-right: 5px;
+                }
+            }
 
-                @media (max-width: 750px) {
-                    #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
-                        display:none;
-                    }
-                }`)
-        }, function () {
-            setupRightColumn(true);
-            refreshOpenGames();
-        });
-        $("label#MultiDayRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $("label#RealTimeRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $("label#BothRadio").on("click", function () {
-            registerGameTabClick()
-        });
-        $(window).resize(function () {
-            ifSettingIsEnabled("scrollGames", function () {
-                refreshSingleColumnSize();
-            }, undefined, function () {
-                makePopupVisible()
-            })
-        });
-        window.setTimeout(setupRefreshFunction, 0);
-    } else {
-        ifSettingIsEnabled('hideCoinsGlobally', function () {
-            hideCoinsGlobally();
+            @media (max-width: 750px) {
+                #MyGamesTable > thead > tr > td > div:nth-of-type(1) {
+                    display:none;
+                }
+            }`)
+    }, function () {
+        setupRightColumn(true);
+        refreshOpenGames();
+    });
+    $("label#MultiDayRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $("label#RealTimeRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $("label#BothRadio").on("click", function () {
+        registerGameTabClick()
+    });
+    $(window).resize(function () {
+        ifSettingIsEnabled("scrollGames", function () {
+            refreshSingleColumnSize();
+        }, undefined, function () {
+            makePopupVisible()
         })
+    });
+    window.setTimeout(setupRefreshFunction, 0);
+}
+
+function runFeature(name, run) {
+    try {
+        run();
+    } catch (e) {
+        logError("Feature \"" + name + "\" failed: " + (e && e.stack ? e.stack : e));
     }
 }
+
+function runFeatures(features) {
+    features.forEach(function (feature) {
+        runFeature(feature.name, function () {
+            if (!feature.match || feature.match()) {
+                feature.run();
+            }
+        });
+    });
+}
+
 function setupBlacklistCounter() {
     var $blacklist = $("#MainSiteContent ul");
     $blacklist.first().before(`<span id="numBlacklisted">You have <b></b> players on your blacklist.</span>`);
@@ -3063,6 +3070,63 @@ function DOM_ContentReady() {
         return;
     }
 
+    runFeature("DataTables sorting", registerDataTableSorting);
+    setupWLError();
+    createSelector('body > footer', 'display:none');
+
+    $.fn.outerHTML = function (s) {
+        return s ? this.before(s).remove() : jQuery("<p>").append(this.eq(0).clone()).html();
+    };
+
+    window.playerDataReady = loadPlayerData();
+
+    runFeatures([
+        { name: "new thread cleanup", match: pageIsNewThread, run: cleanUpNewThreadPage },
+        { name: "my games filter", run: setupMyGamesFilter },
+        { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
+        { name: "editor toolbar", match: pageIsThread, run: setupTextarea },
+        { name: "rate map link", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
+        { name: "MDL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
+        { name: "forum thread tweaks", match: isAnyForumThread, run: setupForumThreadTweaks },
+        { name: "MDL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
+        { name: "level previews", match: isAnyForumThread, run: parseForumSPLevels },
+        { name: "tournament page", match: pageIsTournament, run: setupTournamentPage },
+        { name: "tournament creator chat", match: pageIsTournament, run: colorTournamentCreatorInChat },
+        { name: "find me", match: pageIsTournament, run: setupFindMeInTournament },
+        { name: "tournament inviter", match: pageIsTournament, run: displayTournamentInviter },
+        { name: "common games", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
+        { name: "tournament overview", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
+        { name: "clan list search", match: pageIsClanList, run: setupClanListSearch },
+        { name: "clan creator", match: pageIsClanPage, run: setupClanPageCreator },
+        { name: "community events", match: pageIsLadderOverview, run: setupLadderClotOverview },
+        { name: "map search", match: pageIsMapsPage, run: setupMapSearch },
+        { name: "level bookmark", match: pageIsLevelOverview, run: setupLevelBookmark },
+        { name: "profile box style", match: pageIsProfile, run: styleProfileBoxes },
+        { name: "profile blank lines", match: pageIsProfile, run: hideExtraBlanks },
+        { name: "trophies", match: pageIsProfile, run: displayTrophies },
+        { name: "foldable profile stats", match: pageIsProfile, run: foldProfileStats },
+        { name: "global win rate", match: pageIsProfile, run: showGlobalWinRate },
+        { name: "MDL profile stats", match: pageIsProfile, run: setupMtlProfile },
+        { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords },
+        { name: "global styles", run: setGlobalStyles },
+        { name: "map of the week styles", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
+    ]);
+
+    Database.init(function () {
+        log("database is ready");
+        if (pageIsDashboard()) {
+            wljs_WaitDialogJS.Start(null, "Tidying Up...")
+        }
+        runFeatures([
+            { name: "userscript menu", run: setupUserscriptMenu },
+            { name: "bookmark menu", run: setupBookmarkMenu },
+            { name: "version check", run: checkVersion },
+            { name: "main", run: databaseReady }
+        ]);
+    });
+}
+
+function registerDataTableSorting() {
     $.extend($$$.fn.dataTableExt.oSort, {
         "rank-pre": function (a) {
             return a.match(/([0-9]*)/)[1] || 9999;
@@ -3086,19 +3150,14 @@ function DOM_ContentReady() {
             return a > b;
         }
     });
+}
 
-    setupWLError();
-    createSelector('body > footer', 'display:none');
+function cleanUpNewThreadPage() {
+    $("[onclick='undoIgnore()']").closest("th").remove();
+    $(".checkbox").closest("td").remove()
+}
 
-    $.fn.outerHTML = function (s) {
-        return s ? this.before(s).remove() : jQuery("<p>").append(this.eq(0).clone()).html();
-    };
-
-    if (pageIsNewThread()) {
-        $("[onclick='undoIgnore()']").closest("th").remove();
-        $(".checkbox").closest("td").remove()
-    }
-
+function setupMyGamesFilter() {
     if (document.getElementById("MyGamesFilter") != null) {
         document.getElementById("MyGamesFilter").onchange = null
     }
@@ -3111,153 +3170,92 @@ function DOM_ContentReady() {
             refreshMyGames();
         })
     });
+}
 
-    if (pageIsDashboard()) {
-        $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
-        $(".container-fluid").show();
-        window.lastRefresh;
-        window.lastClick = new Date();
-    }
+function showDashboardLoader() {
+    $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
+    $(".container-fluid").show();
+    window.lastRefresh;
+    window.lastClick = new Date();
+}
 
-    if (pageIsThread()) {
-        setupTextarea()
-    }
+function addRateMapLink() {
+    var id = location.href.match(/[^\d]*([\d]*)/)[1];
+    $("#MainSiteContent ul").append(`<li><a href="https://war.app/RateMap?ID=${id}" target="_blank">Rate Map</a></li>`)
+}
 
-    if (pageIsMapPage() && mapIsPublic()) {
-        var id = location.href.match(/[^\d]*([\d]*)/)[1];
-        $("#MainSiteContent ul").append(`<li><a href="https://war.app/RateMap?ID=${id}" target="_blank">Rate Map</a></li>`)
-    }
+function isAnyForumThread() {
+    return pageIsForumThread() || pageIsClanForumThread();
+}
 
-    if (pageIsCommunity()) {
-        setupMtlLadderTable();
-    }
-
-    if (pageIsForumThread() || pageIsClanForumThread()) {
-        $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
-        $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
-        $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
-        setupMtlForumTable();
-        $(".region a[href='/Profile?u=Muli_1']:contains('Muli')").closest("td").find("br:nth-of-type(5)").remove();
-        $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
-        parseForumSPLevels();
-        $('img[src*="https://s3.amazonaws.com/data.warlight.net/Data/Players"]').prev().remove();
-        $(".region td:first-of-type").css("padding-top", "10px");
-        addCSS(`
-            img[src*='Images/Thumbs'] {
-                height: 25px;
-                width: 25px;
-            }
-        `)
-    }
-    window.playerDataReady = loadPlayerData();
-    if (pageIsTournament()) {
-        window.setTimeout(function () {
-            setupPlayerDataTable();
-        }, 50);
-        $("#HostLabel").after(" | <a style='cursor:pointer' href='#' onclick='bookmarkTournament()'>Bookmark</a> | <a style='cursor:pointer' href='#' id='findMeInTournament'>Find Me</a>");
-        $("#HostLabel").css("display", "inline-block");
-        $("#LeftToStartMessage").text(" | " + $("#LeftToStartMessage").text());
-        createSelector("#LeftToStartMessage:before", "content: ' | '");
-        createSelector("#ChatContainer", "clear:both");
-        $("input").on("keypress keyup keydown", function (e) {
-            e.stopPropagation()
-        });
-        addCSS(`
-            #ChatContainer div {
-                margin-bottom: 10px;
-            }
-            .findme-highlight {
-                background: rgba(255,215,0,0.35) !important;
-                outline: 2px solid gold;
-                border-radius: 3px;
-            }
-            @keyframes findmePulse {
-                0% { outline-color: gold; }
-                50% { outline-color: transparent; }
-                100% { outline-color: gold; }
-            }
-            .findme-pulse {
-                animation: findmePulse 1.2s ease-in-out 3;
-            }
-        `);
-        colorTournamentCreatorInChat();
-        setupFindMeInTournament();
-        displayTournamentInviter();
-
-    }
-
-    if (pageIsCommonGames()) {
-        window.$ = $$$;
-        setupCommonGamesDataTable()
-    }
-
-    if (pageIsTournamentOverview()) {
-        setupTournamentTableStyles();
-        $(window).resize(function () {
-            setTournamentTableHeight();
-        });
-        $(window).on("scroll", function () {
-            $(window).scrollTop(0)
-        })
-    }
-
-    if (pageIsClanList()) {
-        setupClanListSearch();
-    }
-
-    if (pageIsClanPage()) {
-        setupClanPageCreator();
-    }
-
-    if (pageIsLadderOverview()) {
-        setupLadderClotOverview();
-
-    }
-
-    if (pageIsMapsPage()) {
-        setupMapSearch()
-    }
-
-    if (pageIsLevelPlayLog()) {
-        setupPlayerAttempDataTable();
-    }
-
-    if (pageIsLevelOverview()) {
-        setupLevelBookmark();
-    }
-
-    if (pageIsProfile()) {
-        createSelector(".profileBox", "background-image: url(\'https://d2wcw7vp66n8b3.cloudfront.net/Images/ProfileSpeedBackground.png\'); background-repeat: no-repeat; text-align: left; padding:10px;margin-top: 12px;");
-        hideExtraBlanks();
-        displayTrophies();
-        foldProfileStats();
-        showGlobalWinRate();
-        setupMtlProfile();
-        loadCommunityLevelRecords();
-    }
-
-    setGlobalStyles();
-    if (pageIsMapOfTheWeek()) {
-        addCSS(`
-            .dataTable table {
-            display: block;
-            }
-        `)
-    }
-    Database.init(function () {
-        log("database is ready");
-        if (pageIsDashboard()) {
-            wljs_WaitDialogJS.Start(null, "Tidying Up...")
+function setupForumThreadTweaks() {
+    $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
+    $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
+    $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
+    $(".region a[href='/Profile?u=Muli_1']:contains('Muli')").closest("td").find("br:nth-of-type(5)").remove();
+    $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
+    $('img[src*="https://s3.amazonaws.com/data.warlight.net/Data/Players"]').prev().remove();
+    $(".region td:first-of-type").css("padding-top", "10px");
+    addCSS(`
+        img[src*='Images/Thumbs'] {
+            height: 25px;
+            width: 25px;
         }
-        setupUserscriptMenu();
-        setupBookmarkMenu();
-        checkVersion();
-        databaseReady();
-    });
+    `)
+}
 
-    if (pageIsMultiplayer() && $("#UjsContainer").length == 0) {
-        // setupDashboardSearch() // remove search as it is broken
-    }
+function setupTournamentPage() {
+    window.setTimeout(function () {
+        setupPlayerDataTable();
+    }, 50);
+    $("#HostLabel").after(" | <a style='cursor:pointer' href='#' onclick='bookmarkTournament()'>Bookmark</a> | <a style='cursor:pointer' href='#' id='findMeInTournament'>Find Me</a>");
+    $("#HostLabel").css("display", "inline-block");
+    $("#LeftToStartMessage").text(" | " + $("#LeftToStartMessage").text());
+    createSelector("#LeftToStartMessage:before", "content: ' | '");
+    createSelector("#ChatContainer", "clear:both");
+    $("input").on("keypress keyup keydown", function (e) {
+        e.stopPropagation()
+    });
+    addCSS(`
+        #ChatContainer div {
+            margin-bottom: 10px;
+        }
+        .findme-highlight {
+            background: rgba(255,215,0,0.35) !important;
+            outline: 2px solid gold;
+            border-radius: 3px;
+        }
+        @keyframes findmePulse {
+            0% { outline-color: gold; }
+            50% { outline-color: transparent; }
+            100% { outline-color: gold; }
+        }
+        .findme-pulse {
+            animation: findmePulse 1.2s ease-in-out 3;
+        }
+    `);
+}
+
+function setupTournamentOverviewPage() {
+    setupTournamentTableStyles();
+    $(window).resize(function () {
+        setTournamentTableHeight();
+    });
+    $(window).on("scroll", function () {
+        $(window).scrollTop(0)
+    })
+}
+
+function styleProfileBoxes() {
+    createSelector(".profileBox", "background-image: url(\'https://d2wcw7vp66n8b3.cloudfront.net/Images/ProfileSpeedBackground.png\'); background-repeat: no-repeat; text-align: left; padding:10px;margin-top: 12px;");
+}
+
+function setupMapOfTheWeekStyles() {
+    addCSS(`
+        .dataTable table {
+        display: block;
+        }
+    `)
 }
 
 window.undoIgnore = function () {
