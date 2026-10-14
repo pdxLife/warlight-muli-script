@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.13.2
+
+- After the dashboard refreshes (R, the Refresh button, coming back to the tab, or the background turn check), the "+ Show N more open games" link and the "Past games / Create Game" links under My Games are back. Show more and the Multi-Day / Real-Time / Both buttons now also use the refreshed open games instead of the list from when the page first loaded.
+
 ## 3.13.1
 
 - Credit the original author, Muli, in the script header, the README and the settings menu, with links to Muli's profile and the original forum thread.
