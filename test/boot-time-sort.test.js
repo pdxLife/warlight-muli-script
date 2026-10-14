@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createDom, load, domGlobals } = require("./harness");
+const { createDom, load, domGlobals, flush } = require("./harness");
 
 // Mirrors a My Games row on war.app's logged-in dashboard (names and ids are invented).
 function gameRow(id, boot, status) {
@@ -53,14 +53,22 @@ test("your-turn games are ordered by time left and keep the slots they had", () 
     assert.deepEqual(order(), ["f", "b", "d", "a", "e", "c", "g"]);
 });
 
-test("re-sorts after My Games is refreshed, not after other tables", () => {
-    const { ctx, dom, $, order } = setup([gameRow("1", "1 day", yourTurn("1 hour")), gameRow("2", "1 day", yourTurn("2 hours"))]);
+test("re-sorts whenever My Games is re-drawn, by the script or by war.app", async () => {
+    const { ctx, $, order } = setup([gameRow("1", "1 day", yourTurn("1 hour")), gameRow("2", "1 day", yourTurn("2 hours"))]);
     ctx.setupBootTimeSort();
     assert.deepEqual(order(), ["2", "1"]);
-    const refreshed = [gameRow("3", "3 days", yourTurn("1 hour")), gameRow("4", "1 day", yourTurn("1 hour"))].join("");
-    $("#MyGamesTable tbody").html(refreshed);
-    $(dom.window.document).trigger("tuyd:gamesRefreshed", ["#OpenGamesTable"]);
-    assert.deepEqual(order(), ["3", "4"]);
-    $(dom.window.document).trigger("tuyd:gamesRefreshed", ["#MyGamesTable"]);
+    $("#MyGamesTable tbody").html([gameRow("3", "3 days", yourTurn("1 hour")), gameRow("4", "1 day", yourTurn("1 hour"))].join(""));
+    await flush();
     assert.deepEqual(order(), ["4", "3"]);
+    // war.app's Filter button empties the table, shows "Loading..." and then appends the rows one by one.
+    const tbody = $("#MyGamesTable tbody");
+    tbody.children().remove();
+    tbody.append('<tr><td colspan="2">Loading...</td></tr>');
+    await flush();
+    tbody.children().remove();
+    tbody.append(gameRow("5", "2 days", yourTurn("1 hour")));
+    tbody.append(gameRow("6", "2 days", waiting));
+    tbody.append(gameRow("7", "5 hours", yourTurn("1 hour")));
+    await flush();
+    assert.deepEqual(order(), ["7", "6", "5"]);
 });

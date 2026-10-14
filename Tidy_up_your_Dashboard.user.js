@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.12.0
+// @version 3.12.1
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.12.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.12.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -2716,8 +2716,6 @@ function setGlobalStyles() {
     createSelector(".context-menu", "display: none;z-index: 100;position: absolute;overflow: hidden;border: 1px solid #CCC;white-space: nowrap;font-family: sans-serif;background: #FFF;color: #333;border-radius: 5px;padding: 0;");
     createSelector(".context-menu li", "padding: 8px 12px;cursor: pointer;list-style-type: none;");
     createSelector(".context-menu li:hover", "background-color: #DEF;");
-    createSelector("#MyGamesTable select", "margin: 0 10px 0 5px; width: 125px");
-    createSelector("#MyGamesFilter", "float:right");
     createSelector("#MyGamesTable thead tr", "text-align: right");
     $("body").on("click", function (e) {
         if ($(".custom-menu").is(':visible')) {
@@ -3085,9 +3083,7 @@ function setupDashboard() {
     hideBlacklistedThreads();
     setupBasicDashboardStyles();
     var dashboard = fetchDashboard();
-    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "customFilter", function () {
-        refreshMyGames(dashboard);
-    });
+    refreshMyGames(dashboard);
     ifSettingIsEnabled('hideCoinsGlobally', function () {
         hideCoinsGlobally()
     });
@@ -3151,7 +3147,6 @@ function setupDashboard() {
 function pageFeatures() {
     return [
         { name: "Hide thread controls when posting", section: "Forum", match: pageIsNewThread, run: cleanUpNewThreadPage },
-        { name: "Remember My Games filter", section: "Dashboard", run: setupMyGamesFilter },
         { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
         { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
         { name: "Rate Map link", section: "Maps & levels", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
@@ -3344,21 +3339,6 @@ function registerDataTableSorting() {
 function cleanUpNewThreadPage() {
     $("[onclick='undoIgnore()']").closest("th").remove();
     $(".checkbox").closest("td").remove()
-}
-
-function setupMyGamesFilter() {
-    if (document.getElementById("MyGamesFilter") != null) {
-        document.getElementById("MyGamesFilter").onchange = null
-    }
-    $("#MyGamesFilter").on("change", function () {
-        var customFilter = $(this).val();
-        Database.update(Database.Table.Settings, {
-            name: "customFilter",
-            value: customFilter
-        }, undefined, function () {
-            refreshMyGames();
-        })
-    });
 }
 
 function showDashboardLoader() {
@@ -3912,12 +3892,19 @@ function sortMyGamesByBootTime() {
 }
 
 function setupBootTimeSort() {
-    sortMyGamesByBootTime();
-    $(document).on("tuyd:gamesRefreshed", function (e, tableSelector) {
-        if (tableSelector === "#MyGamesTable") {
-            sortMyGamesByBootTime();
-        }
+    var table = document.getElementById("MyGamesTable");
+    if (!table) {
+        return;
+    }
+    // war.app's Filter button re-draws My Games without tuyd:gamesRefreshed, so watch the table.
+    // The observer is paused while sorting so that moving rows doesn't trigger it again.
+    var observer = new MutationObserver(function () {
+        observer.disconnect();
+        sortMyGamesByBootTime();
+        observer.observe(table, { childList: true, subtree: true });
     });
+    sortMyGamesByBootTime();
+    observer.observe(table, { childList: true, subtree: true });
 }
 
 function updateTurnBadge(games) {
@@ -4314,7 +4301,6 @@ function setupFixedWindowStyles() {
     createSelector("#MainSiteContent > table > tbody > tr > td", "width:100%");
     createSelector("h2 + span", "margin-right: 50px;");
     createSelector("body", "overflow:hidden");
-    createSelector("#MyGamesFilter", "width:200px");
     createSelector(".adsbygoogle", "margin-top: 25px;");
     createSelector("#refreshAll", "margin: 5px;float: right;");
     createSelector("#RestoreLotteryGamesBtn", "display:none");
