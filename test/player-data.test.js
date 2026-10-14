@@ -21,11 +21,18 @@ function setup({ html = PROFILE_LINK, cookie } = {}) {
         ajaxCalls.push(options);
         return ajaxResult.promise();
     };
+    const parsed = [];
+    class RecordingDOMParser extends dom.window.DOMParser {
+        parseFromString(html, type) {
+            parsed.push({ html, type });
+            return super.parseFromString(html, type);
+        }
+    }
     const ctx = load(
         ["loadPlayerData", "removePlayerDataCookie", "getVacationEndDate", "extractPlayerId", "extractProfileId", "extractProfileToken"],
-        { ...domGlobals(dom, $), log: () => { } }
+        { ...domGlobals(dom, $), DOMParser: RecordingDOMParser, log: () => { } }
     );
-    return { ctx, cookies, ajaxCalls, ajax: ajaxResult };
+    return { ctx, dom, $, cookies, ajaxCalls, ajax: ajaxResult, parsed };
 }
 
 const state = (promise) => promise.state();
@@ -83,4 +90,38 @@ test("failed profile request rejects", () => {
     ajax.reject({ statusText: "error" });
     assert.equal(state(ready), "rejected");
     assert.equal(ctx.WlPlayer, undefined);
+});
+
+test("profile page is parsed with DOMParser", () => {
+    const { ctx, ajax, parsed } = setup();
+    ctx.loadPlayerData();
+    ajax.resolve(PROFILE_PAGE);
+    assert.deepEqual(parsed, [{ html: PROFILE_PAGE, type: "text/html" }]);
+});
+
+test("fields directly under body of a full profile document are found", () => {
+    const { ctx, ajax } = setup();
+    const ready = ctx.loadPlayerData();
+    ajax.resolve(`<!DOCTYPE html>
+        <html><head><title>Profile</title></head>
+        <body>
+            <a id="AccountDropDown">Muli</a>
+            <a id="LevelLink" title="Progress to next: 99">L7</a>
+            <img src="/Images/Vacation.png"> You are on vacation until 1/2/2027 03:04:05
+        </body></html>`);
+    assert.equal(state(ready), "resolved");
+    const player = ctx.WlPlayer;
+    assert.equal(player.Name, "Muli");
+    assert.equal(player.isMember, false);
+    assert.equal(player.Level, "7");
+    assert.equal(player.PointsThisLevel, 99);
+    assert.equal(player.OnVacationUntil.getTime(), new Date("1/2/2027 03:04:05").getTime());
+});
+
+test("getVacationEndDate reads a parsed document", () => {
+    const { ctx, dom, $ } = setup();
+    const parse = (html) => $(new dom.window.DOMParser().parseFromString(html, "text/html"));
+    assert.equal(ctx.getVacationEndDate(parse(PROFILE_PAGE)).getTime(), new Date("10/20/2026 12:00:00").getTime());
+    assert.equal(ctx.getVacationEndDate(parse(`<span><img src="/Images/Vacation.png"> Back soon</span>`)), null);
+    assert.equal(ctx.getVacationEndDate(parse(`<a id="AccountDropDown">Muli</a>`)), null);
 });

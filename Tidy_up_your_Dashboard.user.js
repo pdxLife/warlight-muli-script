@@ -81,7 +81,7 @@ function loadPlayerData() {
     let profileUrl = "https://war.app" + $profileLink.attr('href');
     $.ajax({ url: profileUrl }).done(function (response) {
         try {
-            let page = $(response);
+            let page = $(new DOMParser().parseFromString(response, "text/html"));
             player.Name = page.find("#AccountDropDown").text().trim();
             player.PlayerId = extractPlayerId(profileUrl);
             player.ProfileId = extractProfileId(profileUrl);
