@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.14.4
+
+- **Common Games no longer breaks war.app's own code on that page.** To set up the sortable table, the script swapped out war.app's jQuery, which stopped its cookie handling (your player data didn't load there) and Bootstrap from working. The table and Head-To-Head box work as before.
+- The Head-To-Head win rate shows "–" instead of "NaN%" when none of your 1v1 games with that player has finished.
+
 ## 3.14.3
 
 - **Removed** "Show who invited you", the "Highlight Tournament Invites" setting, and the dashboard's tournament table handling. war.app no longer shows tournaments or tournament invitations on the dashboard (they're only on the Tournaments page, without who invited you), so these had nothing left to work with. "Open Tournaments" is gone from the right-column sort menu too.
