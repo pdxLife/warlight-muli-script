@@ -60,7 +60,7 @@ test("community level cards escape API data", () => {
 
 test("tournament inviter name is shown as text", () => {
     const { dom, $ } = createDom(`<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp" class="ujsTextInner">Created by Host</div></div>`, "https://war.app/MultiPlayer/Tournament?ID=7");
-    const ctx = load(["displayTournamentInviter", "withTournamentInfoSlot", "whenElementAppears", "htmlEscape"], {
+    const ctx = load(["displayTournamentInviter", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "ujsElement", "htmlEscape"], {
         ...domGlobals(dom, $),
         location: { href: "https://war.app/MultiPlayer/Tournament?ID=7" },
         Database: {

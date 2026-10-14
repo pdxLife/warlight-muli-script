@@ -43,35 +43,88 @@ test("bookmarks saved on any of war.app's domains open on the current one", () =
     assert.equal(siteRelativeUrl("javascript:alert(1)"), "javascript:alert(1)", "left for safeUrl to reject");
 });
 
-function tournamentPage() {
-    const { dom, $ } = createDom(`<div id="ujs_TournamentsScene"></div>`, "https://war.app/MultiPlayer/Tournament?ID=7");
+// war.app swaps views in place: the URL changes and the scene is redrawn without a page load.
+function tournamentApp(url) {
+    const { dom, $ } = createDom(`<div id="ujs_Scene"></div>`, url);
     const controls = [];
-    const ctx = load(["setupTournamentPage", "withTournamentInfoSlot", "whenElementAppears"], {
+    const inviters = { "7": "Alice", "8": "Bob" };
+    const ctx = load(["setupTournamentPage", "displayTournamentInviter", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "addTournamentPlayerControls", "ujsElement", "htmlEscape"], {
         ...domGlobals(dom, $),
-        setTimeout: () => { },
-        setupUjsPlayerControls: () => controls.push(true)
+        location: dom.window.location,
+        setupUjsPlayerControls: () => {
+            controls.push(true);
+            $("[id^=ujs_PlayersTabContents][id$=_img]").last().append(`<div id="ujsPlayerToolbar"></div>`);
+        },
+        Database: {
+            Table: { TournamentData: "TournamentData" },
+            Row: { TournamentData: { Id: "tournamentId" } },
+            readIndex: (table, row, id, cb) => cb(inviters[id] ? { tournamentId: id, invitedBy: inviters[id] } : undefined)
+        }
     });
-    return { ctx, dom, $, controls };
+    const show = (path, html) => {
+        dom.window.history.pushState({}, "", path);
+        $("#ujs_Scene").html(html);
+    };
+    const tournament = (creator) => `<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp" class="ujsTextInner">Created by ${creator}</div></div>`
+        + `<div id="ujs_PlayersTabContents"><div id="ujs_PlayersTabContents_img"></div><div id="ujs_PlayersContainer"></div></div>`;
+    return { ctx, dom, $, controls, show, tournament };
 }
 
-test("the Bookmark link waits for war.app to draw the creator label", async () => {
-    const { ctx, $ } = tournamentPage();
+test("tournament extras appear when war.app opens a tournament in place from its list", async () => {
+    const { ctx, $, controls, show, tournament } = tournamentApp("https://war.app/MultiPlayer/Tournaments/");
     ctx.setupTournamentPage();
-    assert.equal($("#tournamentInfoSlot").length, 0);
-    $("#ujs_TournamentsScene").append(`<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp" class="ujsTextInner">Created by Host</div></div>`);
+    ctx.displayTournamentInviter();
+    show("/MultiPlayer/Tournaments/", `<div id="ujs_TournamentsScene">list</div>`);
     await flush();
-    const slot = $("#ujs_CreatorLabel_tmp > #tournamentInfoSlot");
-    assert.equal(slot.length, 1);
-    assert.equal(slot.text(), "| Bookmark");
+    assert.equal($("#tournamentInfoSlot").length, 0);
+
+    show("/MultiPlayer/Tournament?ID=7", tournament("Host A"));
+    await flush();
+    assert.equal($("#ujs_CreatorLabel_tmp > #tournamentInfoSlot").text(), "| Bookmark | Invited by: Alice");
+    assert.equal(controls.length, 1);
+    assert.equal($("#ujsPlayerToolbar").attr("data-tournament-id"), "7");
+
+    await flush();
+    assert.equal($(".tournamentBookmark").length, 1, "nothing is added twice");
+    assert.equal(controls.length, 1);
 });
 
-test("player search waits for the Players tab to be drawn", async () => {
-    const { ctx, $, controls } = tournamentPage();
+test("moving to another tournament in place replaces the previous tournament's extras", async () => {
+    const { ctx, dom, $, controls, show, tournament } = tournamentApp("https://war.app/MultiPlayer/Tournament?ID=7");
+    show("/MultiPlayer/Tournament?ID=7", tournament("Host A"));
     ctx.setupTournamentPage();
-    assert.equal(controls.length, 0);
-    $("#ujs_TournamentsScene").append(`<div id="ujs_PlayersTabContents"><div id="ujs_PlayersContainer"></div></div>`);
+    ctx.displayTournamentInviter();
     await flush();
+    assert.match($("#tournamentInfoSlot").text(), /Alice/);
+
+    // war.app may keep the same label node and only change the URL; the extras must still switch.
+    dom.window.history.pushState({}, "", "/MultiPlayer/Tournament?ID=8");
+    $("#ujs_Scene").append("<div>redraw</div>");
+    await flush();
+    assert.equal($("#tournamentInfoSlot").attr("data-tournament-id"), "8");
+    assert.equal($("#tournamentInfoSlot").text(), "| Bookmark | Invited by: Bob");
+    assert.equal($("#ujsPlayerToolbar").attr("data-tournament-id"), "8");
+    assert.equal(controls.length, 2);
+});
+
+test("finds war.app's elements when it numbers their ids on a second draw", async () => {
+    const { ctx, $, controls, show } = tournamentApp("https://war.app/MultiPlayer/Tournaments/");
+    ctx.setupTournamentPage();
+    show("/MultiPlayer/Tournament?ID=8", `<div id="ujs_CreatorLabel_2"><div id="ujs_CreatorLabel_2_tmp" class="ujsTextInner">Created by B</div></div>`
+        + `<div id="ujs_PlayersTabContents_2"><div id="ujs_PlayersTabContents_2_img"></div><div id="ujs_PlayersContainer_2"></div></div>`);
+    await flush();
+    assert.equal($("#ujs_CreatorLabel_2_tmp > #tournamentInfoSlot .tournamentBookmark").length, 1);
     assert.equal(controls.length, 1);
+    assert.equal($("#ujs_PlayersTabContents_2_img > #ujsPlayerToolbar").length, 1);
+});
+
+test("tournament features do nothing on other pages", async () => {
+    const { ctx, $, controls, show } = tournamentApp("https://war.app/MultiPlayer/");
+    ctx.setupTournamentPage();
+    show("/MultiPlayer/", `<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp">Created by X</div></div>`);
+    await flush();
+    assert.equal($("#tournamentInfoSlot").length, 0);
+    assert.equal(controls.length, 0);
 });
 
 // Mirrors war.app's Players tab: rows absolutely positioned from the bottom, 52px apart, top row first.
@@ -86,7 +139,7 @@ function playersTab(players) {
     }).join("");
     const { dom, $ } = createDom(`<div id="ujs_PlayersTabContents"><div id="ujs_PlayersTabContents_img"></div>`
         + `<div id="ujs_Viewport_3" style="overflow-y: auto"><div id="ujs_PlayersContainer">${rows}</div></div></div>`);
-    const ctx = load(["setupUjsPlayerControls", "layoutUjsPlayers", "getUjsPlayerRows", "getUjsPlayerName", "getUjsPlayerStat"], {
+    const ctx = load(["setupUjsPlayerControls", "layoutUjsPlayers", "getUjsPlayerRows", "getUjsPlayerName", "getUjsPlayerStat", "ujsElement"], {
         ...domGlobals(dom, $),
         addCSS: () => { },
         setTimeout: (fn) => fn(),
