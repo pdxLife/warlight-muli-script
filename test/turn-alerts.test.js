@@ -25,7 +25,7 @@ function setup(rows, { permission = "granted", notificationsEnabled = true } = {
     }
     Notification.permission = permission;
     const refreshes = [];
-    const ctx = load(["findGamesAwaitingTurn", "updateTurnBadge", "notifyNewTurns", "setupTurnAlerts"], {
+    const ctx = load(["findGamesAwaitingTurn", "updateTurnBadge", "notifyNewTurns", "setupTurnAlerts", "siteName"], {
         ...domGlobals(dom, $),
         Notification,
         TURN_CHECK_INTERVAL: 300000,

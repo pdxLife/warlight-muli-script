@@ -76,7 +76,8 @@ test("tournament inviter name is shown as text", () => {
 
 test("bookmarks render stored names and URLs safely", () => {
     const { dom, $ } = createDom(`<table id="BookmarkTable"></table>`);
-    const ctx = load(["refreshBookmarks", "htmlEscape", "safeUrl"], {
+    const ctx = load(["refreshBookmarks", "htmlEscape", "safeUrl", "siteRelativeUrl"], {
+        SITE_HOSTS: ["war.app", "warzone.com", "warlight.net"],
         ...domGlobals(dom, $),
         log: () => { },
         wljs_WaitDialogJS: { Stop() { } },

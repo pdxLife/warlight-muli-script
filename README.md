@@ -4,7 +4,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 > **Version:** 3.13.3  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
-> **Supported sites:** `war.app`, `warzone.com`
+> **Supported sites:** `war.app`, `warzone.com` and their subdomains
 
 ## Credits
 
@@ -119,6 +119,13 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings, hidden forum threads, tournament inviter data.
 - **Cookies** — cached player profile data (~1 hour TTL).
+
+
+## If war.app changes its domain
+
+The script doesn't depend on the domain: links are relative, page detection only looks at the path, and bookmarks saved on an older domain open on the current one. A new domain only needs a new `@match` line in the script header (and an entry in `SITE_HOSTS`).
+
+Your browser keeps settings, bookmarks and hidden threads separately for each domain, so on a new domain the script starts empty. To bring them along, open the settings menu on the old domain and use **Export**, then use **Import** on the new one.
 
 ## Dependencies
 

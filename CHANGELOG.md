@@ -3,6 +3,7 @@
 ## 3.13.3
 
 - The link to Muli's profile in the settings menu uses the profile ID alone, so it keeps working if the name changes.
+- Works if war.app changes its domain again. Page detection no longer checks the domain, links are relative, page titles are trimmed using the site's own name, and bookmarks saved on war.app, warzone.com or warlight.net open on the domain you're using. The script now runs on all subdomains of war.app and warzone.com. Settings and bookmarks stay with each domain; move them with Export / Import.
 
 ## 3.13.2
 

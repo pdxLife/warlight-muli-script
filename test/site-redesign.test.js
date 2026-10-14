@@ -16,10 +16,31 @@ test("total points stay hidden when the Points page reads differently", () => {
     assert.doesNotMatch($(".container").text(), /In total/);
 });
 
-test("tournament name comes from the page title", () => {
-    const { tournamentNameFromTitle } = load(["tournamentNameFromTitle"]);
-    assert.equal(tournamentNameFromTitle("Tournament: phobia - 1v1 LD - War.app"), "phobia - 1v1 LD");
-    assert.equal(tournamentNameFromTitle("Tournament: Cup - Warzone - Better than Hasbro's RISK® game - Play Online Free"), "Cup");
+test("tournament name comes from the page title, whatever the site calls itself", () => {
+    const names = ["tournamentNameFromTitle", "stripSiteSuffix", "siteName"];
+    const withSiteName = (meta) => {
+        const { dom, $ } = createDom(meta);
+        return load(names, domGlobals(dom, $));
+    };
+    const current = withSiteName(`<meta property="og:site_name" content="War.app">`);
+    assert.equal(current.tournamentNameFromTitle("Tournament: phobia - 1v1 LD - War.app"), "phobia - 1v1 LD");
+    assert.equal(current.tournamentNameFromTitle("Tournament: Cup - War.app - Better than Hasbro's RISK® game - Play Online Free"), "Cup");
+    const renamed = withSiteName(`<meta property="og:site_name" content="War.Game">`);
+    assert.equal(renamed.tournamentNameFromTitle("Tournament: Cup - War - Peace - War.Game"), "Cup - War - Peace");
+    const noMeta = withSiteName("");
+    assert.equal(noMeta.tournamentNameFromTitle("Tournament: Cup - War.app"), "Cup");
+});
+
+test("bookmarks saved on any of war.app's domains open on the current one", () => {
+    const { siteRelativeUrl } = load(["siteRelativeUrl"], { SITE_HOSTS: ["war.app", "warzone.com", "warlight.net"] });
+    assert.equal(siteRelativeUrl("https://www.warzone.com/Forum/106092?Offset=20#post"), "/Forum/106092?Offset=20#post");
+    assert.equal(siteRelativeUrl("https://war.app/MultiPlayer/Tournament?ID=7"), "/MultiPlayer/Tournament?ID=7");
+    assert.equal(siteRelativeUrl("http://warlight.net"), "/");
+    assert.equal(siteRelativeUrl("https://www.war.app:443/Clans/List"), "/Clans/List");
+    assert.equal(siteRelativeUrl("https://notwar.app/x"), "https://notwar.app/x");
+    assert.equal(siteRelativeUrl("https://example.com/war.app"), "https://example.com/war.app");
+    assert.equal(siteRelativeUrl("/Forum/1"), "/Forum/1");
+    assert.equal(siteRelativeUrl("javascript:alert(1)"), "javascript:alert(1)", "left for safeUrl to reject");
 });
 
 function tournamentPage() {
