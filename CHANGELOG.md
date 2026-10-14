@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.5
+
+- Private notes on profiles load more safely: the script now reads only your note from the notes page, instead of loading the whole page and running its scripts. If the notes can't be loaded, the box says so instead of showing "Loading…" forever.
+
 ## 3.14.4
 
 - **Common Games no longer breaks war.app's own code on that page.** To set up the sortable table, the script swapped out war.app's jQuery, which stopped its cookie handling (your player data didn't load there) and Bootstrap from working. The table and Head-To-Head box work as before.

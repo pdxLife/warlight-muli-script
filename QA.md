@@ -28,7 +28,7 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 | **A forum thread** | "Bookmark" link next to Reply. Formatting toolbar above the reply box. |
 | **Forum overview** `/Forum/Forum` | The eye icon hides a thread. "Reset Hidden Threads" in the settings menu brings it back. |
 | **Mail** `/Discussion/MyMail` | "Filter by player" narrows the list and shows "N of M threads". |
-| **Someone else's profile** | Private notes appear (if that setting is on). Clicking a stat heading collapses it. |
+| **Someone else's profile** | "Private Notes" box after the feedback area: your note for a player you have one for, "You don't have any Private Notes." for one you don't. Clicking a stat heading collapses it. |
 | **Block list** `/ManageBlockList` | "You have N players on your block list." The search box narrows the list and shows "N matching" without changing the total. |
 | **Common Games** ("Common Games" link on the profile of someone you've played) | Column headers sort the list. A Head-To-Head box above it shows 1v1 games, wins, losses and win rate. The account menu and its dropdowns still work on this page. |
 | **Points** `/Points` | "In total, you've earned … points." |
