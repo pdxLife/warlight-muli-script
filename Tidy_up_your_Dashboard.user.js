@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.10.0
+// @version 3.11.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.10.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.11.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -3103,6 +3103,7 @@ function mainFeatures() {
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
+        { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
@@ -3789,6 +3790,49 @@ function findGamesAwaitingTurn(root) {
     }).get();
 }
 
+function bootMinutesLeft(row) {
+    var turnText = $(row).find("span").filter(function () {
+        return /^\s*Your turn for\b/.test($(this).text());
+    }).first().text();
+    if (!turnText) {
+        return null;
+    }
+    // war.app's label is the boot time plus your banked time; "Never" means the game has no boot.
+    var allowed = parseBootTime($(row).find(".BootTimeLabel").text());
+    return allowed === null ? Infinity : allowed - (parseBootTime(turnText) || 0);
+}
+
+function sortMyGamesByBootTime() {
+    var rows = $("#MyGamesTable tr.GameRow").filter(function () {
+        return bootMinutesLeft(this) !== null;
+    }).get();
+    var left = rows.map(bootMinutesLeft);
+    var sorted = rows.map(function (row, i) {
+        return i;
+    }).sort(function (a, b) {
+        return left[a] === left[b] ? a - b : left[a] < left[b] ? -1 : 1;
+    }).map(function (i) {
+        return rows[i];
+    });
+    var slots = rows.map(function (row) {
+        var slot = document.createComment("");
+        row.parentNode.insertBefore(slot, row);
+        return slot;
+    });
+    slots.forEach(function (slot, i) {
+        slot.parentNode.replaceChild(sorted[i], slot);
+    });
+}
+
+function setupBootTimeSort() {
+    sortMyGamesByBootTime();
+    $(document).on("tuyd:gamesRefreshed", function (e, tableSelector) {
+        if (tableSelector === "#MyGamesTable") {
+            sortMyGamesByBootTime();
+        }
+    });
+}
+
 function updateTurnBadge(games) {
     var title = document.title.replace(/^\(\d+\) /, "");
     document.title = games.length > 0 ? "(" + games.length + ") " + title : title;
@@ -3839,9 +3883,9 @@ function setupTurnAlerts() {
 }
 
 function parseBootTime(text) {
-    var units = { minute: 1, hour: 60, day: 1440, week: 10080 };
+    var units = { second: 1 / 60, minute: 1, hour: 60, day: 1440, week: 10080 };
     var minutes = null;
-    String(text).replace(/(\d+)\s*(minute|hour|day|week)s?/gi, function (all, amount, unit) {
+    String(text).replace(/(\d+)\s*(second|minute|hour|day|week)s?/gi, function (all, amount, unit) {
         minutes = (minutes || 0) + Number(amount) * units[unit.toLowerCase()];
     });
     return minutes;
