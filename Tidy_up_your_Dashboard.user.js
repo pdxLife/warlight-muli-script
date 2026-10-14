@@ -3667,6 +3667,10 @@ function updateGameCounts(page) {
 /**
  * Setups the refresh functionality
  */
+function isTypingTarget(element) {
+    return !!element && ($(element).is("input, textarea, select") || element.isContentEditable === true);
+}
+
 function setupRefreshFunction() {
     lastRefresh = new Date();
     $("a:contains('Refresh (F5)')").text("Refresh (R)");
@@ -3706,7 +3710,7 @@ function setupRefreshFunction() {
     });
     $("body").keyup(function (event) {
         // "R" is pressed
-        if (event.which == 82) {
+        if (event.which == 82 && !isTypingTarget(event.target) && !event.ctrlKey && !event.metaKey && !event.altKey) {
             if (new Date() - lastRefresh > 3000) {
                 lastRefresh = new Date();
                 log("Refresh by key r");

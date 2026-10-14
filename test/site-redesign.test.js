@@ -73,3 +73,15 @@ test("tournament player names skip the level badge", () => {
     const ctx = load(["getUjsPlayerName"], domGlobals(dom, $));
     assert.equal(ctx.getUjsPlayerName($("#ujs_TournamentPlayersPlayer_2")), "big poison L2");
 });
+
+test("typing in a text field doesn't count as the R refresh shortcut", () => {
+    const { dom, $ } = createDom(`<input id="text"><textarea id="area"></textarea><select id="pick"></select><div id="plain"></div>`);
+    const ctx = load(["isTypingTarget"], domGlobals(dom, $));
+    const el = (id) => dom.window.document.getElementById(id);
+    assert.equal(ctx.isTypingTarget(el("text")), true);
+    assert.equal(ctx.isTypingTarget(el("area")), true);
+    assert.equal(ctx.isTypingTarget(el("pick")), true);
+    assert.equal(ctx.isTypingTarget({ isContentEditable: true, nodeType: 1 }), true);
+    assert.equal(ctx.isTypingTarget(el("plain")), false);
+    assert.equal(ctx.isTypingTarget(dom.window.document.body), false);
+});
