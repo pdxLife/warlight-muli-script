@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.12.1
+
+- Removed **Remember My Games filter**. war.app replaced the dropdown it worked with by its own Filter button, which already remembers your choice.
+- Boot-time sorting now also applies after you pick a filter with war.app's Filter button.
+
 ## 3.12.0
 
 - **Mail search**: a **Filter by player** box on your mail page shows only threads started or last answered by that player. If your mail spans several pages, the first search loads the rest, so it covers all of it.
