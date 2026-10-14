@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.12.1
+// @version 3.13.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.12.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -722,82 +722,6 @@ function filterMaps(selector) {
     $("#searchResultsTitle").length > 0 ? $("#searchResultsTitle").html("Searchresults for <i>" + query + "</i>") : $("#ReceivePager").after("<h2 id='searchResultsTitle'>Searchresults for <i>" + query + "</i></h2>")
 
 }
-function setupTournamentTableStyles() {
-    createSelector("body", "overflow: hidden");
-    $("#MyTournamentsTable").parent().css({
-        "display": "block",
-        "overflow-y": "scroll",
-        "border-bottom": "1px solid #444444",
-        "border-top": "1px solid #444444"
-    });
-    addCSS(`
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            margin: 0!important;
-        }
-        html {
-            overflow-y: scroll;
-        }
-    `);
-    setTournamentTableHeight();
-}
-
-function setTournamentTableHeight() {
-    $("#MyTournamentsTable").parent().height(window.innerHeight - 125);
-}
-
-function setupPlayerDataTable() {
-    if ($("#PlayersContainer > table").length) {
-        var dataTable = $$$("#PlayersContainer > table").DataTable({
-            "order": [[4, "asc"], [3, "desc"]],
-            paging: false,
-            searching: true,
-            sDom: 'ft',
-            columnDefs: [{
-                targets: [0],
-                orderData: [0, 3]
-            }, {
-                targets: [1],
-                orderData: [1, 0]
-            }, {
-                targets: [2],
-                orderData: [2, 1, 0],
-                type: "rank"
-            }, {
-                targets: [3],
-                orderData: [3]
-            }, {
-                targets: [4],
-                orderData: [4]
-            }, {
-                targets: [5],
-                orderData: [5, 1, 0]
-            }],
-            "aoColumns": [
-                { "orderSequence": ["asc", "desc"] },
-                { "orderSequence": ["asc", "desc"] },
-                { "orderSequence": ["asc", "desc"] },
-                { "orderSequence": ["desc", "asc"] },
-                { "orderSequence": ["desc", "asc"] },
-                { "orderSequence": ["desc", "asc"] }
-            ]
-        });
-        loadDataTableCSS();
-        addCSS(`
-            .dataTables_filter input {
-                background: #1a1a2e;
-                color: #e0e0e0;
-                border: 1px solid #444;
-            }
-            .dataTables_filter label {
-                color: #ccc;
-            }
-        `);
-    }
-    setupUjsPlayerControls();
-}
-
 function setupUjsPlayerControls() {
     var $playersTab = $("#ujs_PlayersTabContents");
     if ($playersTab.length === 0) return;
@@ -871,14 +795,7 @@ function getUjsPlayerRows() {
 }
 
 function getUjsPlayerName($row) {
-    var $textEls = $row.find("[id^='ujs_Text_'] .ujsTextInner");
-    var name = "";
-    $textEls.first().find("span").each(function () {
-        var t = $(this).clone().children("span, img").remove().end().text().trim();
-        if (t) name = t;
-    });
-    if (!name) name = $textEls.first().text().replace(/L\d+/g, "").trim();
-    return name;
+    return $row.find("[id^='ujs_Text_'] .ujsTextInner").first().text().replace(/^\s*L\d+\s+/, "").trim();
 }
 
 function getUjsPlayerStat($row, prefix) {
@@ -934,17 +851,8 @@ function sortUjsPlayers(sortKey) {
 }
 
 
-function colorTournamentCreatorInChat() {
-    var creatorLink = $("#HostLabel a:last").attr("href");
-    addCSS(`
-        #ChatContainer a[href='` + creatorLink + `'] {
-            color: cornflowerblue
-        }
-    `)
-}
-
 function setupFindMeInTournament() {
-    $("#findMeInTournament").on("click", function (e) {
+    $(document).on("click", "#findMeInTournament", function (e) {
         e.preventDefault();
         if (!window.WlPlayer || !WlPlayer.Name) {
             log("Find Me: player data not loaded");
@@ -953,7 +861,7 @@ function setupFindMeInTournament() {
         $(".findme-highlight").removeClass("findme-highlight findme-pulse");
 
         var playerName = WlPlayer.Name.toLowerCase();
-        var $allLinks = $("#PlayersContainer a, #BracketContainer a, #Bracket a, .bracket-container a, #MainSiteContent a");
+        var $allLinks = $("#PlayersContainer a, #BracketContainer a, #Bracket a, .bracket-container a");
         var found = [];
         $allLinks.each(function () {
             if ($(this).text().trim().toLowerCase() === playerName) {
@@ -962,7 +870,7 @@ function setupFindMeInTournament() {
         });
         if (found.length === 0) {
             $(".ujsTextInner").each(function () {
-                var text = $(this).text().replace(/L\d+/g, "").trim().toLowerCase();
+                var text = $(this).text().replace(/^\s*L\d+\s+/, "").trim().toLowerCase();
                 if (text === playerName) {
                     found.push($(this));
                 }
@@ -1038,7 +946,9 @@ function displayTournamentInviter() {
 
     Database.readIndex(Database.Table.TournamentData, Database.Row.TournamentData.Id, tournamentId, function (data) {
         if (data && data.invitedBy) {
-            $("#HostLabel").after(' | <span style="color:#aaa;font-size:13px">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span>');
+            withTournamentInfoSlot(function (slot) {
+                slot.append(' | <span style="color:#aaa">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span>');
+            });
         }
     });
 }
@@ -1126,7 +1036,7 @@ function setupMailSearch() {
 }
 
 function setupClanListSearch() {
-    var $container = $("#AutoContainer, #MainSiteContent .container, .container").filter(function () {
+    var $container = $("#AutoContainer, .container").filter(function () {
         return $(this).find("a[href*='/Clans/?ID=']").length > 0;
     }).first();
     if ($container.length === 0) return;
@@ -1141,7 +1051,6 @@ function setupClanListSearch() {
         '<input type="text" id="clanSearchInput" placeholder="Search clans..." ' +
         'style="padding:6px 12px;border-radius:4px;border:1px solid #444;background:#1a1a2e;color:#e0e0e0;width:260px;font-size:14px">' +
         '<span id="clanSearchCount" style="color:#999;font-size:13px"></span>' +
-        ' <button id="loadClanCreators" style="padding:5px 12px;border-radius:4px;border:1px solid #555;background:#1a3a5c;color:#ccc;cursor:pointer;font-size:13px">Load Creators</button>' +
         '</div>';
     var $h1 = $container.find("h1:first");
     if ($h1.length) {
@@ -1157,36 +1066,6 @@ function setupClanListSearch() {
         searchTimer = setTimeout(function () {
             filterClanList(query, $clanItems);
         }, 150);
-    });
-
-    addCSS(`
-        .clan-creator-label {
-            font-size: 11px;
-            color: #999;
-            margin-left: 6px;
-            font-style: italic;
-        }
-    `);
-
-    var cache = {};
-    try {
-        var stored = sessionStorage.getItem("clanCreatorCache");
-        if (stored) cache = JSON.parse(stored);
-    } catch (e) { }
-    $clanItems.each(function () {
-        var $link = $(this).find("a[href*='/Clans/?ID=']").first();
-        var idMatch = $link.attr("href") && $link.attr("href").match(/ID=(\d+)/i);
-        if (idMatch && cache[idMatch[1]]) {
-            $link.after('<span class="clan-creator-label">by ' + cache[idMatch[1]] + '</span>');
-        }
-    });
-
-    $("#loadClanCreators").on("click", function () {
-        var $btn = $(this);
-        $btn.prop("disabled", true).text("Loading...");
-        loadClanCreatorsBatched($clanItems, function () {
-            $btn.text("Done").css("background", "#1a5c3a");
-        });
     });
 }
 
@@ -1209,174 +1088,6 @@ function filterClanList(query, $items) {
         }
     });
     $("#clanSearchCount").text(visible + " found");
-}
-
-function loadClanCreatorsBatched($items, onComplete) {
-    var cache = {};
-    try {
-        var stored = sessionStorage.getItem("clanCreatorCache");
-        if (stored) cache = JSON.parse(stored);
-    } catch (e) { }
-
-    var queue = [];
-    $items.each(function () {
-        var $li = $(this);
-        var $link = $li.find("a[href*='/Clans/?ID=']").first();
-        if (!$link.length) return;
-        var href = $link.attr("href");
-        var idMatch = href && href.match(/ID=(\d+)/i);
-        if (!idMatch) return;
-        var clanId = idMatch[1];
-        if (cache[clanId]) {
-            if (!$link.next(".clan-creator-label").length) {
-                $link.after('<span class="clan-creator-label">by ' + cache[clanId] + '</span>');
-            }
-            return;
-        }
-        queue.push({ $link: $link, clanId: clanId, href: href });
-    });
-
-    var idx = 0;
-    var batchSize = 3;
-    function processNext() {
-        if (idx >= queue.length) {
-            if (onComplete) onComplete();
-            return;
-        }
-        var batch = queue.slice(idx, idx + batchSize);
-        idx += batchSize;
-        var pending = batch.length;
-        $.each(batch, function (_, item) {
-            var fullUrl = item.href.indexOf("http") === 0 ? item.href : "https://war.app" + item.href;
-            $.ajax({ url: fullUrl, type: 'GET', timeout: 15000 }).done(function (response) {
-                var creatorName = "";
-                var match = response.match(/Created\s+by\s+<a[^>]*>([^<]+)<\/a>/i);
-                if (match) {
-                    creatorName = match[1].trim();
-                } else {
-                    var textMatch = response.match(/Created\s+by\s+([^\n<]+)/i);
-                    if (textMatch) creatorName = textMatch[1].trim();
-                }
-                if (creatorName) {
-                    cache[item.clanId] = creatorName;
-                    try { sessionStorage.setItem("clanCreatorCache", JSON.stringify(cache)); } catch (e) { }
-                    if (!item.$link.next(".clan-creator-label").length) {
-                        item.$link.after('<span class="clan-creator-label">by ' + creatorName + '</span>');
-                    }
-                }
-            }).fail(function () {
-                log("Error fetching clan " + item.clanId);
-            }).always(function () {
-                pending--;
-                if (pending === 0) setTimeout(processNext, 500);
-            });
-        });
-    }
-    processNext();
-}
-
-function setupClanPageCreator() {
-    addCSS(`
-        #clanCreatorBanner {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            border: 1px solid #444;
-            border-radius: 6px;
-            padding: 8px 14px;
-            margin: 10px 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            color: #ccc;
-        }
-        #clanCreatorBanner .creator-name {
-            color: #5dade2;
-            font-weight: bold;
-        }
-    `);
-
-    var attempts = 0;
-    var maxAttempts = 40;
-    var interval = setInterval(function () {
-        attempts++;
-        if (attempts > maxAttempts) {
-            clearInterval(interval);
-            return;
-        }
-
-        var creatorName = "";
-        var creatorLink = "";
-
-        $(".ujsTextInner").each(function () {
-            var text = $(this).text();
-            if (/Created\s+by/i.test(text)) {
-                var $a = $(this).find("a[href*='Profile']");
-                if ($a.length) {
-                    creatorName = $a.text().trim();
-                    creatorLink = $a.attr("href");
-                } else {
-                    $(this).find("span").each(function () {
-                        var t = $(this).clone().children().remove().end().text().trim();
-                        if (t && !/Created/i.test(t) && !/by/i.test(t)) {
-                            creatorName = t;
-                        }
-                    });
-                    if (!creatorName) {
-                        var match = text.match(/Created\s+by\s+(.+)/i);
-                        if (match) creatorName = match[1].trim();
-                    }
-                }
-                return false;
-            }
-        });
-
-        if (!creatorName) {
-            $("td, span, div, font").each(function () {
-                var txt = $(this).text();
-                if (/Created\s+by/i.test(txt) && txt.length < 200) {
-                    var $a = $(this).find("a[href*='Profile']");
-                    if ($a.length) {
-                        creatorName = $a.text().trim();
-                        creatorLink = $a.attr("href");
-                    } else {
-                        var match = txt.match(/Created\s+by\s+(.+)/i);
-                        if (match) creatorName = match[1].trim();
-                    }
-                    return false;
-                }
-            });
-        }
-
-        if (creatorName) {
-            clearInterval(interval);
-            if ($("#clanCreatorBanner").length) return;
-
-            var nameHtml = creatorLink
-                ? '<a href="' + creatorLink + '" class="creator-name">' + creatorName + '</a>'
-                : '<span class="creator-name">' + creatorName + '</span>';
-
-            var banner = '<div id="clanCreatorBanner">Created by ' + nameHtml + '</div>';
-
-            var $target = $("#MainSiteContent h1, #MainSiteContent h2, [id^='ujs_ClanTitle'], [id^='ujs_ClanName']").first();
-            if ($target.length) {
-                $target.after(banner);
-            } else {
-                var $auto = $("#AutoContainer, #MainSiteContent").first();
-                if ($auto.length) $auto.prepend(banner);
-            }
-
-            var idMatch = location.href.match(/ID=(\d+)/i);
-            if (idMatch) {
-                var cache = {};
-                try {
-                    var stored = sessionStorage.getItem("clanCreatorCache");
-                    if (stored) cache = JSON.parse(stored);
-                } catch (e) { }
-                cache[idMatch[1]] = creatorName;
-                try { sessionStorage.setItem("clanCreatorCache", JSON.stringify(cache)); } catch (e) { }
-            }
-        }
-    }, 500);
 }
 
 function setupTournamentTable() {
@@ -1623,7 +1334,7 @@ window.bookmarkForumThread = function () {
     $("#bookmarkName").val(title);
 };
 window.bookmarkTournament = function () {
-    var title = $("#TournamentName").text().replace("Tournament: ", "").trim();
+    var title = tournamentNameFromTitle(document.title);
     var url = window.location.href;
 
     showAddBookmark();
@@ -1679,135 +1390,6 @@ function setupLevelBookmark() {
     $("h1").after(`
        <a style="cursor:pointer;color: #5a9da5;" onclick="bookmarkLevel()">Bookmark</a><br>
     `)
-}
-function setupLadderClotOverview() {
-    console.log("setupLadderClotOverview");
-    $("h1").text($("h1").text() + " & Community Events");
-    loadClots(function (clotInfo) {
-        console.log("clotInfo");
-        console.log(clotInfo);
-        if (!clotInfo) {
-            return
-        }
-        var ladders = clotInfo['leagues'];
-        var md = "";
-        var rt = "";
-        var leagues = "";
-        var counter = 0;
-        $.each(ladders, function (key, val) {
-            if (val.type == "realtime") {
-                rt += "<li><big><a target='_blank' href='" + htmlEscape(safeUrl(val.url)) + "'>" + htmlEscape(val.name) + "</a> using Real-Time boot times</big></li><br><br>";
-                counter++
-            } else if (val.type == "multiday") {
-                md += "<li><big><a target='_blank' href='" + htmlEscape(safeUrl(val.url)) + "'>" + htmlEscape(val.name) + "</a> using Multi-Day boot times</big></li><br><br>";
-                counter++
-            } else {
-                leagues += `<li><big><a target='_blank' href="${htmlEscape(safeUrl(val.url))}">${htmlEscape(val.name)}</a> ${getPlayerString(val.players)}</big></li><br><br>`;
-                counter++
-            }
-
-        });
-        var $mainSite = $("#AutoContainer > div");
-        $mainSite.append("War.app currently has " + toWords(counter) + " Community Events:<br><br>");
-
-        $mainSite.append("<ul id='clotInfo'></ul>");
-        let $clotInfo = $("#clotInfo");
-        $clotInfo.append(rt);
-        $clotInfo.append(md);
-        $clotInfo.append(leagues)
-    });
-}
-
-function getPlayerString(players) {
-    if (players) {
-        return `<span class='clotPlayers'>${htmlEscape(players)} players participating</span>`
-    }
-    return ""
-}
-
-function loadClots(cb) {
-    log("loading clots");
-    $.ajax({
-        type: 'GET',
-        url: 'https://raw.githubusercontent.com/psenough/wl_clot/master/hub/list.jsonp',
-        dataType: 'text',
-        crossDomain: true
-    }).done(function (response) {
-        try {
-            var json = parseClotList(response);
-            var clotInfo = JSON.stringify(json);
-            sessionStorage.setItem('clots', clotInfo);
-            if (cb) {
-                cb(json)
-            }
-
-            var datetime = json.datetime;
-            log("clot update " + datetime)
-
-        } catch (e) {
-            log("Error parsing CLOTs");
-            log(e)
-        }
-    }).fail(function (e) {
-        log("Error loading CLOTs");
-        log(e);
-    });
-}
-
-function parseClotList(response) {
-    return JSON.parse(response.replace(/^\s*\w*\s*\(\s*/, '').replace(/\s*\)\s*;?\s*$/, '')).data;
-}
-
-function toWords(number) {
-
-    var NS = [
-        { value: 1000000000000000000000, str: "sextillion" },
-        { value: 1000000000000000000, str: "quintillion" },
-        { value: 1000000000000000, str: "quadrillion" },
-        { value: 1000000000000, str: "trillion" },
-        { value: 1000000000, str: "billion" },
-        { value: 1000000, str: "million" },
-        { value: 1000, str: "thousand" },
-        { value: 100, str: "hundred" },
-        { value: 90, str: "ninety" },
-        { value: 80, str: "eighty" },
-        { value: 70, str: "seventy" },
-        { value: 60, str: "sixty" },
-        { value: 50, str: "fifty" },
-        { value: 40, str: "forty" },
-        { value: 30, str: "thirty" },
-        { value: 20, str: "twenty" },
-        { value: 19, str: "nineteen" },
-        { value: 18, str: "eighteen" },
-        { value: 17, str: "seventeen" },
-        { value: 16, str: "sixteen" },
-        { value: 15, str: "fifteen" },
-        { value: 14, str: "fourteen" },
-        { value: 13, str: "thirteen" },
-        { value: 12, str: "twelve" },
-        { value: 11, str: "eleven" },
-        { value: 10, str: "ten" },
-        { value: 9, str: "nine" },
-        { value: 8, str: "eight" },
-        { value: 7, str: "seven" },
-        { value: 6, str: "six" },
-        { value: 5, str: "five" },
-        { value: 4, str: "four" },
-        { value: 3, str: "three" },
-        { value: 2, str: "two" },
-        { value: 1, str: "one" }
-    ];
-
-    for (var n of NS) {
-        if (number >= n.value) {
-            if (n.value >= 100) {
-                var remainder = number % n.value;
-                return toWords(Math.floor(number / n.value)) + ' ' + n.str + (remainder > 0 ? ' ' + toWords(remainder) : '');
-            }
-            return n.str + (number > n.value ? ' ' + toWords(number - n.value) : '');
-        }
-    }
-    return '';
 }
 window.userscriptSettings = [
     {
@@ -2500,10 +2082,6 @@ function pageIsMapsPage() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/maps/i);
 }
 
-function pageIsNewThread() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/NewThread.*/i);
-}
-
 function pageIsForumThread() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/[0-9]+.*/i);
 }
@@ -2520,11 +2098,6 @@ function pageIsSubForum() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/[A-Z]+.*/i);
 }
 
-function pageIsLadderOverview() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Ladders/);
-}
-
-
 function pageIsClanForumThread() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Discussion\/\?ID=[0-9]+.*/);
 }
@@ -2533,16 +2106,8 @@ function pageIsClanList() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Clans\/List/i);
 }
 
-function pageIsClanPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Clans\/\?ID=\d+/i);
-}
-
 function pageIsTournament() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/Tournament\?ID=[0-9]+/i);
-}
-
-function pageIsTournamentOverview() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/Tournaments\/$/i);
 }
 
 function pageIsGame() {
@@ -2582,16 +2147,9 @@ function pageIsMyMail() {
 }
 
 function pageIsBlacklistPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/ManageBlackList.*/i);
+    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/ManageBl(?:ack|ock)List.*/i);
 }
 
-function pageIsMapPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Map.*/i);
-}
-
-function mapIsPublic() {
-    return $("a:contains('Start a')").length > 0;
-}
 function addCSS(css) {
     var head = document.head || document.getElementsByTagName('head')[0];
     var style = document.createElement('style');
@@ -2884,7 +2442,7 @@ function hideCoinsGlobally() {
     $("body").find("a[href='/Coins/']").css('display', 'none');
 
     $("a[href='/Win-Money']").css('display', 'none');
-    $("#OpenTournamentsTable").css('display', 'none');
+    $("#OpenTournamentTable").css('display', 'none');
 }
 
 const totalPointsPerLevel = {
@@ -2961,8 +2519,13 @@ const totalPointsPerLevel = {
 };
 
 function displayTotalPointsEarned() {
-    let totalPoints = totalPointsPerLevel[WlPlayer.Level] + WlPlayer.PointsThisLevel;
-    $(".container.px-4").append(`<br><span>In total, you've earned <b>${totalPoints.toLocaleString("en")}</b> points.</span>`)
+    var $status = $(".container.px-4").first();
+    var match = /level\s+(\d+)[^(]*\(([\d,]+)\s*\/\s*[\d,]+\)/i.exec($status.text());
+    if (!match || totalPointsPerLevel[match[1]] === undefined) {
+        return;
+    }
+    var totalPoints = totalPointsPerLevel[match[1]] + Number(match[2].replace(/,/g, ""));
+    $status.append(`<br><span>In total, you've earned <b>${totalPoints.toLocaleString("en")}</b> points.</span>`);
 }
 function hideExtraBlanks() {
     var content = $(".container .my-2:first-of-type div.p-3");
@@ -2987,16 +2550,6 @@ function foldProfileStats() {
     $('h3.expander').click(function (e) {
         $(this).next().slideToggle();
     });
-}
-
-function showGlobalWinRate() {
-    var regex = /\((\d*)[^\d]*(\d*).*\)/g;
-    let $h3 = $("h3:contains('Ranked Games')");
-    var text = $h3.next().find("span:contains('ranked games')").text();
-    var matches = regex.exec(text);
-    if (matches !== null) {
-        $h3.next().find("span:contains('ranked games')").append(", " + Math.round(matches[1] / matches[2] * 100) + "%")
-    }
 }
 
 function loadCommunityLevelRecords() {
@@ -3066,14 +2619,6 @@ function setupForumOverviewFilters() {
 
 function setupForumThreadHiding() {
     setupSpammersBeGone();
-    addCSS(`
-        #MainSiteContent > table table tr td:nth-of-type(4), #MainSiteContent > table table tr td:nth-of-type(5) {
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-    `)
 }
 
 function setupDashboard() {
@@ -3102,7 +2647,6 @@ function setupDashboard() {
         setupFixedWindowWithScrollableGames();
     }, function () {
         createSelector("body", "overflow: auto");
-        createSelector("#MainSiteContent > table", "width: 100%;max-width: 1400px;");
         addCSS(`
             @media (max-width: 1050px) {
                #MyGamesTable > thead > tr * {
@@ -3146,28 +2690,19 @@ function setupDashboard() {
 
 function pageFeatures() {
     return [
-        { name: "Hide thread controls when posting", section: "Forum", match: pageIsNewThread, run: cleanUpNewThreadPage },
         { name: "dashboard loader", match: pageIsDashboard, run: showDashboardLoader },
         { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
-        { name: "Rate Map link", section: "Maps & levels", match: function () { return pageIsMapPage() && mapIsPublic(); }, run: addRateMapLink },
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
         { name: "Bookmark and Find Me links", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
-        { name: "Highlight creator in chat", section: "Tournaments", match: pageIsTournament, run: colorTournamentCreatorInChat },
         { name: "Find Me", section: "Tournaments", match: pageIsTournament, run: setupFindMeInTournament },
-        { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
-        { name: "Fixed-height tournament list", section: "Tournaments", match: pageIsTournamentOverview, run: setupTournamentOverviewPage },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
-        { name: "Clan creator banner", section: "Clans", match: pageIsClanPage, run: setupClanPageCreator },
-        { name: "Community events list", section: "Community", match: pageIsLadderOverview, run: setupLadderClotOverview },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
         { name: "Level bookmark link", section: "Maps & levels", match: pageIsLevelOverview, run: setupLevelBookmark },
-        { name: "Profile box styling", section: "Profile", match: pageIsProfile, run: styleProfileBoxes },
         { name: "Collapse blank lines", section: "Profile", match: pageIsProfile, run: hideExtraBlanks },
         { name: "Trophies", section: "Profile", match: pageIsProfile, run: displayTrophies },
         { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
-        { name: "Global win rate", section: "Profile", match: pageIsProfile, run: showGlobalWinRate },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];
@@ -3182,7 +2717,8 @@ function mainFeatures() {
         { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
         { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
-        { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
+        { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
+        { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
@@ -3260,8 +2796,8 @@ function runFeatures(features) {
 }
 
 function setupBlacklistCounter() {
-    var $blacklist = $("#MainSiteContent ul");
-    $blacklist.first().before(`<span id="numBlacklisted">You have <b></b> players on your blacklist.</span>`);
+    var $blacklist = $("li[id^='ListItem_']").first().parent("ul");
+    $blacklist.before(`<span id="numBlacklisted">You have <b></b> players on your block list.</span>`);
     var updateBlacklistCount = function () {
         $("#numBlacklisted b").text($blacklist.find("li:visible").length);
     };
@@ -3336,21 +2872,11 @@ function registerDataTableSorting() {
     });
 }
 
-function cleanUpNewThreadPage() {
-    $("[onclick='undoIgnore()']").closest("th").remove();
-    $(".checkbox").closest("td").remove()
-}
-
 function showDashboardLoader() {
     $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
     $(".container-fluid").show();
     window.lastRefresh;
     window.lastClick = new Date();
-}
-
-function addRateMapLink() {
-    var id = location.href.match(/[^\d]*([\d]*)/)[1];
-    $("#MainSiteContent ul").append(`<li><a href="https://war.app/RateMap?ID=${id}" target="_blank">Rate Map</a></li>`)
 }
 
 function isAnyForumThread() {
@@ -3373,22 +2899,48 @@ function setupForumThreadTweaks() {
     `)
 }
 
-function setupTournamentPage() {
-    window.setTimeout(function () {
-        setupPlayerDataTable();
-    }, 50);
-    $("#HostLabel").after(" | <a style='cursor:pointer' href='#' onclick='bookmarkTournament()'>Bookmark</a> | <a style='cursor:pointer' href='#' id='findMeInTournament'>Find Me</a>");
-    $("#HostLabel").css("display", "inline-block");
-    $("#LeftToStartMessage").text(" | " + $("#LeftToStartMessage").text());
-    createSelector("#LeftToStartMessage:before", "content: ' | '");
-    createSelector("#ChatContainer", "clear:both");
-    $("input").on("keypress keyup keydown", function (e) {
-        e.stopPropagation()
-    });
-    addCSS(`
-        #ChatContainer div {
-            margin-bottom: 10px;
+function whenElementAppears(selector, callback) {
+    var element = document.querySelector(selector);
+    if (element) {
+        callback(element);
+        return;
+    }
+    var observer = new MutationObserver(function () {
+        var found = document.querySelector(selector);
+        if (found) {
+            observer.disconnect();
+            callback(found);
         }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.setTimeout(function () {
+        observer.disconnect();
+    }, 30000);
+}
+
+// war.app draws the tournament page client-side with absolutely positioned labels, so extras sit
+// to the right of the "Created by" text instead of flowing into the labels below it.
+function withTournamentInfoSlot(callback) {
+    whenElementAppears("#ujs_CreatorLabel_tmp", function (label) {
+        var slot = $("#tournamentInfoSlot");
+        if (slot.length === 0) {
+            slot = $('<span id="tournamentInfoSlot" style="position: absolute; left: 100%; top: 0; margin-left: 8px; white-space: nowrap"></span>');
+            $(label).append(slot);
+        }
+        callback(slot);
+    });
+}
+
+function tournamentNameFromTitle(title) {
+    return title.replace(/^Tournament:\s*/i, "").replace(/\s+-\s+(?:War\.app|Warzone)\b.*$/i, "").trim();
+}
+
+function setupTournamentPage() {
+    withTournamentInfoSlot(function (slot) {
+        slot.prepend("| <a href='#' onclick='bookmarkTournament(); return false;'>Bookmark</a> | <a href='#' id='findMeInTournament'>Find Me</a>");
+    });
+    whenElementAppears("#ujs_PlayersContainer", setupUjsPlayerControls);
+    addCSS(`
         .findme-highlight {
             background: rgba(255,215,0,0.35) !important;
             outline: 2px solid gold;
@@ -3405,20 +2957,6 @@ function setupTournamentPage() {
     `);
 }
 
-function setupTournamentOverviewPage() {
-    setupTournamentTableStyles();
-    $(window).resize(function () {
-        setTournamentTableHeight();
-    });
-    $(window).on("scroll", function () {
-        $(window).scrollTop(0)
-    })
-}
-
-function styleProfileBoxes() {
-    createSelector(".profileBox", "background-image: url(\'https://d2wcw7vp66n8b3.cloudfront.net/Images/ProfileSpeedBackground.png\'); background-repeat: no-repeat; text-align: left; padding:10px;margin-top: 12px;");
-}
-
 function setupMapOfTheWeekStyles() {
     addCSS(`
         .dataTable table {
@@ -3431,12 +2969,11 @@ window.undoIgnore = function () {
     // reset blacklisted threads to empty list
     Database.clear(Database.Table.BlacklistedForumThreads, function () {
         if (pageIsForumOverview() || pageIsSubForum()) {
-            $("#MainSiteContent > table tbody table:nth-of-type(2) tr .checkbox").prop("checked", false);
-            $("#MainSiteContent > table tbody table:nth-of-type(2) tr").show()
+            $(".table tr").show();
         } else if (pageIsDashboard()) {
-            $("#ForumTable tr").show()
+            $("#ForumTable tr").show();
         } else {
-            location.reload;
+            location.reload();
         }
     })
 
@@ -4298,7 +3835,6 @@ function setupFixedWindowStyles() {
     `);
 
     createSelector("#switchGameRadio label:hover", "border: 1px solid rgb(89, 180, 212);border-image-source: initial;border-image-slice: initial;border-image-width: initial;border-image-outset: initial;border-image-repeat: initial;background:rgb(0, 120, 163);font-weight: bold;color: rgb(255, 255, 255);");
-    createSelector("#MainSiteContent > table > tbody > tr > td", "width:100%");
     createSelector("h2 + span", "margin-right: 50px;");
     createSelector("body", "overflow:hidden");
     createSelector(".adsbygoogle", "margin-top: 25px;");
