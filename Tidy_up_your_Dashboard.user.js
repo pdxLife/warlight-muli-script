@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.9.0
+// @version 3.10.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.9.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.10.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -2390,6 +2390,10 @@ function pageIsMultiplayer() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer.*/i);
 }
 
+function pageIsOpenGamesPage() {
+    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/OpenGames(?:[?#].*)?$/i);
+}
+
 function pageIsPointsPage() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Points.*/i);
 }
@@ -3099,6 +3103,7 @@ function mainFeatures() {
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
+        { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
     ];
@@ -3830,6 +3835,122 @@ function setupTurnAlerts() {
             refreshMyGames();
         }
     }, TURN_CHECK_INTERVAL);
+}
+
+function parseBootTime(text) {
+    var units = { minute: 1, hour: 60, day: 1440, week: 10080 };
+    var minutes = null;
+    String(text).replace(/(\d+)\s*(minute|hour|day|week)s?/gi, function (all, amount, unit) {
+        minutes = (minutes || 0) + Number(amount) * units[unit.toLowerCase()];
+    });
+    return minutes;
+}
+
+function parseFilterKeywords(text) {
+    return String(text).split(",").map(function (word) {
+        return word.trim().toLowerCase();
+    }).filter(function (word) {
+        return word.length > 0;
+    });
+}
+
+function normalizeOpenGamesFilter(value) {
+    value = value || {};
+    return {
+        hideAutoGames: value.hideAutoGames === true,
+        hideCoinGames: value.hideCoinGames === true,
+        minBootHours: Math.max(0, Number(value.minBootHours) || 0),
+        keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : []
+    };
+}
+
+function openGameIsFiltered(row, filter) {
+    var link = $(row).find("td").eq(1).find("a").first();
+    if (filter.hideAutoGames && /[?&]AutoGameID=/i.test(link.attr("href") || "")) {
+        return true;
+    }
+    if (filter.hideCoinGames && /Entry fee:/i.test($(row).find("font").text())) {
+        return true;
+    }
+    var bootMinutes = parseBootTime($(row).find(".BootTimeLabel").text());
+    if (filter.minBootHours > 0 && bootMinutes !== null && bootMinutes < filter.minBootHours * 60) {
+        return true;
+    }
+    var name = link.text();
+    return filter.keywords.some(function (keyword) {
+        var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp("(?:^|[^\\p{L}\\p{N}])" + escaped + "(?:$|[^\\p{L}\\p{N}])", "iu").test(name);
+    });
+}
+
+function applyOpenGamesFilter(filter) {
+    var rows = $("#OpenGamesTable tr.GameRow");
+    var filtered = rows.filter(function () {
+        return openGameIsFiltered(this, filter);
+    });
+    rows.not(filtered).removeClass("tuyd-filtered");
+    filtered.addClass("tuyd-filtered");
+    $("#OpenGamesFilterCount").text(filtered.length > 0 ? filtered.length + " hidden" : "");
+}
+
+function readOpenGamesFilterForm(panel) {
+    return normalizeOpenGamesFilter({
+        hideAutoGames: panel.find("[name=hideAutoGames]").prop("checked"),
+        hideCoinGames: panel.find("[name=hideCoinGames]").prop("checked"),
+        minBootHours: panel.find("[name=minBootHours]").val(),
+        keywords: parseFilterKeywords(panel.find("[name=keywords]").val())
+    });
+}
+
+function setupOpenGamesFilter() {
+    var table = $("#OpenGamesTable");
+    if (table.length === 0) {
+        return;
+    }
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "openGamesFilter", function (setting) {
+        var filter = normalizeOpenGamesFilter(setting && setting.value);
+        addCSS(`
+            #OpenGamesTable tr.tuyd-filtered { display: none; }
+            #OpenGamesFilterCount { color: #999; letter-spacing: 0; margin-left: 4px; }
+            #OpenGamesFilterPanel td { padding: 8px 10px; }
+            #OpenGamesFilterPanel label { display: block; margin: 0 0 6px; font-weight: normal; }
+            #OpenGamesFilterPanel input[type=number] { width: 60px; }
+            #OpenGamesFilterPanel input[type=text] { width: 260px; max-width: 100%; }
+            #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text] { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+        `);
+        table.find("thead h2").parent().append(` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`);
+        var panel = $(`
+            <tr id="OpenGamesFilterPanel" style="display: none"><td colspan="2">
+                <label><input type="checkbox" name="hideAutoGames"> Hide Auto Games</label>
+                <label><input type="checkbox" name="hideCoinGames"> Hide coin games</label>
+                <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours (0 = off)</label>
+                <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
+            </td></tr>`);
+        panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
+        panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
+        panel.find("[name=minBootHours]").val(filter.minBootHours);
+        panel.find("[name=keywords]").val(filter.keywords.join(", "));
+        table.find("thead").first().append(panel);
+        $("#OpenGamesFilterLink").on("click", function (e) {
+            e.preventDefault();
+            panel.toggle();
+        });
+        panel.find("input").on("change", function () {
+            filter = readOpenGamesFilterForm(panel);
+            Database.update(Database.Table.Settings, { name: "openGamesFilter", value: filter }, undefined);
+            applyOpenGamesFilter(filter);
+        });
+        applyOpenGamesFilter(filter);
+        // The site re-renders rows for "Show more" and the pace buttons; changes in thead are our own.
+        new MutationObserver(function (mutations) {
+            var rowsChanged = mutations.some(function (mutation) {
+                return $(mutation.target).closest("thead").length === 0;
+            });
+            if (rowsChanged) {
+                applyOpenGamesFilter(filter);
+            }
+        }).observe(table[0], { childList: true, subtree: true });
+    });
 }
 
 function updateGameCounts(page) {

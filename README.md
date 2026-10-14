@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.9.0  
+> **Version:** 3.10.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -20,6 +20,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 - **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam). One request refreshes both tables, and the My Games and open-games counts stay current.
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
 - **Your-turn alerts** — the tab title shows how many games are waiting for you, e.g. `(2) Multi-Player Dashboard`. While the dashboard tab is open but not in focus, it re-checks your games every 5 minutes, and can show a desktop notification when a game becomes your turn (opt-in setting).
+- **Open Games filter** — a **Filter** link in the Open Games header (dashboard and View All page) hides Auto Games, coin games, games with a boot time under a number of hours you set, and games whose name contains any of your keywords (whole words, comma-separated). The header shows how many games are hidden.
 - **Vacation banner** — displays a notice when your account is on vacation.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
 - **Tournament invite highlighting** — optional colored background on tournament invite rows.
