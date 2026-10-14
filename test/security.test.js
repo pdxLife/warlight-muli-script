@@ -108,3 +108,12 @@ test("every @require is pinned by hash and moment is gone", () => {
     }
     assert.doesNotMatch(source, /moment/);
 });
+
+test("profile text such as a player's bio stays text when stat sections are made collapsible", () => {
+    const escaped = PAYLOAD.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const { dom, $ } = createDom(`<div class="container"><div class="my-2"><div class="fill bg-gray p-3"><big>Level 64</big><br>${escaped}<h3>Stats</h3>${escaped}</div></div></div>`);
+    const ctx = load(["foldProfileStats"], { ...domGlobals(dom, $), addCSS: () => { } });
+    ctx.foldProfileStats();
+    assertInert(dom.window.document.body);
+    assert.equal(dom.window.document.body.textContent.split(PAYLOAD).length - 1, 2);
+});

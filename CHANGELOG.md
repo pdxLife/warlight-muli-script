@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.13.1
+
+- Credit the original author, Muli, in the script header, the README and the settings menu, with links to Muli's profile and the original forum thread.
+- **Security:** making profile stat sections collapsible re-inserted the profile's text as HTML, so a player could put markup in their bio that ran on your page when you viewed their profile. The text now stays text.
+- Saving a new right-column order reloads the dashboard, so the new order (and un-hidden tables) show right away.
+- Refreshing the dashboard no longer nests a new table body inside the old one each time, and no longer fetches Past Games until you open that tab.
+- Removed leftover code from the original script's old popup system, unused helpers, and selectors that no longer match anything on war.app.
+
 ## 3.13.0
 
 Checked every feature against the current war.app and fixed what its redesign broke.

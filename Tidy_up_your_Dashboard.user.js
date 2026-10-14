@@ -7,7 +7,8 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.13.0
+// @version 3.13.1
+// @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -74,9 +75,7 @@ function loadPlayerData() {
         ProfileId: null,
         ProfileToken: [],
         isMember: null,
-        OnVacationUntil: null,
-        Level: null,
-        PointsThisLevel: null
+        OnVacationUntil: null
     }
     let profileUrl = "https://war.app" + $profileLink.attr('href');
     $.ajax({ url: profileUrl }).done(function (response) {
@@ -88,10 +87,6 @@ function loadPlayerData() {
             player.ProfileToken = extractProfileToken(profileUrl);
             player.isMember = page.find("#MemberIcon").length > 0;
             player.OnVacationUntil = getVacationEndDate(page);
-            player.Level = page.find("#LevelLink").text().trim().replace("L", "")
-            var titleAttr = page.find("#LevelLink").attr("title");
-            var pointsMatch = titleAttr ? titleAttr.match(/Progress to next:\s*([\d,]+)/) : null;
-            player.PointsThisLevel = pointsMatch ? Number(pointsMatch[1].replace(/[^\d]/g, '')) : 0;
 
             window.WlPlayer = player;
 
@@ -861,21 +856,13 @@ function setupFindMeInTournament() {
         $(".findme-highlight").removeClass("findme-highlight findme-pulse");
 
         var playerName = WlPlayer.Name.toLowerCase();
-        var $allLinks = $("#PlayersContainer a, #BracketContainer a, #Bracket a, .bracket-container a");
         var found = [];
-        $allLinks.each(function () {
-            if ($(this).text().trim().toLowerCase() === playerName) {
+        $(".ujsTextInner").each(function () {
+            var text = $(this).text().replace(/^\s*L\d+\s+/, "").trim().toLowerCase();
+            if (text === playerName) {
                 found.push($(this));
             }
         });
-        if (found.length === 0) {
-            $(".ujsTextInner").each(function () {
-                var text = $(this).text().replace(/^\s*L\d+\s+/, "").trim().toLowerCase();
-                if (text === playerName) {
-                    found.push($(this));
-                }
-            });
-        }
 
         if (found.length === 0) {
             var $msg = $('<span id="findMeMsg" style="color:#ff6b6b;margin-left:8px">Not found in this tournament</span>');
@@ -1215,7 +1202,6 @@ function moveBookmark(bookmark, previousBookmark1, previousBookmark2) {
         $("#bookmarkURL").val('');
         $("#bookmarkName").val('');
         $("#bookmarkNewWindow").prop('checked', false);
-        $(".overlay").fadeOut();
         refreshBookmarks();
     })
 }
@@ -1308,7 +1294,6 @@ window.saveBookmark = function () {
     $bookmarkURL.val('');
     $bookmarkName.val('');
     $bookmarkNewWindow.prop('checked', false);
-    $(".overlay").fadeOut();
 };
 
 function normalizeBookmarkUrl(url) {
@@ -1586,6 +1571,7 @@ function setupUserscriptMenu() {
                 ${inputs}
               </div>
               <div class="modal-footer">
+                <span class="mr-auto text-muted" style="font-size: 13px">Originally created by <a href="https://war.app/Profile?p=2211733141&u=Muli_1" target="_blank" rel="noopener">Muli</a> · <a href="https://www.warzone.com/Forum/106092" target="_blank" rel="noopener">Forum thread</a></span>
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary close-userscript" data-dismiss="modal">Close & Refresh</button>
               </div>
@@ -1593,7 +1579,6 @@ function setupUserscriptMenu() {
           </div>
         </div>
     `);
-    $("body").append('<ul class="custom-menu"><div class="content"></div></ul>');
     if (typeof $().popover === 'function') {
         $("[data-toggle=popover]").popover({
             trigger: 'focus'
@@ -1605,17 +1590,9 @@ function setupUserscriptMenu() {
     });
     $("#AccountDropDown").next(".dropdown-menu").append('<div class="dropdown-divider"></div><a class="dropdown-item " href="#" data-toggle="modal" data-target="#userscriptMenu">Muli\'s Userscript</a>');
     $(".close-userscript").on("click", function () {
-        $(".userscript-show").fadeOut();
-        $(".overlay").fadeOut();
         location.reload();
     });
-    $(".close-popup-img").on("click", function () {
-        $(".userscript-show").fadeOut();
-        $(".overlay").fadeOut();
-        $("embed#main").css('opacity', '1');
-    });
     $("#hideCoinsGlobally").parent().parent().after('<button class="btn btn-primary" data-toggle="modal" data-target="#dashboardTableSortMenu" style="margin-top:15px;">Sort Right Column Tables</button><br>');
-    createSelector("#sortTables", "margin-top: 5px");
     addCSS(`
         .userscriptSettingsButtons {
             display: flex;
@@ -1721,11 +1698,6 @@ function setupUserscriptMenu() {
               </div>
             </div>
         `);
-        $(".close-popup-img").off();
-        $(".close-popup-img").on("click", function () {
-            $(".popup").fadeOut();
-            $(".overlay").fadeOut();
-        });
         $(".tableSortUp").on("click", function () {
             $(".sortTableHighlight").removeClass("sortTableHighlight");
             var table = $(this).closest(".sortableLadder");
@@ -1760,7 +1732,6 @@ function importSettings() {
     } catch (e) {
         log(e);
         CreateModal("mulisuserscript", "Error", "There was an error importing the settings.");
-        $(".overlay").fadeOut();
         return;
     }
     wljs_WaitDialogJS.Start(null, "Importing Settings...")
@@ -1804,28 +1775,10 @@ function exportSettings() {
     })).then(function (settings) {
         var settingsString = btoa(JSON.stringify(settings));
         $("#exportSettingsBox").html(settingsString);
-        showPopup(".exportSettings-show");
         $("#downloadExportSettingsFile").click(function () {
             this.href = "data:text/plain;charset=UTF-8," + settingsString;
         });
     });
-}
-
-function showPopup(selector) {
-    if ($(selector).length > 0) {
-        $(".popup").fadeOut();
-        $(selector).fadeIn();
-        $(".overlay").fadeIn();
-        makePopupVisible();
-    }
-}
-
-function makePopupVisible() {
-    let popup = $(".popup600:visible");
-    if (popup.offset() && popup.offset().top + popup.height() + 150 > $(window).height() || (popup.offset() && popup.offset().top < 100)) {
-        popup.css("margin-top", $(window).height() - 250 - popup.height());
-        $(".popup600:visible .head").css("margin-top", $(window).height() - 250 - popup.height() + 2)
-    }
 }
 
 function getSortTables(callback) {
@@ -1944,9 +1897,8 @@ window.saveTableSort = function () {
         value: tables
     };
     Database.update(Database.Table.Settings, tableSort, undefined, function () {
-        $("#sortTablePopup").fadeOut();
-        $(".overlay").fadeOut();
-        refreshOpenGames();
+        // A hidden table is removed from the page, so only a reload can bring it back.
+        location.reload();
     })
 };
 
@@ -2050,10 +2002,6 @@ function ifSettingIsEnabled(setting, positive, negative, cb) {
         }
     })
 }
-function pageIsMultiplayer() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer.*/i);
-}
-
 function pageIsOpenGamesPage() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/OpenGames(?:[?#].*)?$/i);
 }
@@ -2072,10 +2020,6 @@ function pageIsProfile() {
 
 function pageIsLevelOverview() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/SinglePlayer\/Level\?ID=[0-9]+$/i);
-}
-
-function pageIsLevelPlayLog() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/SinglePlayer\/PlayLog\?ID=[0-9]+$/i);
 }
 
 function pageIsMapsPage() {
@@ -2124,10 +2068,6 @@ function pageIsDesignMap() {
 
 function pageIsCommonGames() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/CommonGames\?p=[0-9]+$/i);
-}
-
-function pageIsQuickmatch() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/multiplayer\?quickmatch/i);
 }
 
 function pageIsCommunityLevels() {
@@ -2247,39 +2187,12 @@ function setGlobalStyles() {
     $("tr:contains('WarLight Shop'), tr:contains('War.app Shop')").closest(".dataTable").attr("id", "ShopTable");
     createSelector('.help-icon', 'display:inline-block;position:absolute; margin-left:10px;margin-top: 2px;cursor:pointer; height: 15px; width: 15px;');
     var winHeight = $(window).height();
-    createSelector(".popup", "position: fixed;;left: 50%;background: #171717;top: 100px;z-index: 9999; color:white;padding:60px 30px 30px 30px;border: 2px solid gray;border-radius:8px;max-height:" + (winHeight - 200) + "px;overflow-y:auto");
-    createSelector(".close-popup-img", "float:right;margin:5px;cursor:pointer;margin-right: 20px");
-    addCSS(`.popup .title {
-                color: crimson;
-                font-size: 15px;
-                margin-top: 10px;
-                display: inline-block;
-                width: 95%;
-                padding-bottom: 3px;
-                border-bottom: 1px solid crimson;
-            }`);
-    createSelector(".popup input[type='checkbox']", "width: 20px;height: 20px;margin-left:30px;margin: 5px;");
-    createSelector(".overlay", "position: absolute;background: white;top: 0;left: 0;right: 0;bottom: 0;z-index: 98;opacity: 0.5;width: 100%;height: 100%;position: fixed;");
-    createSelector(".popup .head", "position: fixed;height: 40px;background: #330000;width: 660px;left: 0;right: 0;top: 100px;color: white;font-size: 15px;text-align: center;line-height: 40px;border-top-left-radius:8px;border-top-right-radius:8px;margin:auto;z-index:10000;");
-    createSelector(".userscript-show", "display:none");
     createSelector(".newSetting", "color: gold;font-weight: bold;");
     createSelector(".userscript-menu img", "height: 18px;display: inline-block;position: relative;margin-bottom: -5px;margin-right: 7px;");
-    createSelector(".custom-menu", "display: none;z-index: 98;position: absolute;overflow: hidden;border: 1px solid #CCC;white-space: nowrap;font-family: sans-serif;background: #FFF;color: #333;border-radius:5px;padding: 10px;z-index:100000000; cursor:pointer");
-    createSelector(".custom-menu .content", "width: 300px;white-space: pre-wrap;");
-    createSelector('.popup input[type="text"]', 'display: inline-block;background: none;border-top: none;border-left: none;border-right: none;color: green;font-size: 15px;border-bottom: 1px white dashed;font-family: Verdana;padding: 0 5px 0 5px;text-align: center;margin-right: 5px');
-    createSelector(".popup840", "width: 840px;margin-left: -452px");
-    createSelector(".popup600", "width: 600px;margin-left: -332px");
-    createSelector(".popup840 .head", "width: 900px");
-    createSelector(".popup600 .head", "width: 660px");
     createSelector(".context-menu", "display: none;z-index: 100;position: absolute;overflow: hidden;border: 1px solid #CCC;white-space: nowrap;font-family: sans-serif;background: #FFF;color: #333;border-radius: 5px;padding: 0;");
     createSelector(".context-menu li", "padding: 8px 12px;cursor: pointer;list-style-type: none;");
     createSelector(".context-menu li:hover", "background-color: #DEF;");
     createSelector("#MyGamesTable thead tr", "text-align: right");
-    $("body").on("click", function (e) {
-        if ($(".custom-menu").is(':visible')) {
-            $(".custom-menu").hide(100);
-        }
-    });
 }
 
 function loadDataTableCSS() {
@@ -2363,46 +2276,6 @@ function setupImages() {
     }
 }
 
-function uniqueArray(arr) {
-    var n = {}, r = [];
-    for (var i = 0; i < arr.length; i++) {
-        if (!n[arr[i]]) {
-            n[arr[i]] = true;
-            r.push(arr[i]);
-        }
-    }
-    return r;
-}
-
-function createUJSMenu(title, className, cb) {
-    $(".navbar-nav .nav-item:first").before(`
-        <li class="nav-item dropdown ${className}">
-            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">${title}</a>
-            <div class="dropdown-menu p-0 br-3 ${className}-dropdown"></div>
-        </li>`);
-    if (typeof cb == "function") {
-        $("." + className).on("click", cb)
-    }
-}
-
-function createUJSSubMenu(parentClass, name, className) {
-    $("." + parentClass).append(`
-     <li class="dropdown-submenu" id="` + className + `">
-        <a class="dropdown-toggle dropdown-item" data-toggle="dropdown" href="#" aria-expanded="true">` + name + `</a>
-        <ul class="dropdown-menu ` + className + `" aria-labelledby="navbarDropdownMenuLink"></ul>
-
-      </li>
-    `)
-}
-
-function createUJSSubMenuEntry(parent, name, cb) {
-    var entry = $('<li><a class="dropdown-item" href="#">' + name + '</a></li>');
-    $("." + parent).append(entry);
-    if (typeof cb == "function") {
-        $(entry).on("click", cb)
-    }
-    return entry;
-}
 function setupWLError() {
     window.wlerror = window.onerror;
     window.onerror = windowError;
@@ -2537,10 +2410,11 @@ function foldProfileStats() {
     addCSS(`
         h3.expander  {
             cursor: pointer;
+        }
     `);
     $.each($("big").parent().contents(), function (key, val) {
         if (val.nodeType == 3) {
-            $(val).replaceWith(`<span>${val.data}</span>`)
+            $(val).wrap("<span></span>");
         }
     });
     $.each($(".container .my-2:first-of-type div.p-3 h3"), function (key, val) {
@@ -2681,9 +2555,7 @@ function setupDashboard() {
     $(window).resize(function () {
         ifSettingIsEnabled("scrollGames", function () {
             refreshSingleColumnSize();
-        }, undefined, function () {
-            makePopupVisible()
-        })
+        });
     });
     window.setTimeout(setupRefreshFunction, 0);
 }
@@ -2875,7 +2747,6 @@ function registerDataTableSorting() {
 function showDashboardLoader() {
     $("body").append("<div class='loader' style='    background: black;position: fixed;left: 0;right: 0;top: 0;bottom: 0;z-index: 100;'></div>");
     $(".container-fluid").show();
-    window.lastRefresh;
     window.lastClick = new Date();
 }
 
@@ -2887,9 +2758,7 @@ function setupForumThreadTweaks() {
     $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
     $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
     $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
-    $(".region a[href='/Profile?u=Muli_1']:contains('Muli')").closest("td").find("br:nth-of-type(5)").remove();
     $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
-    $('img[src*="https://s3.amazonaws.com/data.warlight.net/Data/Players"]').prev().remove();
     $(".region td:first-of-type").css("padding-top", "10px");
     addCSS(`
         img[src*='Images/Thumbs'] {
@@ -3086,15 +2955,6 @@ function formatHiddenThreads() {
 
 function setupSpammersBeGone() {
     var newColumnCountOnPage;
-    var path = window.location.pathname;
-    if (pageIsForumThread()) {
-        // TODO : Ignore posts from blacklisted players
-    }
-
-    if (pageIsForumOverview()) {
-        // Do nothing
-    }
-
     if (pageIsForumOverview()) {
         newColumnCountOnPage = 6;
         showIgnoreCheckBox(newColumnCountOnPage);
@@ -3316,11 +3176,8 @@ function addTagInEditor(area, start, end, tag) {
 /**
  * Reloads all Games
  */
-function refreshAllGames(force) {
+function refreshAllGames() {
     log("Reloading Games");
-    if ($(".popup").is(":visible") && !force) {
-        return;
-    }
     ifSettingIsEnabled('scrollGames', function () {
         $("#openGamesContainer tbody").scrollTop(0);
         $("#myGamesContainer tbody").scrollTop(0);
@@ -3330,26 +3187,6 @@ function refreshAllGames(force) {
     refreshOpenGames(dashboard);
     refreshPastGames();
 }
-
-var filters = [
-    {
-        //Games where it is my turn + real time
-        text: "Games where it is my turn +",
-        key: 2
-    }, {
-        //Games where it is my turn or have unread chat messages + real time
-        text: "Games where it is my turn o",
-        key: 5
-    }, {
-        //Active games where I am not eliminated
-        text: "Filter: Active",
-        key: 1
-    }, {
-        //Default
-        text: "Filter: Defa",
-        key: 4
-    }
-];
 
 function fetchDashboard() {
     return $.ajax({ url: "/MultiPlayer/", dataType: "text" }).then(function (html) {
@@ -3366,13 +3203,13 @@ function refreshOpenGames(dashboard) {
 }
 
 function refreshGameTable(tableSelector, dashboard) {
-    let tableBody = $(tableSelector).find("tbody");
+    let tableBody = $(tableSelector).children("tbody").first();
     tableBody.fadeTo('fast', 0.1);
     $.when(dashboard || fetchDashboard()).done(function (page) {
-        var rows = page.querySelector(tableSelector + " tbody");
+        var rows = page.querySelector(tableSelector + " > tbody");
         if (rows) {
             $(rows).find("script").remove();
-            tableBody.html($("<div>").append(document.importNode(rows, true)));
+            tableBody.empty().append($(document.importNode(rows, true)).children());
         }
         updateGameCounts(page);
         $(document).trigger("tuyd:gamesRefreshed", [tableSelector]);
@@ -3674,23 +3511,9 @@ function isTypingTarget(element) {
 function setupRefreshFunction() {
     lastRefresh = new Date();
     $("a:contains('Refresh (F5)')").text("Refresh (R)");
-    var oldRefreshBtn = $("#RefreshBtn");
-    var oldRefreshBtn2 = $("#RefreshBtn2");
+    var oldRefreshBtn = $("#RefreshBtn, #RefreshBtn2").first();
     if (oldRefreshBtn.length) {
-        var newRefreshBtn = $("#refreshAll");
-        oldRefreshBtn.replaceWith(oldRefreshBtn.clone().removeAttr("id").attr("id", "refreshAll").attr("value", "Refresh (R)"));
-        newRefreshBtn.appendTo("body");
-        $("#refreshAll").on("click", function () {
-            if (new Date() - lastRefresh > 3000) {
-                lastRefresh = new Date();
-                log("Refresh by click");
-                refreshAllGames();
-            }
-        });
-    } else if (oldRefreshBtn2.length) {
-        var newRefreshBtn = $("#refreshAll");
-        oldRefreshBtn2.replaceWith(oldRefreshBtn2.clone().removeAttr("id").attr("id", "refreshAll").attr("value", "Refresh (R)"));
-        newRefreshBtn.appendTo("body");
+        oldRefreshBtn.replaceWith(oldRefreshBtn.clone().attr("id", "refreshAll").attr("value", "Refresh (R)"));
         $("#refreshAll").on("click", function () {
             if (new Date() - lastRefresh > 3000) {
                 lastRefresh = new Date();
@@ -3734,7 +3557,7 @@ function refreshSingleColumnSize() {
     }
 
     $(".leftColumn table").each((key, value) => {
-        var gameTable = $(value); console.log("updating", $(value))
+        var gameTable = $(value);
         gameTable.find("tbody").scrollTop(0);
         if (gameTable.find("thead").length > 0) {
             var gameTableHeight = window.innerHeight - gameTable.find("thead").offset().top - gameTable.find("thead").height() - 5;
@@ -3749,6 +3572,9 @@ function refreshSingleColumnSize() {
 
 
 function refreshPastGames() {
+    if ($("#pastGamesContainer").length === 0) {
+        return;
+    }
     let pastGamesTableBody = $("#PastGamesTable tbody");
     pastGamesTableBody.fadeTo('fast', 0.1);
     var div = $("<div>");
@@ -3764,7 +3590,6 @@ function refreshPastGames() {
     });
 }
 window.showGamesActive = "ShowMyGames";
-window.openGames = [];
 
 function setupBasicDashboardStyles() {
     createSelector(".GameRow a", "font-size:16px !important;");
@@ -3778,8 +3603,6 @@ function setupBasicDashboardStyles() {
     createSelector(".TournamentRow:hover", "background-color:rgb(50, 50, 50);cursor:pointer;");
     createSelector(".ui-buttonset label", "font-size:11px;");
     createSelector("#OpenGamesTable label:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;font-weight: bold;color: #ffffff;");
-    createSelector(".loading", "position: absolute;height: 100%;width:  100%;background-color: rgba(255, 255, 255, 0.2);text-align: center;z-index: 12;margin-top: 34px;display:none;");
-    createSelector(".loading img", "position: absolute;top: 50%;left: 50%;margin-left: -16px;margin-top: -16px;");
     createSelector("img", "position: relative;z-index:50;");
     createSelector("input", "z-index: 98;position: relative;");
     createSelector(".ui-tooltip", "background: #EBEBEB;padding: 4px;font-style: italic;");
@@ -3914,7 +3737,6 @@ function setupleftColumn(gameButtons) {
                     $("#pastGamesContainer").appendTo(leftColumn)
                 } else {
                     leftColumn.append("<div id='pastGamesContainer'></div>");
-                    var div = $("<div>");
                     refreshPastGames();
                 }
             }
@@ -3943,22 +3765,7 @@ function bindCustomContextMenu() {
             $(".highlightedBookmark").removeClass("highlightedBookmark")
         }
     });
-    // If the menu element is clicked
     $(".context-menu li").click(function () {
-        // This is the triggered action name
-        switch ($(this).attr("data-action")) {
-            // A case for each action. Your actions here
-            case "first":
-                alert("first");
-                break;
-            case "second":
-                alert("second");
-                break;
-            case "third":
-                alert("third");
-                break;
-        }
-        // Hide it AFTER the action was triggered
         $(".context-menu").hide(100);
     });
 }
@@ -4038,12 +3845,6 @@ function checkVersion() {
             setupSettingsDatabase();
         } else {
             removePlayerDataCookie();
-            //Script Updated
-            //            $("label[for='showPrivateNotesOnProfile']").addClass('newSetting');
-            //            showPopup(".userscript-show");
-            //            window.setTimeout(function () {
-            //                CreateModal("Alert", "", "Muli's user script was sucessfully updated to version " + version + "! Check out the forum thread to see what changed.", false)
-            //            }, 2000)
         }
         addVersionLabel();
         if (sessionStorage.getItem("showUserscriptMenu")) {
