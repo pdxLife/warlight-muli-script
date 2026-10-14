@@ -51,10 +51,10 @@ test("core features have no switch", () => {
 
 test("runFeatures skips features the user turned off, but never core ones", () => {
     const { ctx, dom } = setup();
-    dom.window.localStorage.setItem(KEY, JSON.stringify(["Find Me", "core"]));
+    dom.window.localStorage.setItem(KEY, JSON.stringify(["Map search", "core"]));
     const ran = [];
     ctx.runFeatures([
-        { name: "Find Me", section: "Tournaments", run: () => ran.push("Find Me") },
+        { name: "Map search", section: "Tournaments", run: () => ran.push("Map search") },
         { name: "Trophies", section: "Profile", run: () => ran.push("Trophies") },
         { name: "core", run: () => ran.push("core") }
     ]);
@@ -73,25 +73,25 @@ test("menu switches reflect and save the disabled list", async () => {
     $("#userscriptMenu .modal-body").append(ctx.renderFeatureToggles());
 
     assert.equal($(".featureToggle[data-feature='Trophies']").prop("checked"), false);
-    assert.equal($(".featureToggle[data-feature='Find Me']").prop("checked"), true);
+    assert.equal($(".featureToggle[data-feature='Map search']").prop("checked"), true);
     assert.ok($(".featureSection").filter((i, el) => $(el).text() === "Tournaments").length);
 
     $(".featureToggle[data-feature='Trophies']").prop("checked", true);
-    $(".featureToggle[data-feature='Find Me']").prop("checked", false);
+    $(".featureToggle[data-feature='Map search']").prop("checked", false);
     await ctx.storeFeatureToggles();
 
-    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(KEY)), ["Find Me"]);
-    assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1))), { name: "disabledFeatures", value: ["Find Me"] });
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(KEY)), ["Map search"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(updates.at(-1))), { name: "disabledFeatures", value: ["Map search"] });
 });
 
 test("the localStorage mirror is re-synced from the database", async () => {
     const { ctx, dom, Database } = setup();
     dom.window.localStorage.setItem(KEY, JSON.stringify(["Stale"]));
 
-    Database.stored = { name: "disabledFeatures", value: ["Find Me"] };
+    Database.stored = { name: "disabledFeatures", value: ["Map search"] };
     ctx.syncDisabledFeatures();
     await flush();
-    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(KEY)), ["Find Me"]);
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem(KEY)), ["Map search"]);
 
     Database.stored = undefined;
     ctx.syncDisabledFeatures();

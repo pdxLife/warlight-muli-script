@@ -10,7 +10,7 @@ npm test           # node --test test/
 npm run check      # syntax check of the userscript
 ```
 
-To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL.
+To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
 
 ## How the script is put together
 

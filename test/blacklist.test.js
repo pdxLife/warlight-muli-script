@@ -40,3 +40,42 @@ test("adds nothing when the block list is empty", () => {
     const { $ } = setup([]);
     assert.equal($("#numBlacklisted").length, 0);
 });
+
+function setupWithSearch(entries) {
+    const { dom, $ } = createDom(`<div id="AutoContainer"><h1>Manage Block List</h1><ul>${entries.join("")}</ul></div>`);
+    const ctx = load(["setupBlacklistCounter", "setupBlockListSearch", "filterBlockList", "foldForSearch"], { ...domGlobals(dom, $), addCSS: () => { } });
+    ctx.setupBlacklistCounter();
+    ctx.setupBlockListSearch();
+    const search = (text) => $("#BlockListSearchInput").val(text).trigger("input");
+    const shownNames = () => Array.from($("li[id^=ListItem_]").filter(function () {
+        return !$(this).hasClass("tuyd-filtered") && this.style.display !== "none";
+    }).map(function () {
+        return $(this).find("a[href*='Profile']").text();
+    }).get());
+    return { $, search, shownNames, count: () => Number($("#numBlacklisted b").text()) };
+}
+
+test("search filters the block list by name, ignoring case and accents", () => {
+    const { $, search, shownNames } = setupWithSearch([entry(1, "Šaňa SK-CZ"), entry(2, "AK-47"), entry(3, "Alexander the Great"), entry(4, "sana")]);
+    assert.equal($("#BlockListSearch").next().is("ul"), true);
+    search("SANA");
+    assert.deepEqual(shownNames(), ["Šaňa SK-CZ", "sana"]);
+    assert.equal($("#BlockListSearchCount").text(), "2 matching");
+    search("remove");
+    assert.deepEqual(shownNames(), [], "the (remove) link text is not searched");
+    search("");
+    assert.equal(shownNames().length, 4);
+    assert.equal($("#BlockListSearchCount").text(), "");
+});
+
+test("searching doesn't change the block list count, removing a player does", async () => {
+    const { $, search, count } = setupWithSearch([entry(1, "Ace"), entry(2, "Advait"), entry(3, "Bob")]);
+    search("ad");
+    await flush();
+    assert.equal(count(), 3);
+    $("#ListItem_2").hide();
+    await flush();
+    assert.equal(count(), 2);
+    search("ad");
+    assert.equal($("#BlockListSearchCount").text(), "0 matching", "removed players aren't counted as matches");
+});

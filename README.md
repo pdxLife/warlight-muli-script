@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.13.3  
+> **Version:** 3.14.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com` and their subdomains
 
@@ -43,8 +43,8 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 
 ### Tournaments
 
-- **Player search & sort** — on the Players tab, search players by name and sort by wins, losses, or name.
-- **Find Me** — link next to "Created by" that highlights your name in the player list or bracket.
+- **Player search & sort** — a toolbar at the top right of the Players tab: search players by name (matches move to the top of the list) and sort by wins, losses, or name.
+- **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Tournament inviter display** — shows who invited you next to "Created by" (data captured from the dashboard).
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 
@@ -91,6 +91,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 ### Block List
 
 - **Player count** — shows how many players are on your block list with a live counter.
+- **Search** — a search box above the list filters players by name, ignoring case and accents.
 
 ## Settings
 

@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.13.3
+// @version 3.14.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -728,24 +728,27 @@ function setupUjsPlayerControls() {
     addCSS(`
         #ujsPlayerToolbar {
             position: absolute;
-            top: 5px;
-            left: 10px;
+            top: -52px;
+            right: 24px;
             z-index: 100;
             display: flex;
             gap: 6px;
             align-items: center;
+            background: #1b1b1b;
+            padding: 2px 4px;
+            border-radius: 4px;
         }
         #ujsPlayerToolbar input {
-            padding: 4px 8px;
+            padding: 2px 8px;
             border-radius: 4px;
             border: 1px solid #555;
             background: #222;
             color: #e0e0e0;
             font-size: 13px;
-            width: 180px;
+            width: 160px;
         }
         #ujsPlayerToolbar select {
-            padding: 3px 6px;
+            padding: 2px 6px;
             border-radius: 4px;
             border: 1px solid #555;
             background: #222;
@@ -768,20 +771,23 @@ function setupUjsPlayerControls() {
         '<option value="name-asc">Name A-Z</option>' +
         '<option value="name-desc">Name Z-A</option>' +
         '</select></div>';
-    $playersTab.prepend(toolbar);
+    // war.app positions everything from zero-size anchors; the panel's background box is the
+    // only element with the panel's real size, so the toolbar goes inside it. Its 54px top
+    // border is the strip between the tabs and the list, hence the negative top.
+    var $panel = $("#ujs_PlayersTabContents_img");
+    ($panel.length ? $panel : $playersTab).append(toolbar);
 
+    var update = function () {
+        layoutUjsPlayers($("#ujsPlayerSearch").val(), $("#ujsPlayerSort").val());
+    };
     var searchTimer;
     $("#ujsPlayerSearch").on("keyup", function (e) {
         e.stopPropagation();
         clearTimeout(searchTimer);
-        var query = $(this).val().toLowerCase().trim();
-        searchTimer = setTimeout(function () { filterUjsPlayers(query); }, 150);
+        searchTimer = setTimeout(update, 150);
     });
     $("#ujsPlayerSearch").on("keypress keydown", function (e) { e.stopPropagation(); });
-
-    $("#ujsPlayerSort").on("change", function () {
-        sortUjsPlayers($(this).val());
-    });
+    $("#ujsPlayerSort").on("change", update);
 }
 
 function getUjsPlayerRows() {
@@ -794,6 +800,50 @@ function getUjsPlayerName($row) {
     return $row.find("[id^='ujs_Text_'] .ujsTextInner").first().text().replace(/^\s*L\d+\s+/, "").trim();
 }
 
+// Rows are absolutely positioned by war.app. Visible rows, in the chosen order, take the topmost of
+// war.app's original positions, so matches don't stay scattered down the list.
+function layoutUjsPlayers(query, sortKey) {
+    var rows = getUjsPlayerRows().toArray();
+    rows.forEach(function (row) {
+        if (row.getAttribute("data-tuyd-bottom") === null) {
+            row.setAttribute("data-tuyd-bottom", parseInt(row.style.bottom, 10) || 0);
+        }
+    });
+    var originalBottom = function (row) {
+        return Number(row.getAttribute("data-tuyd-bottom"));
+    };
+    rows.sort(function (a, b) {
+        return originalBottom(b) - originalBottom(a);
+    });
+    var slots = rows.map(originalBottom);
+    if (sortKey) {
+        var parts = sortKey.split("-");
+        var dir = parts[1] === "desc" ? -1 : 1;
+        var value = function (row) {
+            if (parts[0] === "name") return getUjsPlayerName($(row)).toLowerCase();
+            return getUjsPlayerStat($(row), parts[0] === "wins" ? "ujs_WinsLabel" : "ujs_LossesLabel");
+        };
+        rows = rows.map(function (row, i) {
+            return { row: row, i: i, v: value(row) };
+        }).sort(function (a, b) {
+            var cmp = typeof a.v === "string" ? a.v.localeCompare(b.v) : a.v - b.v;
+            return cmp * dir || a.i - b.i;
+        }).map(function (entry) {
+            return entry.row;
+        });
+    }
+    var needle = (query || "").trim().toLowerCase();
+    var slot = 0;
+    rows.forEach(function (row) {
+        var visible = needle === "" || getUjsPlayerName($(row)).toLowerCase().indexOf(needle) !== -1;
+        $(row).toggleClass("ujs-player-hidden", !visible);
+        if (visible) {
+            row.style.bottom = slots[slot++] + "px";
+        }
+    });
+    $(rows[0]).closest("[id^='ujs_Viewport']").scrollTop(0);
+}
+
 function getUjsPlayerStat($row, prefix) {
     var val = 0;
     $row.find("[id^='" + prefix + "'] .ujsTextInner").each(function () {
@@ -801,87 +851,6 @@ function getUjsPlayerStat($row, prefix) {
         if (match) val = parseInt(match[1]);
     });
     return val;
-}
-
-function filterUjsPlayers(query) {
-    var $rows = getUjsPlayerRows();
-    $rows.each(function () {
-        var text = $(this).text().toLowerCase();
-        if (!query || text.indexOf(query) !== -1) {
-            $(this).removeClass("ujs-player-hidden");
-        } else {
-            $(this).addClass("ujs-player-hidden");
-        }
-    });
-}
-
-function sortUjsPlayers(sortKey) {
-    if (!sortKey) return;
-    var $rows = getUjsPlayerRows();
-    var $parent = $rows.first().parent();
-    if (!$parent.length) return;
-
-    var parts = sortKey.split("-");
-    var field = parts[0];
-    var dir = parts[1] === "desc" ? -1 : 1;
-
-    var arr = $rows.toArray();
-    arr.sort(function (a, b) {
-        var $a = $(a), $b = $(b);
-        if (field === "name") {
-            return dir * getUjsPlayerName($a).localeCompare(getUjsPlayerName($b));
-        } else if (field === "wins") {
-            return dir * (getUjsPlayerStat($a, "ujs_WinsLabel") - getUjsPlayerStat($b, "ujs_WinsLabel"));
-        } else if (field === "losses") {
-            return dir * (getUjsPlayerStat($a, "ujs_LossesLabel") - getUjsPlayerStat($b, "ujs_LossesLabel"));
-        }
-        return 0;
-    });
-
-    var baseBottom = parseInt($rows.last().css("bottom")) || 3;
-    var spacing = 34;
-    $.each(arr, function (i, el) {
-        var newBottom = baseBottom + (arr.length - 1 - i) * spacing;
-        $(el).css("bottom", newBottom + "px");
-    });
-}
-
-
-function setupFindMeInTournament() {
-    $(document).on("click", "#findMeInTournament", function (e) {
-        e.preventDefault();
-        if (!window.WlPlayer || !WlPlayer.Name) {
-            log("Find Me: player data not loaded");
-            return;
-        }
-        $(".findme-highlight").removeClass("findme-highlight findme-pulse");
-
-        var playerName = WlPlayer.Name.toLowerCase();
-        var found = [];
-        $(".ujsTextInner").each(function () {
-            var text = $(this).text().replace(/^\s*L\d+\s+/, "").trim().toLowerCase();
-            if (text === playerName) {
-                found.push($(this));
-            }
-        });
-
-        if (found.length === 0) {
-            var $msg = $('<span id="findMeMsg" style="color:#ff6b6b;margin-left:8px">Not found in this tournament</span>');
-            $(this).after($msg);
-            setTimeout(function () { $("#findMeMsg").fadeOut(function () { $(this).remove(); }); }, 3000);
-            return;
-        }
-
-        $.each(found, function (i, $el) {
-            $el.addClass("findme-highlight findme-pulse");
-        });
-
-        var firstEl = found[0];
-        var offset = firstEl.offset();
-        if (offset) {
-            $("html, body").animate({ scrollTop: offset.top - 150 }, 400);
-        }
-    });
 }
 
 function captureTournamentInviters() {
@@ -2565,8 +2534,7 @@ function pageFeatures() {
         { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
-        { name: "Bookmark and Find Me links", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
-        { name: "Find Me", section: "Tournaments", match: pageIsTournament, run: setupFindMeInTournament },
+        { name: "Bookmark link and player search", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
@@ -2587,6 +2555,7 @@ function mainFeatures() {
         { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
         { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
         { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "Block list search", section: "Other", match: pageIsBlacklistPage, run: setupBlockListSearch },
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
         { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
@@ -2666,11 +2635,49 @@ function runFeatures(features) {
     });
 }
 
+function foldForSearch(text) {
+    return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function filterBlockList(query) {
+    var needle = foldForSearch(query.trim());
+    var rows = $("li[id^='ListItem_']");
+    var shown = 0;
+    rows.each(function () {
+        var matches = needle === "" || foldForSearch($(this).find("a[href*='Profile']").text()).indexOf(needle) !== -1;
+        $(this).toggleClass("tuyd-filtered", !matches);
+        if (matches && this.style.display !== "none") {
+            shown++;
+        }
+    });
+    $("#BlockListSearchCount").text(needle === "" ? "" : shown + " matching");
+}
+
+function setupBlockListSearch() {
+    var $list = $("li[id^='ListItem_']").first().parent("ul");
+    if ($list.length === 0) {
+        return;
+    }
+    addCSS(`
+        li.tuyd-filtered { display: none; }
+        #BlockListSearch { margin: 8px 0; }
+        #BlockListSearchInput { padding: 4px 8px; width: 240px; max-width: 60%; background: #222; color: #ddd; border: 1px solid #555; }
+        #BlockListSearchCount { margin-left: 6px; white-space: nowrap; }
+    `);
+    $list.before(`<div id="BlockListSearch"><input type="text" id="BlockListSearchInput" placeholder="Search players"><span id="BlockListSearchCount" class="text-muted"></span></div>`);
+    $("#BlockListSearchInput").on("input", function () {
+        filterBlockList($(this).val());
+    });
+}
+
 function setupBlacklistCounter() {
     var $blacklist = $("li[id^='ListItem_']").first().parent("ul");
     $blacklist.before(`<span id="numBlacklisted">You have <b></b> players on your block list.</span>`);
+    // war.app hides removed players with an inline display: none; the search hides rows with a class.
     var updateBlacklistCount = function () {
-        $("#numBlacklisted b").text($blacklist.find("li:visible").length);
+        $("#numBlacklisted b").text($blacklist.find("li").filter(function () {
+            return this.style.display !== "none";
+        }).length);
     };
     updateBlacklistCount();
     var blacklistObserver = new MutationObserver(updateBlacklistCount);
@@ -2827,24 +2834,9 @@ function tournamentNameFromTitle(title) {
 
 function setupTournamentPage() {
     withTournamentInfoSlot(function (slot) {
-        slot.prepend("| <a href='#' onclick='bookmarkTournament(); return false;'>Bookmark</a> | <a href='#' id='findMeInTournament'>Find Me</a>");
+        slot.prepend("| <a href='#' onclick='bookmarkTournament(); return false;'>Bookmark</a>");
     });
     whenElementAppears("#ujs_PlayersContainer", setupUjsPlayerControls);
-    addCSS(`
-        .findme-highlight {
-            background: rgba(255,215,0,0.35) !important;
-            outline: 2px solid gold;
-            border-radius: 3px;
-        }
-        @keyframes findmePulse {
-            0% { outline-color: gold; }
-            50% { outline-color: transparent; }
-            100% { outline-color: gold; }
-        }
-        .findme-pulse {
-            animation: findmePulse 1.2s ease-in-out 3;
-        }
-    `);
 }
 
 function setupMapOfTheWeekStyles() {
