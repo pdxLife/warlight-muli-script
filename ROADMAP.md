@@ -77,13 +77,40 @@ war.app moved most pages to client-side rendering (`ujs_*` elements positioned f
 - [x] **Credit Muli** as the original author in the header, README and settings menu (3.13.1).
 - [x] **QA checklist** in `QA.md` for a manual pass on the live site before each release.
 
+## Phase 7 — AWP World Tour stats from wl-stats
+
+awp.wl-stats.com and custom.wl-stats.com are run by this fork's maintainer, so permission isn't an issue. awp.wl-stats.com (FastAPI) already serves the data as JSON, keyed by war.app player ID: `GET /api/v1/players/{id}/stats` returns name, clan, level, games, wins, losses, win %, tournaments, titles, finals, best placement, points by year and per-template results. It only lacks a CORS header, so the script can't read it yet. This brings back the AWP World Tour integration from Muli's original script.
+
+Decided: show the stats on profiles, include the player's rank, and turn the feature on by default.
+
+### Server side (awp.wl-stats.com), to do first
+
+- [ ] **Allow war.app to read the API.** Add `CORSMiddleware` with `allow_origin_regex=r"https://([a-z0-9-]+\.)?(war\.app|warzone\.com)"`, `allow_methods=["GET"]`, `allow_credentials=False` (so the site's own login cookies are never sent with these requests).
+- [ ] **Cache headers.** `Cache-Control: public, max-age=3600` on `/api/v1/players/{id}/stats`.
+- [ ] **Rank in the stats response.** Add the player's current AWP rank and 12-month rank to `/api/v1/players/{id}/stats`, so the script doesn't have to download `/api/v1/rankings` to find one player.
+
+### Script side, once the header is live
+
+- [ ] **"AWP World Tour stats" box on profiles** (Features → Profile, on by default): rank and 12-month rank, games, wins / losses and win %, tournaments, titles, best placement, and a link to the player's page on awp.wl-stats.com.
+  - One request per profile, cached for an hour (sessionStorage); every request has a `.fail()` handler, and a player the site doesn't know, or a server that's down, leaves the profile unchanged.
+  - Plain JSON over `fetch`/`$.ajax`, not JSONP, so the server can't run code on war.app; all values escaped, the link through `safeUrl()`.
+  - Tests: rendering from a recorded API response, the unknown-player and failure cases, and a `security.test.js` case with an injection payload in the player name and clan.
+  - Docs: README feature and privacy note (viewing a profile sends that player's ID to awp.wl-stats.com), CLAUDE.md third-party services list, a QA.md row, CHANGELOG.
+
+### Later, optional
+
+- [ ] **custom.wl-stats.com tournaments.** On a war.app tournament run through custom.wl-stats.com, show a "Managed on custom.wl-stats.com" link next to "Created by". Needs an endpoint that maps a war.app tournament ID to a custom.wl-stats.com tournament, with the same CORS setup.
+- [ ] **MTL through wl-stats.** If the MTL organizers don't add CORS themselves (Phase 4), wl-stats could fetch MTL's public API server-side, cache it and serve it with CORS. That would remove the maak.ch JSONP relay for MTL without the `@grant` migration. Only with the MTL organizers' agreement, since it's their data and their server load.
+
 ## What's left
 
 In suggested order:
 
-1. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; drops the maak.ch JSONP relay for MTL.
-2. **Move off `@grant none`** (Phase 3). Unblocks the MTL fallback, domain-independent storage and cross-browser sync, and the jQuery / DataTables upgrades. The biggest remaining change, and it needs a full QA pass.
-3. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-4. **Split into modules** (Phase 3), once the feature work settles.
+1. **AWP World Tour stats on profiles** (Phase 7). Server changes on awp.wl-stats.com first (CORS, cache headers, rank in the stats response), then the script feature.
+2. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
+3. **custom.wl-stats.com tournament links** (Phase 7), optional.
+4. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+6. **Split into modules** (Phase 3), once the feature work settles.
 
 Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, and boot-time sorting relies on the "Your turn for …" text.
