@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.3
+// @version 3.14.4
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2457,7 +2457,7 @@ function pageFeatures() {
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
-        { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
+        { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
         { name: "Level bookmark link", section: "Maps & levels", match: pageIsLevelOverview, run: setupLevelBookmark },
@@ -3989,8 +3989,8 @@ function getLevelId(href) {
     }
 }
 function setupCommonGamesDataTable() {
-    var $$$$$ = jQuery.noConflict(true);
-    var dataTable = $$$(".dataTable").DataTable({
+    // DataTables is attached to the script's own jQuery ($$$); war.app's $ stays untouched.
+    $$$(".dataTable").DataTable({
         "order": [],
         paging: false,
         sDom: 't',
@@ -4043,8 +4043,9 @@ function setupCommonGamesHead2Head() {
             || val[3] == "Removed by Host"
             || val[3] == "Ended by vote");
     }).length;
-    var winRate = (wins1v1 / (games1v1 - gamesNotCounted) * 100).toFixed(2);
-    var losses = games1v1 - wins1v1 - gamesNotCounted;
+    var finished = games1v1 - gamesNotCounted;
+    var winRate = finished > 0 ? (wins1v1 / finished * 100).toFixed(2) + "%" : "–";
+    var losses = finished - wins1v1;
     $(".dataTable").before(`
         <table cellspacing="0" cellpadding="2" width="100%" class="dataTable head2head">
            <thead>
@@ -4067,7 +4068,7 @@ function setupCommonGamesHead2Head() {
               </tr>
               <tr>
                  <td>1v1 Win Rate</td>
-                 <td>${winRate}%</td>
+                 <td>${winRate}</td>
               </tr>
            </tbody>
         </table>
