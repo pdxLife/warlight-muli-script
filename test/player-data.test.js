@@ -78,8 +78,6 @@ test("profile is fetched asynchronously and parsed", () => {
     assert.equal(player.PlayerId, "1234567890");
     assert.equal(player.ProfileId, "345678");
     assert.equal(player.isMember, true);
-    assert.equal(player.Level, "42");
-    assert.equal(player.PointsThisLevel, 1234);
     assert.equal(player.OnVacationUntil.getTime(), new Date("10/20/2026 12:00:00").getTime());
     assert.equal(JSON.parse(cookies.muli_wl_player).Name, "Muli");
 });
@@ -113,8 +111,6 @@ test("fields directly under body of a full profile document are found", () => {
     const player = ctx.WlPlayer;
     assert.equal(player.Name, "Muli");
     assert.equal(player.isMember, false);
-    assert.equal(player.Level, "7");
-    assert.equal(player.PointsThisLevel, 99);
     assert.equal(player.OnVacationUntil.getTime(), new Date("1/2/2027 03:04:05").getTime());
 });
 

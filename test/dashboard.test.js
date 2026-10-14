@@ -78,3 +78,13 @@ test("a failed refresh keeps the old rows, un-dims the table and logs", async ()
     assert.equal($("#OpenGamesTable tbody").css("opacity"), "1");
     assert.ok(logs.some((l) => l.includes("Error refreshing #OpenGamesTable")));
 });
+
+test("refreshing replaces the rows without nesting another tbody", async () => {
+    const { ctx, $, dom } = setup(fresh);
+    ctx.refreshMyGames();
+    await flush();
+    ctx.refreshMyGames();
+    await flush();
+    assert.equal(dom.window.document.querySelectorAll("#MyGamesTable tbody").length, 1);
+    assert.equal($("#MyGamesTable > tbody > tr.GameRow").text(), "new my game");
+});

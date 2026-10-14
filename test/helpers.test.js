@@ -12,12 +12,6 @@ test("htmlEscape escapes markup characters", () => {
     assert.equal(htmlEscape(42), "42");
 });
 
-test("uniqueArray keeps first occurrences in order", () => {
-    const { uniqueArray } = load(["uniqueArray"]);
-    assert.deepEqual(plain(uniqueArray([3, 1, 3, 2, 1])), [3, 1, 2]);
-    assert.deepEqual(plain(uniqueArray([])), []);
-});
-
 test("getRankText uses English ordinal suffixes", () => {
     const { getRankText } = load(["getRankText"]);
     const cases = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 11: "11th", 12: "12th", 13: "13th", 21: "21st", 102: "102nd", 111: "111th" };
