@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.1
+// @version 3.14.2
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -746,6 +746,7 @@ function setupUjsPlayerControls() {
             background: #1b1b1b;
             padding: 2px 4px;
             border-radius: 4px;
+            pointer-events: auto;
         }
         #ujsPlayerToolbar input {
             padding: 2px 8px;
@@ -783,19 +784,19 @@ function setupUjsPlayerControls() {
         '</select></div>';
     // war.app positions everything from zero-size anchors; the panel's background box is the
     // only element with the panel's real size, so the toolbar goes inside it. Its 54px top
-    // border is the strip between the tabs and the list, hence the negative top.
+    // border is the strip between the tabs and the list, hence the negative top. war.app sets
+    // pointer-events: none on that box, so the toolbar turns it back on to be clickable.
     $(panel).append(toolbar);
 
     var update = function () {
         layoutUjsPlayers($("#ujsPlayerSearch").val(), $("#ujsPlayerSort").val());
     };
     var searchTimer;
-    $("#ujsPlayerSearch").on("keyup", function (e) {
-        e.stopPropagation();
+    $("#ujsPlayerSearch").on("input", function () {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(update, 150);
     });
-    $("#ujsPlayerSearch").on("keypress keydown", function (e) { e.stopPropagation(); });
+    $("#ujsPlayerSearch").on("keydown keypress keyup", function (e) { e.stopPropagation(); });
     $("#ujsPlayerSort").on("change", update);
 }
 

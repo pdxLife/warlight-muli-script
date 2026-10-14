@@ -139,30 +139,33 @@ function playersTab(players) {
     }).join("");
     const { dom, $ } = createDom(`<div id="ujs_PlayersTabContents"><div id="ujs_PlayersTabContents_img"></div>`
         + `<div id="ujs_Viewport_3" style="overflow-y: auto"><div id="ujs_PlayersContainer">${rows}</div></div></div>`);
+    const css = [];
     const ctx = load(["setupUjsPlayerControls", "layoutUjsPlayers", "getUjsPlayerRows", "getUjsPlayerName", "getUjsPlayerStat", "ujsElement"], {
         ...domGlobals(dom, $),
-        addCSS: () => { },
+        addCSS: (rules) => css.push(rules),
         setTimeout: (fn) => fn(),
         clearTimeout: () => { }
     });
     const topToBottom = () => Array.from($("[id^=ujs_TournamentPlayersPlayer]").not(".ujs-player-hidden").toArray()
         .sort((a, b) => parseInt(b.style.bottom) - parseInt(a.style.bottom))
         .map((row) => ctx.getUjsPlayerName($(row)) + "@" + parseInt(row.style.bottom)));
-    return { ctx, $, topToBottom };
+    return { ctx, $, topToBottom, css };
 }
 
-test("the player toolbar sits inside the Players panel's background box", () => {
-    const { ctx, $ } = playersTab([["Ann", 1, 0]]);
+test("the player toolbar sits inside the Players panel's background box and takes clicks", () => {
+    const { ctx, $, css } = playersTab([["Ann", 1, 0]]);
     ctx.setupUjsPlayerControls();
     assert.equal($("#ujs_PlayersTabContents_img > #ujsPlayerToolbar").length, 1);
+    // war.app gives the panel box pointer-events: none, which the toolbar would inherit.
+    assert.match(css.join("\n"), /#ujsPlayerToolbar \{[^}]*pointer-events: auto/);
 });
 
 test("search moves matching players to the top of the list", () => {
     const { ctx, $, topToBottom } = playersTab([["Ann", 3, 0], ["Bob", 1, 2], ["Bobby", 2, 1], ["Cy", 0, 3]]);
     ctx.setupUjsPlayerControls();
-    $("#ujsPlayerSearch").val("bob").trigger("keyup");
+    $("#ujsPlayerSearch").val("bob").trigger("input");
     assert.deepEqual(topToBottom(), ["Bob@159", "Bobby@107"]);
-    $("#ujsPlayerSearch").val("").trigger("keyup");
+    $("#ujsPlayerSearch").val("").trigger("input");
     assert.deepEqual(topToBottom(), ["Ann@159", "Bob@107", "Bobby@55", "Cy@3"], "clearing the search restores war.app's order");
 });
 
@@ -172,7 +175,7 @@ test("sorting reuses war.app's row spacing and combines with search", () => {
     $("#ujsPlayerSort").val("losses-desc").trigger("change");
     assert.deepEqual(topToBottom(), ["Cy@159", "Bob@107", "Bobby@55", "Ann@3"]);
     $("#ujsPlayerSort").val("name-desc").trigger("change");
-    $("#ujsPlayerSearch").val("b").trigger("keyup");
+    $("#ujsPlayerSearch").val("b").trigger("input");
     assert.deepEqual(topToBottom(), ["Bobby@159", "Bob@107"]);
 });
 
