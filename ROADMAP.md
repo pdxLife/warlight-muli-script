@@ -1,6 +1,6 @@
 # Roadmap
 
-Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at the time of writing.
+Ordered by priority within each phase. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at the time each item was written. The short version of what's open is in [What's left](#whats-left) at the end.
 
 ## Phase 1 — Real bugs
 
@@ -8,7 +8,7 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 - [x] **Import can wipe all data.** `importSettings()` (line 2102) clears every table before parsing the pasted string. A bad or truncated paste deletes all bookmarks and settings. Parse and validate first, then clear. *(Done. Import now also clears only the exported tables, so tournament inviter data survives.)*
 - [x] **Reload fires immediately.** `window.setTimeout(window.location.reload(), 2000)` (line 2367) calls `reload()` right away. Use `setTimeout(() => location.reload(), 2000)`.
 - [x] **IndexedDB support check never triggers.** `if (!"indexedDB" in window)` (line 521) evaluates as `(false) in window`. Also, `db = e.target.result` (line 559) assigns an undeclared global that can clash with site code.
-- [x] **Blacklist counter polls forever.** It rebuilds the DOM every 500 ms (line 2996); other features use similar polling loops. Replace them with `MutationObserver`. *(Done for the blacklist. The only other loop, in `setupClanPageCreator`, stops after 40 attempts.)*
+- [x] **Blacklist counter polls forever.** It rebuilds the DOM every 500 ms (line 2996); other features use similar polling loops. Replace them with `MutationObserver`. *(Done for the blacklist. The only other loop was in `setupClanPageCreator`, removed in 3.13.0. Waiting for war.app's client-drawn pages now goes through `whenElementAppears()`, a `MutationObserver` with a 30-second cap.)*
 - [x] **Remove `async: false`** in `loadPlayerData()` (line 78). It blocks the main thread on first load each session.
 
 ## Phase 2 — Security and privacy
@@ -21,10 +21,10 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 
 ## Phase 3 — Maintainability
 
-- [ ] **Split into modules.** Break the ~4,300-line file into modules (dashboard, forum, tournaments, clans, db, settings) and bundle them into a single `.user.js` with esbuild or `vite-plugin-monkey`. This also enables modern JS and linting.
+- [ ] **Split into modules.** Break the ~4,100-line file into modules (dashboard, forum, tournaments, clans, db, settings) and bundle them into a single `.user.js` with esbuild or `vite-plugin-monkey`. This also enables modern JS and linting.
 - [x] **Promise-based IndexedDB wrapper.** Replace the hand-rolled `$.Deferred` counters and nested `ifSettingIsEnabled` callbacks. Load settings once at startup into a single object. *(Done. Every `Database` method still takes a callback but also returns a Promise, and errors are logged. Settings are cached at init. Import, export and first-run setup use `Promise.all`.)*
 - [x] **Feature registry with isolation.** Use `{ name, match, run }` entries, each run inside its own try/catch, so one broken selector after a site redesign doesn't break every feature. *(Done via `runFeatures()` in `DOM_ContentReady` and `databaseReady`. This turned up two crashes: a call to the nonexistent `setupPlayerAttempDataTable` on level play-log pages, and `toWords` calling an undefined `intToEnglish`. A test now checks that every called function is defined.)*
-- [ ] **Move off `@grant none`.** Use `GM_xmlhttpRequest` + `@connect` for the third-party APIs, which removes JSONP and the maak.ch proxy, and reach page globals through `unsafeWindow`. This also enables the jQuery 3 / jQuery UI 1.13 / DataTables 1.13 upgrades, and the odd `jQuery.noConflict(true)` call in `setupCommonGamesDataTable()` should be revisited at the same time.
+- [ ] **Move off `@grant none`.** Use `GM_xmlhttpRequest` + `@connect` for the third-party APIs, which removes JSONP and the maak.ch proxy, and reach page globals through `unsafeWindow`. This also enables the jQuery 3 / jQuery UI 1.13 / DataTables 1.13 upgrades, and the odd `jQuery.noConflict(true)` call in `setupCommonGamesDataTable()` should be revisited at the same time. It would also let settings and bookmarks live in Tampermonkey's storage (`GM_setValue`), which isn't tied to a domain: today IndexedDB is per origin, so `war.app` and `www.war.app` keep separate settings, and a future domain starts empty until the user imports a backup.
 - [x] **Self-host the icons.** Icons are hot-linked from imgur (line 2709), which often blocks or deletes images. Inline them as SVG or data URIs. *(Done. Only 3 of the 7 were used; they're downscaled and inlined. The install icon is in `assets/`.)*
 - [x] **Repo hygiene.** Delete `Tidy_up_your_Dashboard.user.js.backup` (git history already has it), move `plan.md` items into issues, and add a CHANGELOG. *(Done. Every `plan.md` item was already complete, so it was deleted rather than turned into issues.)*
 
@@ -56,5 +56,32 @@ Features described in the [original forum thread](https://war.app/Forum/106092-m
 - [x] **Sort My Games by time left before you're booted.** *(Done. war.app's My Games label is the boot time plus your banked time, so time left is that label minus the "Your turn for …" duration. Only your-turn games are reordered, within the slots they already had, and the order is reapplied after each refresh.)*
 - [x] **Open Games tab in the menu bar.** *(Covered by war.app: the Multi-Player menu now links to Open Games, so no userscript tab is needed.)*
 - **Decline a tournament from the tournaments list page.** *(Not feasible. war.app sends a decline as a `DeclineTournament` message in its binary client protocol, not as a web request, so a userscript would have to call minified internals that change with every site build. Declining stays on the tournament page.)*
-- [ ] **Hide tournaments with no games left.** *(Parked: the tournament tables only render while you're in a tournament, so the markup is needed from an account that is in one.)*
+- [ ] **Hide tournaments with no games left.** *(Parked: the dashboard's tournament tables only render while you're in a tournament. The main account is in one now (AWP World Tour), so the markup can be read from its dashboard.)*
 - [x] **Search mail by player name.** *(Done. Filters `/Discussion/MyMail` by thread starter or last poster. The first search loads the other pages through `?Offset=`, so it covers the whole mailbox. Checked against a live mailbox.)*
+
+## Phase 6 — Keeping up with war.app's redesign
+
+war.app moved most pages to client-side rendering (`ujs_*` elements positioned from zero-size anchors) and dropped `#MainSiteContent` from every page. Every feature was checked against the live site.
+
+- [x] **Fix what the redesign broke** (3.13.0). Tournament Bookmark link and player search wait for war.app to draw the page; "Invited by" ran before the database opened; the block list moved to `/ManageBlockList`; total points read an empty tooltip; "hide coins" used a wrong table id; "Reset hidden threads" used a dead selector; R refreshed while typing.
+- [x] **Remove features whose page or data is gone, or that war.app now does itself** (3.13.0): Rate Map link, Global win rate, Community events list, fixed-height tournament list, creator highlighting in tournament chat, clan creator banner and Load Creators, profile box styling, new-thread cleanup, and the dead "Remember My Games filter" (3.12.1).
+- [x] **Dead code cleanup** (3.13.1): the old popup system, unused helpers and stale selectors. Found along the way: making profile stat sections collapsible re-parsed the player's bio as HTML, a stored XSS (fixed, with a security test).
+- [x] **Restore "Show more" and the My Games footer after a refresh** (3.13.2), by re-running war.app's exported `WL_MPDashInit` with fresh `#AllOpenGamesData`.
+- [x] **Survive a domain change** (3.13.3): path-only page routing, relative links, titles trimmed with `og:site_name`, bookmarks from any of `SITE_HOSTS` open on the current domain, `@match` on all subdomains.
+- [x] **Tournament player search and sort** (3.14.0): the toolbar was out of view, search left matches scattered, sort assumed the wrong row height. Find Me removed; war.app's Bracket tab has **Find...** and **>** for it.
+- [x] **Block list search** (3.14.0), with accent-insensitive matching.
+- [x] **Credit Muli** as the original author in the header, README and settings menu (3.13.1).
+- [x] **QA checklist** in `QA.md` for a manual pass on the live site before each release.
+
+## What's left
+
+In suggested order:
+
+1. **Hide tournaments with no games left** (Phase 5). Read the dashboard markup from the main account, which is in a tournament now.
+2. **Check what couldn't be verified live.** The sortable Common Games table (needs a player you share games with; it also swaps war.app's jQuery on that page), "Invited by" on tournament pages (needs an invitation captured from the dashboard), and capturing invitations on the dashboard itself.
+3. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; drops the maak.ch JSONP relay for MTL.
+4. **Move off `@grant none`** (Phase 3). Unblocks the MTL fallback, domain-independent storage and cross-browser sync, and the jQuery / DataTables upgrades. The biggest remaining change, and it needs a full QA pass.
+5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+6. **Split into modules** (Phase 3), once the feature work settles.
+
+Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border, the "Show more" fix relies on `WL_MPDashInit` staying exported, and boot-time sorting relies on the "Your turn for …" text.
