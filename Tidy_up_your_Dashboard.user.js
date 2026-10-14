@@ -3,11 +3,10 @@
 // @namespace https://greasyfork.org/users/10154
 // @grant none
 // @run-at document-start
-// @match https://www.warzone.com/*
-// @match https://www.war.app/*
-// @match https://war.app/*
+// @match https://*.war.app/*
+// @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.13.2
+// @version 3.13.3
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -19,8 +18,10 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
+// Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
+var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
@@ -77,7 +78,7 @@ function loadPlayerData() {
         isMember: null,
         OnVacationUntil: null
     }
-    let profileUrl = "https://war.app" + $profileLink.attr('href');
+    let profileUrl = $profileLink.prop("href");
     $.ajax({ url: profileUrl }).done(function (response) {
         try {
             let page = $(new DOMParser().parseFromString(response, "text/html"));
@@ -345,7 +346,7 @@ function getMtlGamesTable(numOfGames, cb) {
             if (game.is_game_deleted) {
                 rowData += "<td>DELETED</td>"
             } else {
-                rowData += "<td><a href='https://war.app/MultiPlayer?GameID=" + htmlEscape(game.game_id) + "'>" + htmlEscape(game.game_id) + "</a></td>"
+                rowData += "<td><a href='/MultiPlayer?GameID=" + htmlEscape(game.game_id) + "'>" + htmlEscape(game.game_id) + "</a></td>"
             }
             table.append("<tr>" + rowData + "</tr>")
         });
@@ -1153,7 +1154,7 @@ function refreshBookmarks() {
         });
         var data = "<tbody>";
         $.each(bookmarks, function (key, bookmark) {
-            data += '<tr data-bookmarkId="' + htmlEscape(bookmark.id) + '" data-order="' + htmlEscape(bookmark.order) + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + htmlEscape(safeUrl(bookmark.url)) + '">' + htmlEscape(bookmark.name) + '</a>';
+            data += '<tr data-bookmarkId="' + htmlEscape(bookmark.id) + '" data-order="' + htmlEscape(bookmark.order) + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + htmlEscape(safeUrl(siteRelativeUrl(bookmark.url))) + '">' + htmlEscape(bookmark.name) + '</a>';
             data += '<a onclick="deleteBookmark(' + Number(bookmark.id) + ')" style="display:inline-block;float:right; opacity: 0.6;cursor: pointer;margin-right:5px">';
             data += '<span class="ui-icon ui-icon-trash"></span></a></td></tr>';
         });
@@ -1309,9 +1310,7 @@ function showBookmarkTable() {
 }
 
 window.bookmarkForumThread = function () {
-    var title = $("title").text()
-        .replace(/ - War\.app - Better than Hasbro's RISK® game - Play Online Free/i, '')
-        .replace(/ - Warzone - Better than Hasbro's RISK® game - Play Online Free/i, '');
+    var title = stripSiteSuffix($("title").text());
     var url = window.location.href;
 
     showAddBookmark();
@@ -1339,7 +1338,7 @@ window.bookmarkLevel = function () {
 function addDefaultBookmark() {
     var bookmark = {
         name: "Muli's userscript (Tidy up Your Dashboard)",
-        url: "https://war.app/Forum/106092-tidy-up-dashboard-2",
+        url: "/Forum/106092",
         newWindow: false,
         order: 0
     };
@@ -1571,7 +1570,7 @@ function setupUserscriptMenu() {
                 ${inputs}
               </div>
               <div class="modal-footer">
-                <span class="mr-auto text-muted" style="font-size: 13px">Originally created by <a href="https://war.app/Profile?p=2211733141&u=Muli_1" target="_blank" rel="noopener">Muli</a> · <a href="https://www.warzone.com/Forum/106092" target="_blank" rel="noopener">Forum thread</a></span>
+                <span class="mr-auto text-muted" style="font-size: 13px">Originally created by <a href="/Profile?p=2211733141" target="_blank" rel="noopener">Muli</a> · <a href="/Forum/106092" target="_blank" rel="noopener">Forum thread</a></span>
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary close-userscript" data-dismiss="modal">Close & Refresh</button>
               </div>
@@ -2003,91 +2002,91 @@ function ifSettingIsEnabled(setting, positive, negative, cb) {
     })
 }
 function pageIsOpenGamesPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/OpenGames(?:[?#].*)?$/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/OpenGames(?:[?#].*)?$/i);
 }
 
 function pageIsPointsPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Points.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Points.*/i);
 }
 
 function pageIsDashboard() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/(?:#|\?|$).*$/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/(?:#|\?|$).*$/i);
 }
 
 function pageIsProfile() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/profile\?p=[0-9]+/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/profile\?p=[0-9]+/i);
 }
 
 function pageIsLevelOverview() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/SinglePlayer\/Level\?ID=[0-9]+$/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/SinglePlayer\/Level\?ID=[0-9]+$/i);
 }
 
 function pageIsMapsPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/maps/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/maps/i);
 }
 
 function pageIsForumThread() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/[0-9]+.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Forum\/[0-9]+.*/i);
 }
 
 function pageIsForumOverview() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/Forum.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Forum\/Forum.*/i);
 }
 
 function pageIsThread() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/(Forum|Discussion|Clans\/CreateThread).*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/(Forum|Discussion|Clans\/CreateThread).*/i);
 }
 
 function pageIsSubForum() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Forum\/[A-Z]+.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Forum\/[A-Z]+.*/i);
 }
 
 function pageIsClanForumThread() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Discussion\/\?ID=[0-9]+.*/);
+    return location.href.match(/^https?:\/\/[^\/]+\/Discussion\/\?ID=[0-9]+.*/);
 }
 
 function pageIsClanList() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Clans\/List/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Clans\/List/i);
 }
 
 function pageIsTournament() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\/Tournament\?ID=[0-9]+/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/Tournament\?ID=[0-9]+/i);
 }
 
 function pageIsGame() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\?GameID=[0-9]+/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\?GameID=[0-9]+/i);
 }
 
 function pageIsExamineMap() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/SinglePlayer\?PreviewMap.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/SinglePlayer\?PreviewMap.*/i);
 }
 
 function pageIsDesignMap() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MultiPlayer\?DesignMaps.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\?DesignMaps.*/i);
 }
 
 function pageIsCommonGames() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/CommonGames\?p=[0-9]+$/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/CommonGames\?p=[0-9]+$/i);
 }
 
 function pageIsCommunityLevels() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/SinglePlayer\/CommunityLevels/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/SinglePlayer\/CommunityLevels/i);
 }
 
 function pageIsCommunity() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Community/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Community/i);
 }
 
 function pageIsMapOfTheWeek() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MapOfTheWeek.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/MapOfTheWeek.*/i);
 }
 
 function pageIsMyMail() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Discussion\/MyMail(?:[?#].*)?$/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/Discussion\/MyMail(?:[?#].*)?$/i);
 }
 
 function pageIsBlacklistPage() {
-    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/ManageBl(?:ack|ock)List.*/i);
+    return location.href.match(/^https?:\/\/[^\/]+\/ManageBl(?:ack|ock)List.*/i);
 }
 
 function addCSS(css) {
@@ -2447,7 +2446,7 @@ function loadCommunityLevelRecords() {
 function loadPrivateNotes() {
     log("Loading private notes");
     $("#FeedbackMsg").after('<div class="profileBox" id="privateNotes"><h3>Private Notes</h3><p style="width: 285px;overflow:hidden" class="content">Loading Privates Notes..</p></div>');
-    var url = "https://war.app" + $(".container a[href*='Discussion/Notes']").attr("href")
+    var url = $(".container a[href*='Discussion/Notes']").prop("href");
     var page = $('<div />').load(url, function () {
         var notes = page.find('#PostForDisplay_0').html().trim();
         if (notes) {
@@ -2757,7 +2756,7 @@ function isAnyForumThread() {
 function setupForumThreadTweaks() {
     $("[href='#Reply']").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
     $("#PostReply").after(" | <a href='#' style='cursor:pointer' onclick='bookmarkForumThread()'>Bookmark</a>");
-    $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
+    $(".region a[href*='2211733141']:contains('Muli')").closest("td").find("a:contains('Report')").before("<a href='/Forum/106092'><font color='#FFAE51' size='1'>Script Creator</font></a><br>");
     $("[id^=PostForDisplay]").find("img").css("max-width", "100%");
     $(".region td:first-of-type").css("padding-top", "10px");
     addCSS(`
@@ -2800,8 +2799,30 @@ function withTournamentInfoSlot(callback) {
     });
 }
 
+function siteName() {
+    var meta = document.querySelector("meta[property='og:site_name']");
+    return (meta && meta.getAttribute("content")) || "War.app";
+}
+
+function stripSiteSuffix(title) {
+    var name = siteName().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return title.replace(new RegExp("\\s+-\\s+" + name + "(?:\\s+-.*)?$", "i"), "").trim();
+}
+
+function siteRelativeUrl(url) {
+    var match = /^https?:\/\/([^\/?#]+)(.*)$/i.exec(String(url).trim());
+    if (!match) {
+        return url;
+    }
+    var host = match[1].replace(/:\d+$/, "").toLowerCase();
+    var onSite = SITE_HOSTS.some(function (siteHost) {
+        return host === siteHost || host.endsWith("." + siteHost);
+    });
+    return onSite ? (match[2] || "/") : url;
+}
+
 function tournamentNameFromTitle(title) {
-    return title.replace(/^Tournament:\s*/i, "").replace(/\s+-\s+(?:War\.app|Warzone)\b.*$/i, "").trim();
+    return stripSiteSuffix(title).replace(/^Tournament:\s*/i, "").trim();
 }
 
 function setupTournamentPage() {
@@ -3296,7 +3317,7 @@ function notifyNewTurns(games, knownIds) {
     }
     ifSettingIsEnabled("turnNotifications", function () {
         newGames.forEach(function (game) {
-            var notification = new Notification("Your turn: " + game.name, { body: "War.app", tag: "tuyd-turn-" + game.id });
+            var notification = new Notification("Your turn: " + game.name, { body: siteName(), tag: "tuyd-turn-" + game.id });
             notification.onclick = function () {
                 window.focus();
                 location.href = game.href;
@@ -3910,8 +3931,8 @@ function renderLevelRow(level) {
                     href="/SinglePlayer/Level?ID=${htmlEscape(level.ID)}">${htmlEscape(level.NAME)}
                 </a> &nbsp;&nbsp;
                 <font color="gray">${htmlEscape(level.LIKES)} likes, ${htmlEscape(level.WINS)} wins in ${htmlEscape(level.ATTEMPTS)} attempts</font><br>
-                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="https://war.app/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(level.CREATOR_NAME)}</a><br>
-                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="https://war.app/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(level.RECORD_HOLDER_NAME) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
+                <font color="gray">Created by</font> ${level.CREATOR_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.CREATOR_CLAN_ID) + '" title="' + htmlEscape(level.CREATOR_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.CREATOR_CLAN_IMAGE)) + '"></a>' : ''} <a href="/Profile?p=${htmlEscape(level.CREATOR_ID)}">${htmlEscape(level.CREATOR_NAME)}</a><br>
+                <font color="gray">Record holder:</font> ${level.RECORD_HOLDER_CLAN_ID > 0 ? '<a href="/Clans/?ID=' + htmlEscape(level.RECORD_HOLDER_CLAN_ID) + '" title="' + htmlEscape(level.RECORD_HOLDER_CLAN_NAME) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(level.RECORD_HOLDER_CLAN_IMAGE)) + '"></a>' : ''} ${level.RECORD_HOLDER_NAME ? '<a href="/Profile?p=' + htmlEscape(level.RECORD_HOLDER_ID) + '">' + htmlEscape(level.RECORD_HOLDER_NAME) + '</a>' + htmlEscape(getTurnText(level.RECORD_TURNS)) : 'None'}<br>
                 <font color="gray">Win rate: </font>${htmlEscape(level.WIN_RATE)}%<br>
             </td>
             <td><span style="font-size: 17px"><a href="/SinglePlayer?Level=${htmlEscape(level.ID)}">Play</a></span></td>

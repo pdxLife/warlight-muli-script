@@ -60,7 +60,8 @@ test("page detection matches war.app and warzone.com URLs", () => {
     assert.ok(at("https://war.app/ManageBlackList").pageIsBlacklistPage());
     assert.ok(at("https://war.app/ManageBlockList").pageIsBlacklistPage());
     assert.ok(at("https://war.app/Forum/12345-some-thread").pageIsForumThread());
-    assert.ok(!at("https://example.com/Forum/12345").pageIsForumThread());
+    assert.ok(at("https://www.some-future-domain.example/Forum/12345-thread").pageIsForumThread(), "routing doesn't depend on the domain");
+    assert.ok(!at("https://war.app/Profile/Forum/12345").pageIsForumThread());
 });
 
 test("userscript header updates from this repo and versions agree", () => {

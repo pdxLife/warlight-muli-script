@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.13.3
+
+- The link to Muli's profile in the settings menu uses the profile ID alone, so it keeps working if the name changes.
+- Works if war.app changes its domain again. Page detection no longer checks the domain, links are relative, page titles are trimmed using the site's own name, and bookmarks saved on war.app, warzone.com or warlight.net open on the domain you're using. The script now runs on all subdomains of war.app and warzone.com. Settings and bookmarks stay with each domain; move them with Export / Import.
+
 ## 3.13.2
 
 - After the dashboard refreshes (R, the Refresh button, coming back to the tab, or the background turn check), the "+ Show N more open games" link and the "Past games / Create Game" links under My Games are back. Show more and the Multi-Day / Real-Time / Both buttons now also use the refreshed open games instead of the list from when the page first loaded.
