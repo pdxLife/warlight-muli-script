@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.12.0
+
+- **Mail search**: a **Filter by player** box on your mail page shows only threads started or last answered by that player. If your mail spans several pages, the first search loads the rest, so it covers all of it.
+
 ## 3.11.0
 
 - Games where it's your turn are sorted by how much time you have left before you're booted, most urgent first. Other games keep war.app's order. It can be turned off under Features → Dashboard.
