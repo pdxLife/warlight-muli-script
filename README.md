@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.14.4  
+> **Version:** 3.14.5  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com` and their subdomains
 
@@ -54,7 +54,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 - **Collapsible stat sections** — click any section header to expand/collapse.
 - **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
-- **Private notes** — loads your private notes from the Discussion/Notes page directly onto your profile.
+- **Private notes** — on another player's profile, shows the private note you keep about them on war.app (the profile's "Private Notes" link). The notes are stored by war.app on your account; the script only displays them.
 - **Cleaner layout** — collapses excessive blank lines.
 
 ### Forum

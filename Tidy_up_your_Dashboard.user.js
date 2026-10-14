@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.4
+// @version 3.14.5
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.5';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2339,17 +2339,24 @@ function loadCommunityLevelRecords() {
 
 
 function loadPrivateNotes() {
-    log("Loading private notes");
-    $("#FeedbackMsg").after('<div class="profileBox" id="privateNotes"><h3>Private Notes</h3><p style="width: 285px;overflow:hidden" class="content">Loading Privates Notes..</p></div>');
     var url = $(".container a[href*='Discussion/Notes']").prop("href");
-    var page = $('<div />').load(url, function () {
-        var notes = page.find('#PostForDisplay_0').html().trim();
-        if (notes) {
-            $('#privateNotes .content').html(notes);
+    if (!url) {
+        return;
+    }
+    log("Loading private notes");
+    $("#FeedbackMsg").after('<div class="profileBox" id="privateNotes"><h3>Private Notes</h3><p style="width: 285px;overflow:hidden" class="content">Loading private notes...</p></div>');
+    var content = $("#privateNotes .content");
+    $.ajax({ url: url, dataType: "text" }).done(function (html) {
+        var note = new DOMParser().parseFromString(html, "text/html").getElementById("PostForDisplay_0");
+        if (note && note.textContent.trim()) {
+            $(note).find("script").remove();
+            content.empty().append(document.importNode(note, true).childNodes);
         } else {
-            $('#privateNotes .content').html('You don\'t have any Private Notes.');
+            content.text("You don't have any Private Notes.");
         }
-
+    }).fail(function (xhr) {
+        log("Error loading private notes: " + (xhr && xhr.statusText));
+        content.text("Couldn't load your private notes.");
     });
 }
 
