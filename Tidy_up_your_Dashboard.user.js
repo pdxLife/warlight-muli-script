@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.2
+// @version 3.14.3
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -863,64 +863,6 @@ function getUjsPlayerStat($row, prefix) {
     return val;
 }
 
-function captureTournamentInviters() {
-    $(".TournamentRow").each(function () {
-        var $row = $(this);
-        var $link = $row.find("a[href*='Tournament?ID=']");
-        if ($link.length === 0) return;
-
-        var href = $link.attr("href");
-        var idMatch = href.match(/Tournament\?ID=(\d+)/i);
-        if (!idMatch) return;
-        var tournamentId = idMatch[1];
-
-        var rowText = $row.text();
-        var inviterName = "";
-
-        var inviteMatch = rowText.match(/invited\s+(?:you\s+)?by\s+(.+?)(?:\s*-|\s*$)/i) ||
-                          rowText.match(/(.+?)\s+invited\s+you/i) ||
-                          rowText.match(/invite\s+from\s+(.+?)(?:\s*-|\s*$)/i);
-        if (inviteMatch) {
-            inviterName = inviteMatch[1].trim();
-        } else {
-            var $inviterLink = $row.find("a[href*='Profile']");
-            if ($inviterLink.length) {
-                inviterName = $inviterLink.text().trim();
-            }
-        }
-
-        if (inviterName && tournamentId) {
-            var data = {
-                tournamentId: tournamentId,
-                invitedBy: inviterName,
-                capturedAt: new Date().toISOString()
-            };
-            try {
-                Database.update(Database.Table.TournamentData, data, undefined, function () {
-                    log("Captured inviter for tournament " + tournamentId + ": " + inviterName);
-                });
-            } catch (e) {
-                log("Error storing tournament inviter: " + e);
-            }
-        }
-    });
-}
-
-function displayTournamentInviter() {
-    whileOnTournament(function (tournamentId) {
-        var slot = tournamentInfoSlot(tournamentId);
-        if (!slot || slot.attr("data-inviter-checked")) {
-            return;
-        }
-        slot.attr("data-inviter-checked", "true");
-        Database.readIndex(Database.Table.TournamentData, Database.Row.TournamentData.Id, tournamentId, function (data) {
-            if (data && data.invitedBy) {
-                slot.append(' <span class="tournamentInviter">| <span style="color:#aaa">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span></span>');
-            }
-        });
-    });
-}
-
 function mailThreadPlayers(row) {
     return $(row).find(".text-muted").map(function () {
         return $(this).text().trim().replace(/^by\s+/, "");
@@ -1058,23 +1000,6 @@ function filterClanList(query, $items) {
     $("#clanSearchCount").text(visible + " found");
 }
 
-function setupTournamentTable() {
-    if ($("#OpenTournamentTable").length == 0) {
-        return;
-    }
-    if ($("#MyTournamentsTable").length == 0) {
-        $(".SideColumn").prepend('<table class="dataTable" cellspacing="0" width="100%" id="MyTournamentsTable" style="text-align: left;"><thead><tr><td style="text-align: center" colspan="2">Open Tournament</td></tr></thead><tbody></tbody></table><br>');
-        $("#MyTournamentsTable tbody").append($(".TournamentRow").detach());
-    }
-
-    $("#MyTournamentsTable thead td").attr("colspan", "2");
-    addCSS(`
-        #MyTournamentsTable tbody .TournamentRow {
-            background-color: #131313;
-            text-align: left;
-        }
-    `)
-}
 function setupBookmarkMenu() {
     var $body = $("body");
     $body.append(`
@@ -1379,13 +1304,6 @@ window.userscriptSettings = [
         title: '',
         addBreak: false,
         help: 'This option automatically refreshes your games after switching back to War.app from a different tab / program. This only applies if War.app was idle for 30 or more seconds.'
-    },
-    {
-        id: 'highlightTournaments',
-        text: 'Highlight Tournament Invites',
-        selected: false,
-        title: '',
-        addBreak: false
     },
     {
         id: 'hideCoinsGlobally',
@@ -1769,12 +1687,6 @@ function getSortTables(callback) {
             order: 0
         },
         {
-            id: "#MyTournamentsTable",
-            name: "Open Tournaments",
-            hidden: false,
-            order: 2
-        },
-        {
             id: "#MapOfTheWeekTable",
             name: "Map of the Week",
             hidden: false,
@@ -1823,7 +1735,10 @@ function getSortTables(callback) {
     }
     Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "tableSort", function (tableData) {
         if (tableData && tableData.value.length > 3) {
-            var tables = tableData.value;
+            // war.app no longer has a tournaments table on the dashboard.
+            var tables = tableData.value.filter(function (table) {
+                return table.id !== "#MyTournamentsTable";
+            });
             if ($("#ShopTable").length > 0 && !arrayHasObjWithId(tables, "#ShopTable")) {
                 tables.push({
                     id: "#ShopTable",
@@ -2475,7 +2390,6 @@ function setupForumThreadHiding() {
 }
 
 function setupDashboard() {
-    captureTournamentInviters();
     playerDataReady.done(setupVacationAlert);
 
     hideBlacklistedThreads();
@@ -2489,9 +2403,6 @@ function setupDashboard() {
         createSelector(".BootTimeLabel", "z-index:50;");
     }, function () {
         createSelector(".BootTimeLabel", "color:white !important;font-weight:normal!important;font-style:italic;font-size:13px!important;z-index:50;");
-    });
-    ifSettingIsEnabled("highlightTournaments", function () {
-        createSelector("#MyTournamentsTable tbody", "background:#4C4C33;");
     });
     ifSettingIsEnabled("hideMyGamesIcons", function () {
         createSelector("#MyGamesTable td div > img, #MyGamesTable td div a > img", "display:none;");
@@ -2569,7 +2480,6 @@ function mainFeatures() {
         { name: "Block list search", section: "Other", match: pageIsBlacklistPage, run: setupBlockListSearch },
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
-        { name: "Show who invited you", section: "Tournaments", run: displayTournamentInviter },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
@@ -3671,8 +3581,6 @@ function setupBasicDashboardStyles() {
     createSelector("#MyGamesTable td span a img, #MyGamesTable td span a img", "display:inherit;");
     createSelector(".GameRow:hover", "background-color:rgb(50, 50, 50);cursor:pointer;");
     createSelector(".GameRow a:hover", "text-decoration:none;");
-    createSelector(".TournamentRow a:hover", "text-decoration:none;");
-    createSelector(".TournamentRow:hover", "background-color:rgb(50, 50, 50);cursor:pointer;");
     createSelector(".ui-buttonset label", "font-size:11px;");
     createSelector("#OpenGamesTable label:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;font-weight: bold;color: #ffffff;");
     createSelector("img", "position: relative;z-index:50;");
@@ -3686,9 +3594,6 @@ function setupBasicDashboardStyles() {
             position:relative;
         }
     `);
-    $.each($(".TournamentRow td"), function () {
-        $(this).find("font:first-of-type").appendTo($(this).find("a")).css("font-size", "10px");
-    });
     addCSS(`
         .GameRow td:nth-of-type(2) {
             position: relative;
@@ -3849,7 +3754,6 @@ function setupRightColumn(isInit) {
     //Bookmarks
     if (isInit) {
         setupBookmarkTable();
-        setupTournamentTable();
     } else {
         refreshBookmarks()
     }

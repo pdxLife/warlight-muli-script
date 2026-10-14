@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.3
+
+- **Removed** "Show who invited you", the "Highlight Tournament Invites" setting, and the dashboard's tournament table handling. war.app no longer shows tournaments or tournament invitations on the dashboard (they're only on the Tournaments page, without who invited you), so these had nothing left to work with. "Open Tournaments" is gone from the right-column sort menu too.
+
 ## 3.14.2
 
 - The tournament player search box and Sort by menu can be clicked again. war.app makes the Players panel ignore the mouse, and the toolbar inherited that, so clicks went through to the list. Search also reacts to pasting now, not just typing.
