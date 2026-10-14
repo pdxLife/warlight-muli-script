@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.13.3
+
+- The link to Muli's profile in the settings menu uses the profile ID alone, so it keeps working if the name changes.
+
 ## 3.13.2
 
 - After the dashboard refreshes (R, the Refresh button, coming back to the tab, or the background turn check), the "+ Show N more open games" link and the "Past games / Create Game" links under My Games are back. Show more and the Multi-Day / Real-Time / Both buttons now also use the refreshed open games instead of the list from when the page first loaded.

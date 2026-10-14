@@ -2,13 +2,13 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.13.2  
+> **Version:** 3.13.3  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
 ## Credits
 
-Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141&u=Muli_1), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://www.warzone.com/Forum/106092).
+Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://www.warzone.com/Forum/106092).
 
 ## Installation
 

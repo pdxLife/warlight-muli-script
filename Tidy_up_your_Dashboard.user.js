@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.13.2
+// @version 3.13.3
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -1571,7 +1571,7 @@ function setupUserscriptMenu() {
                 ${inputs}
               </div>
               <div class="modal-footer">
-                <span class="mr-auto text-muted" style="font-size: 13px">Originally created by <a href="https://war.app/Profile?p=2211733141&u=Muli_1" target="_blank" rel="noopener">Muli</a> · <a href="https://www.warzone.com/Forum/106092" target="_blank" rel="noopener">Forum thread</a></span>
+                <span class="mr-auto text-muted" style="font-size: 13px">Originally created by <a href="https://war.app/Profile?p=2211733141" target="_blank" rel="noopener">Muli</a> · <a href="https://www.warzone.com/Forum/106092" target="_blank" rel="noopener">Forum thread</a></span>
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary close-userscript" data-dismiss="modal">Close & Refresh</button>
               </div>
