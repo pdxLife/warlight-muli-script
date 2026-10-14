@@ -102,6 +102,20 @@ Decided: show the stats on profiles, include the player's rank, and turn the fea
 - [ ] **custom.wl-stats.com tournaments.** On a war.app tournament run through custom.wl-stats.com, show a "Managed on custom.wl-stats.com" link next to "Created by". Needs an endpoint that maps a war.app tournament ID to a custom.wl-stats.com tournament, with the same CORS setup.
 - [ ] **MTL through wl-stats.** If the MTL organizers don't add CORS themselves (Phase 4), wl-stats could fetch MTL's public API server-side, cache it and serve it with CORS. That would remove the maak.ch JSONP relay for MTL without the `@grant` migration. Only with the MTL organizers' agreement, since it's their data and their server load.
 
+## Phase 8 — Idle helpers
+
+War.app Idle came after Muli's script, which has no Idle features yet (on Idle pages it only adds its general styles and the version label). Idle is drawn entirely by war.app's client code (`ujs_*` elements, like tournament pages) and keeps its save in its own IndexedDB (`WZ`). The resource bars behind the ₩ / ₳ counters are war.app's own, not a script bug.
+
+Ground rules for everything here:
+- **Information and convenience only, no automation.** Nothing that upgrades, attacks, moves tanks or claims rewards for you: that would play the game for you, be unfair where Idle has challenges and rankings, and likely break war.app's rules.
+- **Read what's on screen, not the game's internals.** war.app's client code is minified and renamed on every build; visible text and numbers are much sturdier. Use the same patterns as tournament pages: `ujsElement()` lookups, a `MutationObserver` that re-checks, absolutely positioned additions that don't enter war.app's layout, and `pointer-events: auto` on anything clickable.
+- Each helper gets its own switch under a new "Idle" section in Features, plus tests from recorded Idle markup and a QA.md row.
+
+- [ ] **Attention alerts.** A tab-title count and an optional desktop notification when Idle needs you: a tank has finished its queued moves, a battle is ready, powers are waiting to be claimed, and similar. Same idea as the multiplayer "Your turn" alert, so Idle can sit in a background tab. First step: list which on-screen signals mark each of these states.
+- [ ] **Best next upgrade.** Next to each upgrade, show how long it takes to pay for itself (cost ÷ income gained) and highlight the best value. Needs the cost and the income gain of each upgrade from the screen; check which panels (army camps, mines, hospitals, mercenary camps, dig sites) show both.
+- [ ] **Time to afford.** Next to each upgrade cost, show how long until you can afford it at the current ₩/sec or ₳/sec (both are shown in the top-right counters, e.g. "￦131 (1/sec)").
+- [ ] **Ascend helper.** Show what ascending now would give compared with waiting, e.g. in an hour, if the Ascend screen exposes enough numbers to estimate it. Check the Ascend and Super Ascend screens first; drop this if the gain isn't shown or can't be derived.
+
 ## What's left
 
 In suggested order:
@@ -110,7 +124,8 @@ In suggested order:
 2. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
 3. **custom.wl-stats.com tournament links** (Phase 7), optional.
 4. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
-5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-6. **Split into modules** (Phase 3), once the feature work settles.
+5. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
+6. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+7. **Split into modules** (Phase 3), once the feature work settles.
 
 Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, and boot-time sorting relies on the "Your turn for …" text.
