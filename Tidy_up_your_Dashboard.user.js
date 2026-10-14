@@ -3104,6 +3104,7 @@ function mainFeatures() {
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
+        { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
     ];
@@ -3918,7 +3919,13 @@ function setupOpenGamesFilter() {
             #OpenGamesFilterPanel input[type=text] { width: 260px; max-width: 100%; }
             #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text] { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
         `);
-        table.find("thead h2").parent().append(` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`);
+        var filterLink = ` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`;
+        var codeLink = table.find("thead a[href*='GameInviteCode']").first();
+        if (codeLink.length) {
+            codeLink.after(filterLink);
+        } else {
+            table.find("thead h2").parent().append(filterLink);
+        }
         var panel = $(`
             <tr id="OpenGamesFilterPanel" style="display: none"><td colspan="2">
                 <label><input type="checkbox" name="hideAutoGames"> Hide Auto Games</label>
@@ -3949,6 +3956,39 @@ function setupOpenGamesFilter() {
             if (rowsChanged) {
                 applyOpenGamesFilter(filter);
             }
+        }).observe(table[0], { childList: true, subtree: true });
+    });
+}
+
+function openGameHasPlayer(row, name) {
+    return $(row).find(".MyGamesGameBox").filter(function () {
+        var title = $(this).attr("title") || "";
+        return title === name || title.indexOf(name + ": ") === 0;
+    }).length > 0;
+}
+
+function markJoinedOpenGames(name) {
+    $("#OpenGamesTable tr.GameRow").each(function () {
+        $(this).toggleClass("tuyd-joined", openGameHasPlayer(this, name));
+    });
+}
+
+function setupJoinedOpenGames() {
+    var table = $("#OpenGamesTable");
+    if (table.length === 0) {
+        return;
+    }
+    playerDataReady.done(function (player) {
+        if (!player || !player.Name) {
+            return;
+        }
+        addCSS(`
+            #OpenGamesTable tr.tuyd-joined > td { background: rgba(76, 175, 80, 0.12); }
+            #OpenGamesTable tr.tuyd-joined > td:nth-child(2) > a:first-of-type::after { content: "Joined"; margin-left: 8px; padding: 1px 6px; border-radius: 3px; background: #2e7d32; color: #fff; font-size: 12px; vertical-align: middle; }
+        `);
+        markJoinedOpenGames(player.Name);
+        new MutationObserver(function () {
+            markJoinedOpenGames(player.Name);
         }).observe(table[0], { childList: true, subtree: true });
     });
 }

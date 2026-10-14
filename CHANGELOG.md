@@ -3,6 +3,7 @@
 ## 3.10.0
 
 - **Open Games filter** is back: a **Filter** link in the Open Games header hides Auto Games, coin games, games with a short boot time, and games whose name contains words you choose. It shows how many games are hidden and works on the dashboard and the View All page.
+- Open Games you've joined (or been invited to) are highlighted with a **Joined** badge, on the dashboard and the View All page.
 
 ## 3.9.0
 

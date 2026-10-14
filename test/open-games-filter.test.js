@@ -3,16 +3,17 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 // Mirrors an Open Games row on war.app's dashboard (names and ids are invented).
-function openGameRow(id, name, { boot = "3 days", auto = false, coins = false } = {}) {
+function openGameRow(id, name, { boot = "3 days", auto = false, coins = false, seats = ["Open Seat"] } = {}) {
     const href = auto ? `/MultiPlayer?AutoGameID=wlnet_${id}&amp;From=MPDashboard` : `/MultiPlayer?GameID=${id}&amp;From=MPDashboard`;
     return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="${href}"><img class="MyGamesGameThumbnail" src="x.jpg"></a><span class="BootTimeLabel" style="color: #00DD00">${boot}</span></span></td>`
         + `<td><a style="font-size: 17px; color: white" href="${href}">${name}</a><br>`
         + (coins ? `<font color="gold">Entry fee: 5 coins. Prize: 9 coins</font><br>` : "")
-        + `<div class="MyGamesGameBoxesRow"><span class="MyGamesGameBox" title="Open Seat"><span class="MyGamesGameBoxOpenSeat">O</span></span></div><div></div></td></tr>`;
+        + `<div class="MyGamesGameBoxesRow">${seats.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div><div></div></td></tr>`;
 }
 
 function openGames(rows) {
-    return `<table id="OpenGamesTable" class="dataTable"><thead><tr><td colspan="2"><div style="float:left"><h2>Open Games&nbsp;</h2><a href="/MultiPlayer/OpenGames" id="ViewAllOpenGamesLink">View All</a> | <a href="/MultiPlayer?GameInviteCode=1">Have a code?</a></div></td></tr></thead>`
+    return `<table id="OpenGamesTable" class="dataTable"><thead><tr><td colspan="2"><div style="float:left"><h2>Open Games&nbsp;</h2><a href="/MultiPlayer/OpenGames" id="ViewAllOpenGamesLink">View All</a> | <a href="/MultiPlayer?GameInviteCode=1">Have a code?</a>`
+        + `<br>4 games are being hidden due to prerequisites. <a href="/MultiPlayer/FilteredOpenGames">View Them</a></div></td></tr></thead>`
         + `<tbody>${rows.join("")}<tr><td colspan="2"><a href="#" id="ShowMoreOpenGamesLink">+ Show 35 more open games</a></td></tr></tbody></table>`;
 }
 
@@ -89,6 +90,7 @@ test("keywords match whole words only", () => {
 test("adds a Filter link and panel that start from the saved filter", () => {
     const { $, visibleIds } = setup([openGameRow("1", "Plain game"), openGameRow("2", "Auto", { auto: true })], { hideAutoGames: true, minBootHours: 6, keywords: ["rp", "diplo"] });
     assert.equal($("#OpenGamesFilterLink").length, 1);
+    assert.equal($("a[href*='GameInviteCode']").next().attr("id"), "OpenGamesFilterLink", "the link stays on the first header line");
     assert.equal($("#OpenGamesFilterCount").text(), "1 hidden");
     assert.deepEqual(Array.from(visibleIds()), ["1"]);
     const panel = $("#OpenGamesFilterPanel");
@@ -131,4 +133,40 @@ test("recognizes the View All open games page", () => {
     assert.ok(at("https://www.warzone.com/MultiPlayer/OpenGames?x=1").pageIsOpenGamesPage());
     assert.ok(!at("https://war.app/MultiPlayer/").pageIsOpenGamesPage());
     assert.ok(!at("https://war.app/MultiPlayer/OpenGamesArchive").pageIsOpenGamesPage());
+});
+
+function setupJoined(rows, player) {
+    const { dom, $ } = createDom(openGames(rows));
+    const ctx = load(["openGameHasPlayer", "markJoinedOpenGames", "setupJoinedOpenGames"], {
+        ...domGlobals(dom, $),
+        addCSS: () => { },
+        playerDataReady: $.Deferred().resolve(player).promise()
+    });
+    ctx.setupJoinedOpenGames();
+    const joinedIds = () => Array.from($("#OpenGamesTable tr.tuyd-joined").map(function () {
+        return $(this).attr("gameid");
+    }).get());
+    return { $, joinedIds };
+}
+
+test("marks open games that have you in a seat", () => {
+    const { joinedIds } = setupJoined([
+        openGameRow("1", "Not joined", { seats: ["Alice", "Open Seat"] }),
+        openGameRow("2", "Joined", { seats: ["Alice", "Me Myself", "Open Seat"] }),
+        openGameRow("3", "Invited", { seats: ["Me Myself: Waiting for this player to join or decline the game", "Open Seat"] }),
+        openGameRow("4", "Similar name", { seats: ["Me Myself and I", "Me", "Open Seat"] })
+    ], { Name: "Me Myself" });
+    assert.deepEqual(joinedIds(), ["2", "3"]);
+});
+
+test("marks joined games in rows the site renders later", async () => {
+    const { $, joinedIds } = setupJoined([openGameRow("1", "First", { seats: ["Open Seat"] })], { Name: "Me" });
+    $("#OpenGamesTable tbody").append(openGameRow("2", "Second", { seats: ["Me", "Open Seat"] }));
+    await flush();
+    assert.deepEqual(joinedIds(), ["2"]);
+});
+
+test("marks nothing without a player name", () => {
+    const { joinedIds } = setupJoined([openGameRow("1", "Game", { seats: ["", "Open Seat"] })], { Name: null });
+    assert.deepEqual(joinedIds(), []);
 });

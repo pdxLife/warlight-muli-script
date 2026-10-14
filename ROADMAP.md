@@ -52,7 +52,7 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 Features described in the [original forum thread](https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard) that were lost over the years or broke with war.app's redesign. Twitch streams, the old Real-Time Ladder countdown and the AWP World Tour integration are left out, because the services behind them no longer exist in that form.
 
 - [x] **Open Games filter.** Hide Auto Games, coin games, games with a short boot time, and games whose name contains chosen words. *(Done. A Filter link in the Open Games header, on the dashboard and the View All page. war.app now has its own "Hide All Lottery Games" button, so lottery games need no special case.)*
-- [ ] **Mark Open Games you've already joined.**
+- [x] **Mark Open Games you've already joined.** *(Done. war.app has no marker for this, so rows are matched by your name in the seat tooltips, which read either the name or "<name>: Waiting for this player…". The name format was checked against the logged-in dashboard.)*
 - [ ] **Sort My Games by time left before you're booted.**
 - [ ] **Open Games tab in the menu bar.**
 - [ ] **Decline a tournament from the tournaments list page.**
