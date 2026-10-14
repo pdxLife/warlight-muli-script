@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.2
+
+- The tournament player search box and Sort by menu can be clicked again. war.app makes the Players panel ignore the mouse, and the toolbar inherited that, so clicks went through to the list. Search also reacts to pasting now, not just typing.
+
 ## 3.14.1
 
 - **Tournament Bookmark link and player search now appear when you open a tournament from the tournaments list.** war.app switches to the tournament without loading a new page, so the script never set them up; it only worked when the tournament's address was opened directly. Opening a second tournament the same way works too.
