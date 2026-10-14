@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.13.0
+
+Checked every feature against the current war.app and fixed what its redesign broke.
+
+- **Fixed:** Bookmark and Find Me links, player search and sort, and "Invited by" on tournament pages. war.app now draws these pages client-side, so the script waits for them, and the links sit next to "Created by".
+- **Fixed:** sorting tournament players by name compared their levels instead of their names, and Find Me missed names containing something like "L2".
+- **Fixed:** "Invited by" never appeared, because it read the database before it was open.
+- **Fixed:** the block list counter (war.app moved the page to /ManageBlockList).
+- **Fixed:** total points earned (the level tooltip it read is now empty; it now uses the numbers on the Points page).
+- **Fixed:** pressing R to refresh the dashboard no longer fires while you type in a text box, such as the Open Games filter keywords.
+- **Fixed:** "Hide everything coin-related" now also hides the open tournaments table, and "Reset hidden threads" shows the threads again on forum pages.
+- **Removed**, because the page or data they used is gone or war.app now does it itself: Rate Map link, Global win rate, Community events list on Ladders (war.app has a Community Events page), fixed-height tournament list, creator highlighting in tournament chat, clan creator banner and Load Creators (clan pages no longer show the creator), profile box styling, and the new-thread cleanup.
+
 ## 3.12.1
 
 - Removed **Remember My Games filter**. war.app replaced the dropdown it worked with by its own Filter button, which already remembers your choice.

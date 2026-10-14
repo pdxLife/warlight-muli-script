@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.12.1  
+> **Version:** 3.13.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -39,27 +39,22 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 ### Tournaments
 
-- **Player search & sort** — search players by name and sort by wins, losses, or name in both classic HTML tables and UJS-rendered player lists.
-- **Find Me** — button that highlights and scrolls to your name in brackets and player lists.
-- **Tournament inviter display** — shows who invited you next to the host label (data captured from the dashboard).
+- **Player search & sort** — on the Players tab, search players by name and sort by wins, losses, or name.
+- **Find Me** — link next to "Created by" that highlights your name in the player list or bracket.
+- **Tournament inviter display** — shows who invited you next to "Created by" (data captured from the dashboard).
 - **Bookmark link** — quick-save a tournament to your bookmarks.
-- **Creator highlighting in chat** — the tournament creator's messages are visually distinguished.
-- **Tournament overview** — scrollable tournament list with fixed viewport height.
 
 ### Clans
 
 - **Clan list search** — live text filter on the `/Clans/List` page with match count.
-- **Load Creators** — on-demand batched fetching of clan creators with session caching; displays "by \<name\>" next to each clan.
-- **Clan page creator banner** — when viewing a clan page, a styled banner shows who created the clan with a link to their profile.
 
 ### Profile
 
 - **Collapsible stat sections** — click any section header to expand/collapse.
-- **Global win rate** — calculated and appended next to your ranked games stats.
 - **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — loads your private notes from the Discussion/Notes page directly onto your profile.
-- **Cleaner layout** — collapses excessive blank lines and applies background styling.
+- **Cleaner layout** — collapses excessive blank lines.
 
 ### Forum
 
@@ -77,14 +72,8 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 ### Maps & Levels
 
 - **Map search** — text filter on the maps listing page with result count.
-- **Rate Map link** — extra rating link on public map pages.
 - **Level bookmarking** — quick-save link on community level pages.
 - **Community levels banner** — points users to communitylevels.online for advanced searching.
-
-### Ladders & Community Events
-
-- **Community events listing** — loads CLOT (Community Lot Tournament) data from a GitHub-hosted hub; displays real-time ladders, multi-day events, and other community events with player counts.
-- **Ladders page** — title updated to "Ladders & Community Events".
 
 ### Common Games
 
@@ -95,9 +84,9 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 - **Total lifetime points** — calculates and displays your all-time earned points based on level thresholds.
 
-### Blacklist
+### Block List
 
-- **Player count** — shows how many players are on your blacklist with a live counter.
+- **Player count** — shows how many players are on your block list with a live counter.
 
 ## Settings
 
@@ -126,7 +115,6 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings, hidden forum threads, tournament inviter data.
 - **Cookies** — cached player profile data (~1 hour TTL).
-- **Session Storage** — clan creator cache for the current browsing session.
 
 ## Dependencies
 

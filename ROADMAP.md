@@ -30,7 +30,7 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 
 ### Upstream issue
 
-- **The community events feed is malformed upstream.** Since its last edit (2026-08-31), `psenough/wl_clot` `hub/list.jsonp` has an entry missing its closing `}`, so the ladders page can't list events. The script now accepts the feed's anonymous `({...})` wrapper, so the list comes back once upstream fixes the file.
+- **The community events feed is malformed upstream.** *(Moot: the community events list was removed in 3.13.0, because war.app now has its own Community Events page and draws the Ladders page client-side.)*
 
 ## Phase 4 — Features
 

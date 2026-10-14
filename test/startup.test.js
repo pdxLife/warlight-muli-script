@@ -54,23 +54,3 @@ test("a failing feature is logged and later features still run", () => {
     assert.match(logs[0], /Feature "broken" failed: Error: selector changed/);
     assert.match(logs[1], /Feature "broken match" failed/);
 });
-
-test("toWords spells out counts", () => {
-    const { toWords } = load(["toWords"]);
-    const cases = {
-        0: "", 1: "one", 15: "fifteen", 20: "twenty", 21: "twenty one", 42: "forty two", 99: "ninety nine",
-        100: "one hundred", 123: "one hundred twenty three", 1000: "one thousand", 2026: "two thousand twenty six"
-    };
-    for (const [n, expected] of Object.entries(cases)) {
-        assert.equal(toWords(Number(n)), expected, n);
-    }
-});
-
-test("parseClotList accepts named, anonymous and unwrapped JSONP", () => {
-    const { parseClotList } = load(["parseClotList"]);
-    const body = '{"success": "1", "data": {"leagues": [{"name": "Clan League"}]}}';
-    for (const response of [`callback(${body});`, `(${body})`, ` ( ${body} ) `, body]) {
-        assert.equal(parseClotList(response).leagues[0].name, "Clan League", response);
-    }
-    assert.throws(() => parseClotList('({"data": {"leagues": [{ }, { ]}})'));
-});

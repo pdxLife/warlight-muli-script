@@ -64,6 +64,7 @@ test("page detection matches war.app and warzone.com URLs", () => {
     assert.ok(!at("https://war.app/MultiPlayer/Tournament?ID=5").pageIsDashboard());
     assert.ok(at("https://war.app/MultiPlayer/Tournament?ID=5").pageIsTournament());
     assert.ok(at("https://war.app/ManageBlackList").pageIsBlacklistPage());
+    assert.ok(at("https://war.app/ManageBlockList").pageIsBlacklistPage());
     assert.ok(at("https://war.app/Forum/12345-some-thread").pageIsForumThread());
     assert.ok(!at("https://example.com/Forum/12345").pageIsForumThread());
 });

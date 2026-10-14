@@ -58,28 +58,9 @@ test("community level cards escape API data", () => {
     assert.deepEqual([...container.querySelectorAll("img")].map((img) => img.getAttribute("src")), ["#", "#"]);
 });
 
-test("community event list escapes CLOT hub data", () => {
-    const { dom, $ } = createDom(`<h1>Ladders</h1><div id="AutoContainer"><div></div></div>`);
-    const ctx = load(["setupLadderClotOverview", "getPlayerString", "toWords", "htmlEscape", "safeUrl"], {
-        ...domGlobals(dom, $),
-        loadClots: (cb) => cb({
-            leagues: [
-                { type: "realtime", url: "javascript:alert(1)", name: PAYLOAD },
-                { type: "multiday", url: "https://example.com", name: PAYLOAD },
-                { type: "league", url: "https://example.com", name: PAYLOAD, players: PAYLOAD }
-            ]
-        })
-    });
-    ctx.setupLadderClotOverview();
-    const container = dom.window.document.getElementById("clotInfo");
-    assertInert(container);
-    assert.equal(container.querySelectorAll("a").length, 3);
-    assert.equal(container.querySelector("a").getAttribute("href"), "#");
-});
-
 test("tournament inviter name is shown as text", () => {
-    const { dom, $ } = createDom(`<span id="HostLabel">Host</span>`, "https://war.app/MultiPlayer/Tournament?ID=7");
-    const ctx = load(["displayTournamentInviter", "htmlEscape"], {
+    const { dom, $ } = createDom(`<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp" class="ujsTextInner">Created by Host</div></div>`, "https://war.app/MultiPlayer/Tournament?ID=7");
+    const ctx = load(["displayTournamentInviter", "withTournamentInfoSlot", "whenElementAppears", "htmlEscape"], {
         ...domGlobals(dom, $),
         location: { href: "https://war.app/MultiPlayer/Tournament?ID=7" },
         Database: {
