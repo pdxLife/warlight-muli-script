@@ -55,6 +55,6 @@ Features described in the [original forum thread](https://war.app/Forum/106092-m
 - [x] **Mark Open Games you've already joined.** *(Done. war.app has no marker for this, so rows are matched by your name in the seat tooltips, which read either the name or "<name>: Waiting for this player…". The name format was checked against the logged-in dashboard.)*
 - [x] **Sort My Games by time left before you're booted.** *(Done. war.app's My Games label is the boot time plus your banked time, so time left is that label minus the "Your turn for …" duration. Only your-turn games are reordered, within the slots they already had, and the order is reapplied after each refresh.)*
 - [x] **Open Games tab in the menu bar.** *(Covered by war.app: the Multi-Player menu now links to Open Games, so no userscript tab is needed.)*
-- [ ] **Decline a tournament from the tournaments list page.**
-- [ ] **Hide tournaments with no games left.**
-- [ ] **Search mail by player name.**
+- **Decline a tournament from the tournaments list page.** *(Not feasible. war.app sends a decline as a `DeclineTournament` message in its binary client protocol, not as a web request, so a userscript would have to call minified internals that change with every site build. Declining stays on the tournament page.)*
+- [ ] **Hide tournaments with no games left.** *(Parked: the tournament tables only render while you're in a tournament, so the markup is needed from an account that is in one.)*
+- [x] **Search mail by player name.** *(Done. Filters `/Discussion/MyMail` by thread starter or last poster. The first search loads the other pages through `?Offset=`, so it covers the whole mailbox. Checked against a live mailbox.)*

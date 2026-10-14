@@ -7,7 +7,7 @@
 // @match https://www.war.app/*
 // @match https://war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.11.0
+// @version 3.12.0
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.11.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.12.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -1040,6 +1040,88 @@ function displayTournamentInviter() {
         if (data && data.invitedBy) {
             $("#HostLabel").after(' | <span style="color:#aaa;font-size:13px">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span>');
         }
+    });
+}
+
+function mailThreadPlayers(row) {
+    return $(row).find(".text-muted").map(function () {
+        return $(this).text().trim().replace(/^by\s+/, "");
+    }).get();
+}
+
+function parseMailRange(text) {
+    var match = /Threads\s+(\d+)\s*-\s*(\d+)\s+of\s+(\d+)/.exec(text);
+    return match ? { from: Number(match[1]), to: Number(match[2]), total: Number(match[3]) } : null;
+}
+
+function filterMailThreads(query) {
+    var rows = $("table.region tr[data-threadid]");
+    var needle = query.trim().toLowerCase();
+    var matches = rows.filter(function () {
+        return needle === "" || mailThreadPlayers(this).some(function (name) {
+            return name.toLowerCase().indexOf(needle) !== -1;
+        });
+    });
+    rows.not(matches).hide();
+    matches.show();
+    $("#MailSearchCount").text(needle === "" ? "" : matches.length + " of " + rows.length + " threads");
+}
+
+function loadAllMailThreads() {
+    var tbody = $("table.region tbody").first();
+    var range = parseMailRange($("body").text());
+    if (!range || (range.from === 1 && range.to >= range.total)) {
+        return $.Deferred().resolve().promise();
+    }
+    var known = {};
+    tbody.find("tr[data-threadid]").each(function () {
+        known[$(this).attr("data-threadid")] = true;
+    });
+    var loadFrom = function (offset) {
+        return $.ajax({ url: "/Discussion/MyMail?Offset=" + offset, dataType: "text" }).then(function (html) {
+            var page = new DOMParser().parseFromString(html, "text/html");
+            $(page).find("table.region tr[data-threadid]").each(function () {
+                var id = $(this).attr("data-threadid");
+                if (!known[id]) {
+                    known[id] = true;
+                    tbody.append(document.importNode(this, true));
+                }
+            });
+            var pageRange = parseMailRange(page.body ? page.body.textContent : "");
+            if (!pageRange) {
+                return null;
+            }
+            var next = pageRange.to === range.from - 1 ? range.to : pageRange.to;
+            return next > offset && next < pageRange.total ? loadFrom(next) : null;
+        });
+    };
+    return loadFrom(range.from === 1 ? range.to : 0);
+}
+
+function setupMailSearch() {
+    var table = $("table.region").first();
+    if (table.length === 0 || table.find("tr[data-threadid]").length === 0) {
+        return;
+    }
+    table.before(`<div id="MailSearch" style="margin: 8px 0">
+        <input type="text" id="MailSearchInput" placeholder="Filter by player" style="padding: 4px 8px; width: 200px; max-width: 60%; background: #222; color: #ddd; border: 1px solid #555">
+        <span id="MailSearchCount" class="text-muted" style="margin-left: 6px; white-space: nowrap"></span></div>`);
+    var allLoaded = null;
+    var searchTimer;
+    $("#MailSearchInput").on("input", function () {
+        var input = this;
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () {
+            if (!allLoaded) {
+                $("#MailSearchCount").text("Loading all threads...");
+                allLoaded = loadAllMailThreads().fail(function (xhr) {
+                    log("Error loading mail threads: " + (xhr && xhr.statusText));
+                });
+            }
+            allLoaded.always(function () {
+                filterMailThreads($(input).val());
+            });
+        }, 150);
     });
 }
 
@@ -2495,6 +2577,10 @@ function pageIsMapOfTheWeek() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/MapOfTheWeek.*/i);
 }
 
+function pageIsMyMail() {
+    return location.href.match(/.*(?:warzone[.]com|war[.]app)\/Discussion\/MyMail(?:[?#].*)?$/i);
+}
+
 function pageIsBlacklistPage() {
     return location.href.match(/.*(?:warzone[.]com|war[.]app)\/ManageBlackList.*/i);
 }
@@ -3100,6 +3186,7 @@ function mainFeatures() {
         { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
         { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
         { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: function () { playerDataReady.done(displayTotalPointsEarned); } },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },

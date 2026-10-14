@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.11.0  
+> **Version:** 3.12.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
@@ -69,6 +69,10 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 - **Tab key support** — inserts a tab character in textareas instead of moving focus.
 - **Community level previews** — single-player level links in forum posts are expanded into info cards, read from the level's page on war.app.
 - **MTL rankings in ladder threads** *(opt-in, via maak.ch)* — MTL-themed forum threads get a live rankings + recent games table below the reply area.
+
+### Mail
+
+- **Filter by player** — a search box on your mail page shows only threads started or last answered by a given player. The first search loads all pages of your mail, so it covers the whole mailbox.
 
 ### Maps & Levels
 
