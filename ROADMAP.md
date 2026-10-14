@@ -8,7 +8,7 @@ Ordered by priority within each phase. Line numbers refer to `Tidy_up_your_Dashb
 - [x] **Import can wipe all data.** `importSettings()` (line 2102) clears every table before parsing the pasted string. A bad or truncated paste deletes all bookmarks and settings. Parse and validate first, then clear. *(Done. Import now also clears only the exported tables, so tournament inviter data survives.)*
 - [x] **Reload fires immediately.** `window.setTimeout(window.location.reload(), 2000)` (line 2367) calls `reload()` right away. Use `setTimeout(() => location.reload(), 2000)`.
 - [x] **IndexedDB support check never triggers.** `if (!"indexedDB" in window)` (line 521) evaluates as `(false) in window`. Also, `db = e.target.result` (line 559) assigns an undeclared global that can clash with site code.
-- [x] **Blacklist counter polls forever.** It rebuilds the DOM every 500 ms (line 2996); other features use similar polling loops. Replace them with `MutationObserver`. *(Done for the blacklist. The only other loop was in `setupClanPageCreator`, removed in 3.13.0. Waiting for war.app's client-drawn pages now goes through `whenElementAppears()`, a `MutationObserver` with a 30-second cap.)*
+- [x] **Blacklist counter polls forever.** It rebuilds the DOM every 500 ms (line 2996); other features use similar polling loops. Replace them with `MutationObserver`. *(Done for the blacklist. The only other loop was in `setupClanPageCreator`, removed in 3.13.0. Features for war.app's client-drawn pages now re-check from a `MutationObserver` (`whileOnTournament()`).)*
 - [x] **Remove `async: false`** in `loadPlayerData()` (line 78). It blocks the main thread on first load each session.
 
 ## Phase 2 — Security and privacy
@@ -69,6 +69,7 @@ war.app moved most pages to client-side rendering (`ujs_*` elements positioned f
 - [x] **Restore "Show more" and the My Games footer after a refresh** (3.13.2), by re-running war.app's exported `WL_MPDashInit` with fresh `#AllOpenGamesData`.
 - [x] **Survive a domain change** (3.13.3): path-only page routing, relative links, titles trimmed with `og:site_name`, bookmarks from any of `SITE_HOSTS` open on the current domain, `@match` on all subdomains.
 - [x] **Tournament player search and sort** (3.14.0): the toolbar was out of view, search left matches scattered, sort assumed the wrong row height. Find Me removed; war.app's Bracket tab has **Find...** and **>** for it.
+- [x] **Tournament features after in-page navigation** (3.14.1). Opening a tournament from the tournaments list switches the view without a page load, so the features never started; and on a second tournament war.app numbers its element ids. Tournament features now watch the page and find elements by name with an optional number.
 - [x] **Block list search** (3.14.0), with accent-insensitive matching.
 - [x] **Credit Muli** as the original author in the header, README and settings menu (3.13.1).
 - [x] **QA checklist** in `QA.md` for a manual pass on the live site before each release.

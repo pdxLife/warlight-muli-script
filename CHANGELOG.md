@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.1
+
+- **Tournament Bookmark link and player search now appear when you open a tournament from the tournaments list.** war.app switches to the tournament without loading a new page, so the script never set them up; it only worked when the tournament's address was opened directly. Opening a second tournament the same way works too.
+
 ## 3.14.0
 
 - **Tournament player search and sort work again.** The toolbar was placed below the visible part of the Players tab; it now sits at the top right, above the list. Search results move to the top of the list instead of staying scattered where they were, and sorting uses war.app's row spacing (it used a fixed 34px and stacked rows on top of each other).

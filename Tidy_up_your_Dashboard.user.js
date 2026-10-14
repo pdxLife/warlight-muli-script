@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.0
+// @version 3.14.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -718,14 +718,23 @@ function filterMaps(selector) {
     $("#searchResultsTitle").length > 0 ? $("#searchResultsTitle").html("Searchresults for <i>" + query + "</i>") : $("#ReceivePager").after("<h2 id='searchResultsTitle'>Searchresults for <i>" + query + "</i></h2>")
 
 }
+// war.app numbers element ids when it draws a view again in the same page (ujs_CreatorLabel_2_tmp),
+// so its elements are looked up by name with an optional number. The newest one wins.
+function ujsElement(name, suffix) {
+    var pattern = new RegExp("^ujs_" + name + "(?:_\\d+)?" + (suffix || "") + "$");
+    var matches = $("[id^='ujs_" + name + "']").filter(function () {
+        return pattern.test(this.id);
+    });
+    return matches.length ? matches[matches.length - 1] : null;
+}
+
 function setupUjsPlayerControls() {
-    var $playersTab = $("#ujs_PlayersTabContents");
-    if ($playersTab.length === 0) return;
+    var panel = ujsElement("PlayersTabContents", "_img");
+    if (!panel || !ujsElement("PlayersContainer")) return;
 
-    var $container = $("#ujs_PlayersContainer, #ujs_TournamentPlayersTab");
-    if ($container.length === 0) return;
-
-    addCSS(`
+    if (!setupUjsPlayerControls.styled) {
+        setupUjsPlayerControls.styled = true;
+        addCSS(`
         #ujsPlayerToolbar {
             position: absolute;
             top: -52px;
@@ -759,6 +768,7 @@ function setupUjsPlayerControls() {
             display: none !important;
         }
     `);
+    }
 
     var toolbar = '<div id="ujsPlayerToolbar">' +
         '<input type="text" id="ujsPlayerSearch" placeholder="Search players...">' +
@@ -774,8 +784,7 @@ function setupUjsPlayerControls() {
     // war.app positions everything from zero-size anchors; the panel's background box is the
     // only element with the panel's real size, so the toolbar goes inside it. Its 54px top
     // border is the strip between the tabs and the list, hence the negative top.
-    var $panel = $("#ujs_PlayersTabContents_img");
-    ($panel.length ? $panel : $playersTab).append(toolbar);
+    $(panel).append(toolbar);
 
     var update = function () {
         layoutUjsPlayers($("#ujsPlayerSearch").val(), $("#ujsPlayerSort").val());
@@ -791,8 +800,8 @@ function setupUjsPlayerControls() {
 }
 
 function getUjsPlayerRows() {
-    return $("[id^='ujs_TournamentPlayersPlayer']").filter(function () {
-        return $(this).attr("id").match(/^ujs_TournamentPlayersPlayer(_\d+)?$/);
+    return $(ujsElement("PlayersContainer")).children("[id^='ujs_TournamentPlayersPlayer']").filter(function () {
+        return /^ujs_TournamentPlayersPlayer(_\d+)?$/.test(this.id);
     });
 }
 
@@ -897,16 +906,17 @@ function captureTournamentInviters() {
 }
 
 function displayTournamentInviter() {
-    var idMatch = location.href.match(/Tournament\?ID=(\d+)/i);
-    if (!idMatch) return;
-    var tournamentId = idMatch[1];
-
-    Database.readIndex(Database.Table.TournamentData, Database.Row.TournamentData.Id, tournamentId, function (data) {
-        if (data && data.invitedBy) {
-            withTournamentInfoSlot(function (slot) {
-                slot.append(' | <span style="color:#aaa">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span>');
-            });
+    whileOnTournament(function (tournamentId) {
+        var slot = tournamentInfoSlot(tournamentId);
+        if (!slot || slot.attr("data-inviter-checked")) {
+            return;
         }
+        slot.attr("data-inviter-checked", "true");
+        Database.readIndex(Database.Table.TournamentData, Database.Row.TournamentData.Id, tournamentId, function (data) {
+            if (data && data.invitedBy) {
+                slot.append(' <span class="tournamentInviter">| <span style="color:#aaa">Invited by: <strong style="color:#e0c060">' + htmlEscape(data.invitedBy) + '</strong></span></span>');
+            }
+        });
     });
 }
 
@@ -2534,7 +2544,7 @@ function pageFeatures() {
         { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
-        { name: "Bookmark link and player search", section: "Tournaments", match: pageIsTournament, run: setupTournamentPage },
+        { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: function () { window.$ = $$$; setupCommonGamesDataTable(); } },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
@@ -2558,7 +2568,7 @@ function mainFeatures() {
         { name: "Block list search", section: "Other", match: pageIsBlacklistPage, run: setupBlockListSearch },
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
-        { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
+        { name: "Show who invited you", section: "Tournaments", run: displayTournamentInviter },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
@@ -2774,38 +2784,45 @@ function setupForumThreadTweaks() {
     `)
 }
 
-function whenElementAppears(selector, callback) {
-    var element = document.querySelector(selector);
-    if (element) {
-        callback(element);
-        return;
-    }
-    var observer = new MutationObserver(function () {
-        var found = document.querySelector(selector);
-        if (found) {
-            observer.disconnect();
-            callback(found);
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.setTimeout(function () {
-        observer.disconnect();
-    }, 30000);
-}
-
 // war.app draws the tournament page client-side with absolutely positioned labels, so extras sit
 // to the right of the "Created by" text instead of flowing into the labels below it.
-function withTournamentInfoSlot(callback) {
-    whenElementAppears("#ujs_CreatorLabel_tmp", function (label) {
-        var slot = $("#tournamentInfoSlot");
-        if (slot.length === 0) {
-            slot = $('<span id="tournamentInfoSlot" style="position: absolute; left: 100%; top: 0; margin-left: 8px; white-space: nowrap"></span>');
-            $(label).append(slot);
-        }
-        callback(slot);
-    });
+function currentTournamentId() {
+    var match = location.href.match(/\/MultiPlayer\/Tournament\?ID=(\d+)/i);
+    return match ? match[1] : null;
 }
 
+// war.app opens a tournament from its tournaments list without loading a new page, and draws it
+// client-side, so tournament features re-check on every change instead of running once at load.
+// apply() must do nothing once its additions are in place, or it would trigger itself.
+function whileOnTournament(apply) {
+    var check = function () {
+        var tournamentId = currentTournamentId();
+        if (tournamentId) {
+            apply(tournamentId);
+        }
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+// The labels are absolutely positioned, so extras sit to the right of the "Created by" text
+// instead of flowing into the labels below it.
+function tournamentInfoSlot(tournamentId) {
+    var label = ujsElement("CreatorLabel", "_tmp");
+    if (!label) {
+        return null;
+    }
+    var slot = $(label).children("#tournamentInfoSlot");
+    if (slot.length && slot.attr("data-tournament-id") !== tournamentId) {
+        slot.remove();
+        slot = $();
+    }
+    if (slot.length === 0) {
+        slot = $('<span id="tournamentInfoSlot" style="position: absolute; left: 100%; top: 0; margin-left: 8px; white-space: nowrap"></span>').attr("data-tournament-id", tournamentId);
+        $(label).append(slot);
+    }
+    return slot;
+}
 function siteName() {
     var meta = document.querySelector("meta[property='og:site_name']");
     return (meta && meta.getAttribute("content")) || "War.app";
@@ -2833,10 +2850,28 @@ function tournamentNameFromTitle(title) {
 }
 
 function setupTournamentPage() {
-    withTournamentInfoSlot(function (slot) {
-        slot.prepend("| <a href='#' onclick='bookmarkTournament(); return false;'>Bookmark</a>");
+    whileOnTournament(function (tournamentId) {
+        var slot = tournamentInfoSlot(tournamentId);
+        if (slot && slot.children(".tournamentBookmark").length === 0) {
+            slot.prepend("<span class='tournamentBookmark'>| <a href='#' onclick='bookmarkTournament(); return false;'>Bookmark</a></span>");
+        }
+        addTournamentPlayerControls(tournamentId);
     });
-    whenElementAppears("#ujs_PlayersContainer", setupUjsPlayerControls);
+}
+
+function addTournamentPlayerControls(tournamentId) {
+    var panel = ujsElement("PlayersTabContents", "_img");
+    if (!panel || !ujsElement("PlayersContainer")) {
+        return;
+    }
+    var toolbar = $("#ujsPlayerToolbar");
+    if (toolbar.length && toolbar.attr("data-tournament-id") === tournamentId && $.contains(panel, toolbar[0])) {
+        return;
+    }
+    toolbar.remove();
+    $("[data-tuyd-bottom]").removeAttr("data-tuyd-bottom");
+    setupUjsPlayerControls();
+    $("#ujsPlayerToolbar").attr("data-tournament-id", tournamentId);
 }
 
 function setupMapOfTheWeekStyles() {
