@@ -58,22 +58,6 @@ test("community level cards escape API data", () => {
     assert.deepEqual([...container.querySelectorAll("img")].map((img) => img.getAttribute("src")), ["#", "#"]);
 });
 
-test("tournament inviter name is shown as text", () => {
-    const { dom, $ } = createDom(`<div id="ujs_CreatorLabel"><div id="ujs_CreatorLabel_tmp" class="ujsTextInner">Created by Host</div></div>`, "https://war.app/MultiPlayer/Tournament?ID=7");
-    const ctx = load(["displayTournamentInviter", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "ujsElement", "htmlEscape"], {
-        ...domGlobals(dom, $),
-        location: { href: "https://war.app/MultiPlayer/Tournament?ID=7" },
-        Database: {
-            Table: { TournamentData: "TournamentData" },
-            Row: { TournamentData: { Id: "tournamentId" } },
-            readIndex: (table, row, id, cb) => cb({ tournamentId: id, invitedBy: PAYLOAD })
-        }
-    });
-    ctx.displayTournamentInviter();
-    assertInert(dom.window.document.body);
-    assert.equal($("strong").text(), PAYLOAD);
-});
-
 test("bookmarks render stored names and URLs safely", () => {
     const { dom, $ } = createDom(`<table id="BookmarkTable"></table>`);
     const ctx = load(["refreshBookmarks", "htmlEscape", "safeUrl", "siteRelativeUrl"], {

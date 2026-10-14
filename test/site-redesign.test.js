@@ -47,18 +47,12 @@ test("bookmarks saved on any of war.app's domains open on the current one", () =
 function tournamentApp(url) {
     const { dom, $ } = createDom(`<div id="ujs_Scene"></div>`, url);
     const controls = [];
-    const inviters = { "7": "Alice", "8": "Bob" };
-    const ctx = load(["setupTournamentPage", "displayTournamentInviter", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "addTournamentPlayerControls", "ujsElement", "htmlEscape"], {
+    const ctx = load(["setupTournamentPage", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "addTournamentPlayerControls", "ujsElement"], {
         ...domGlobals(dom, $),
         location: dom.window.location,
         setupUjsPlayerControls: () => {
             controls.push(true);
             $("[id^=ujs_PlayersTabContents][id$=_img]").last().append(`<div id="ujsPlayerToolbar"></div>`);
-        },
-        Database: {
-            Table: { TournamentData: "TournamentData" },
-            Row: { TournamentData: { Id: "tournamentId" } },
-            readIndex: (table, row, id, cb) => cb(inviters[id] ? { tournamentId: id, invitedBy: inviters[id] } : undefined)
         }
     });
     const show = (path, html) => {
@@ -73,14 +67,13 @@ function tournamentApp(url) {
 test("tournament extras appear when war.app opens a tournament in place from its list", async () => {
     const { ctx, $, controls, show, tournament } = tournamentApp("https://war.app/MultiPlayer/Tournaments/");
     ctx.setupTournamentPage();
-    ctx.displayTournamentInviter();
     show("/MultiPlayer/Tournaments/", `<div id="ujs_TournamentsScene">list</div>`);
     await flush();
     assert.equal($("#tournamentInfoSlot").length, 0);
 
     show("/MultiPlayer/Tournament?ID=7", tournament("Host A"));
     await flush();
-    assert.equal($("#ujs_CreatorLabel_tmp > #tournamentInfoSlot").text(), "| Bookmark | Invited by: Alice");
+    assert.equal($("#ujs_CreatorLabel_tmp > #tournamentInfoSlot").text(), "| Bookmark");
     assert.equal(controls.length, 1);
     assert.equal($("#ujsPlayerToolbar").attr("data-tournament-id"), "7");
 
@@ -93,16 +86,16 @@ test("moving to another tournament in place replaces the previous tournament's e
     const { ctx, dom, $, controls, show, tournament } = tournamentApp("https://war.app/MultiPlayer/Tournament?ID=7");
     show("/MultiPlayer/Tournament?ID=7", tournament("Host A"));
     ctx.setupTournamentPage();
-    ctx.displayTournamentInviter();
     await flush();
-    assert.match($("#tournamentInfoSlot").text(), /Alice/);
+    assert.equal($("#tournamentInfoSlot").attr("data-tournament-id"), "7");
 
     // war.app may keep the same label node and only change the URL; the extras must still switch.
     dom.window.history.pushState({}, "", "/MultiPlayer/Tournament?ID=8");
     $("#ujs_Scene").append("<div>redraw</div>");
     await flush();
     assert.equal($("#tournamentInfoSlot").attr("data-tournament-id"), "8");
-    assert.equal($("#tournamentInfoSlot").text(), "| Bookmark | Invited by: Bob");
+    assert.equal($("#tournamentInfoSlot").text(), "| Bookmark");
+    assert.equal($(".tournamentBookmark").length, 1);
     assert.equal($("#ujsPlayerToolbar").attr("data-tournament-id"), "8");
     assert.equal(controls.length, 2);
 });

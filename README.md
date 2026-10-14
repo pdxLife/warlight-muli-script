@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.14.2  
+> **Version:** 3.14.3  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com` and their subdomains
 
@@ -29,10 +29,8 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 - **Joined games marked** — Open Games rows where you hold a seat (or are invited) get a green **Joined** badge.
 - **Vacation banner** — displays a notice when your account is on vacation.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
-- **Tournament invite highlighting** — optional colored background on tournament invite rows.
 - **Forum thread hiding** — right-click any forum thread on the dashboard to hide it; hidden threads persist across sessions.
-- **Tournament inviter capture** — records who invited you to each tournament for later display on the tournament page.
-- **Sortable right-column tables** — reorder and toggle visibility of Bookmarks, Open Tournaments, Map of the Week, Forum, Clan Forum, Blog, and other sidebar blocks.
+- **Sortable right-column tables** — reorder and toggle visibility of Bookmarks, Map of the Week, Forum, Clan Forum, Blog, and other sidebar blocks.
 
 ### Bookmarks
 
@@ -45,7 +43,6 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 
 - **Player search & sort** — a toolbar at the top right of the Players tab: search players by name (matches move to the top of the list) and sort by wins, losses, or name.
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
-- **Tournament inviter display** — shows who invited you next to "Created by" (data captured from the dashboard).
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 
 ### Clans
@@ -102,7 +99,6 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Fixed Window with Scrollable Games | On | Use tabbed layout with scrollable game area |
 | Hide Icons in "My Games" | Off | Remove game type icons from the games list |
 | Auto Refresh on Focus | Off | Reload games when returning to the tab after 30s |
-| Highlight Tournament Invites | Off | Color tournament invite rows on the dashboard |
 | Hide Coins Globally | Off | Remove coin-related UI elements site-wide |
 | Use Default Boot Time Label | Off | Use the site's default boot time styling |
 | Show Private Notes on Profile | On | Display private notes on your profile page |
@@ -118,7 +114,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 ## Data Storage
 
-- **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings, hidden forum threads, tournament inviter data.
+- **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings and hidden forum threads. (Its `TournamentData` store held captured tournament inviters and is no longer used.)
 - **Cookies** — cached player profile data (~1 hour TTL).
 
 

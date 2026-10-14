@@ -56,7 +56,7 @@ Features described in the [original forum thread](https://war.app/Forum/106092-m
 - [x] **Sort My Games by time left before you're booted.** *(Done. war.app's My Games label is the boot time plus your banked time, so time left is that label minus the "Your turn for …" duration. Only your-turn games are reordered, within the slots they already had, and the order is reapplied after each refresh.)*
 - [x] **Open Games tab in the menu bar.** *(Covered by war.app: the Multi-Player menu now links to Open Games, so no userscript tab is needed.)*
 - **Decline a tournament from the tournaments list page.** *(Not feasible. war.app sends a decline as a `DeclineTournament` message in its binary client protocol, not as a web request, so a userscript would have to call minified internals that change with every site build. Declining stays on the tournament page.)*
-- [ ] **Hide tournaments with no games left.** *(Parked: the dashboard's tournament tables only render while you're in a tournament. The main account is in one now (AWP World Tour), so the markup can be read from its dashboard.)*
+- **Hide tournaments with no games left.** *(Not feasible. Checked with an account in four tournaments: war.app no longer has tournament tables on the dashboard, and the Tournaments page's My Tournaments list shows only name, format and start time, nothing about your games or elimination. That only exists in war.app's binary client protocol, like declining.)*
 - [x] **Search mail by player name.** *(Done. Filters `/Discussion/MyMail` by thread starter or last poster. The first search loads the other pages through `?Offset=`, so it covers the whole mailbox. Checked against a live mailbox.)*
 
 ## Phase 6 — Keeping up with war.app's redesign
@@ -69,6 +69,8 @@ war.app moved most pages to client-side rendering (`ujs_*` elements positioned f
 - [x] **Restore "Show more" and the My Games footer after a refresh** (3.13.2), by re-running war.app's exported `WL_MPDashInit` with fresh `#AllOpenGamesData`.
 - [x] **Survive a domain change** (3.13.3): path-only page routing, relative links, titles trimmed with `og:site_name`, bookmarks from any of `SITE_HOSTS` open on the current domain, `@match` on all subdomains.
 - [x] **Tournament player search and sort** (3.14.0): the toolbar was out of view, search left matches scattered, sort assumed the wrong row height. Find Me removed; war.app's Bracket tab has **Find...** and **>** for it.
+- [x] **Remove the dashboard tournament features** (3.14.3). war.app dropped the dashboard's tournament and invitation tables, so "Show who invited you" (which displayed inviters captured from those rows), the invite highlighting setting and the right-column tournament table were dead. The `TournamentData` IndexedDB store is left in place, unused, to avoid a schema change.
+- [x] **Tournament player toolbar clicks** (3.14.2). war.app's Players panel has `pointer-events: none`, which the toolbar inherited.
 - [x] **Tournament features after in-page navigation** (3.14.1). Opening a tournament from the tournaments list switches the view without a page load, so the features never started; and on a second tournament war.app numbers its element ids. Tournament features now watch the page and find elements by name with an optional number.
 - [x] **Block list search** (3.14.0), with accent-insensitive matching.
 - [x] **Credit Muli** as the original author in the header, README and settings menu (3.13.1).
@@ -78,11 +80,10 @@ war.app moved most pages to client-side rendering (`ujs_*` elements positioned f
 
 In suggested order:
 
-1. **Hide tournaments with no games left** (Phase 5). Read the dashboard markup from the main account, which is in a tournament now.
-2. **Check what couldn't be verified live.** The sortable Common Games table (needs a player you share games with; it also swaps war.app's jQuery on that page), "Invited by" on tournament pages (needs an invitation captured from the dashboard), and capturing invitations on the dashboard itself.
-3. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; drops the maak.ch JSONP relay for MTL.
-4. **Move off `@grant none`** (Phase 3). Unblocks the MTL fallback, domain-independent storage and cross-browser sync, and the jQuery / DataTables upgrades. The biggest remaining change, and it needs a full QA pass.
-5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-6. **Split into modules** (Phase 3), once the feature work settles.
+1. **Check the sortable Common Games table** live. It needs a player you've played with, and it swaps war.app's jQuery on that page, so it deserves a look.
+2. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; drops the maak.ch JSONP relay for MTL.
+3. **Move off `@grant none`** (Phase 3). Unblocks the MTL fallback, domain-independent storage and cross-browser sync, and the jQuery / DataTables upgrades. The biggest remaining change, and it needs a full QA pass.
+4. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+5. **Split into modules** (Phase 3), once the feature work settles.
 
-Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border, the "Show more" fix relies on `WL_MPDashInit` staying exported, and boot-time sorting relies on the "Your turn for …" text.
+Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, and boot-time sorting relies on the "Your turn for …" text.
