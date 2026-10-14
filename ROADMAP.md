@@ -46,3 +46,15 @@ Ordered by priority. Line numbers refer to `Tidy_up_your_Dashboard.user.js` at t
 - [x] **Turn notifications.** Show a desktop notification or a tab-title badge when it's your turn in a multi-day game, building on the existing refresh logic. *(Done. Rows are detected by their red "Your turn for …" line, checked against the logged-in dashboard. Includes a tab-title count, a 5-minute background check while the tab is unattended, and an opt-in desktop notification for newly waiting games.)*
 - [x] **Per-feature toggles** in the settings menu for every feature, not just the current 10 settings. *(Done: a Features section with a switch for each feature that has a `section`.)*
 - [ ] **Optional cross-browser sync** of settings and bookmarks via `GM_setValue` or a gist. This requires moving off `@grant none`, which needs care because the script relies on the page's `$.cookie`. *(Deferred until the `@grant` migration in Phase 3.)*
+
+## Phase 5 — Features from the original script
+
+Features described in the [original forum thread](https://war.app/Forum/106092-mulis-userscript-tidy-up-dashboard) that were lost over the years or broke with war.app's redesign. Twitch streams, the old Real-Time Ladder countdown and the AWP World Tour integration are left out, because the services behind them no longer exist in that form.
+
+- [x] **Open Games filter.** Hide Auto Games, coin games, games with a short boot time, and games whose name contains chosen words. *(Done. A Filter link in the Open Games header, on the dashboard and the View All page. war.app now has its own "Hide All Lottery Games" button, so lottery games need no special case.)*
+- [x] **Mark Open Games you've already joined.** *(Done. war.app has no marker for this, so rows are matched by your name in the seat tooltips, which read either the name or "<name>: Waiting for this player…". The name format was checked against the logged-in dashboard.)*
+- [ ] **Sort My Games by time left before you're booted.**
+- [ ] **Open Games tab in the menu bar.**
+- [ ] **Decline a tournament from the tournaments list page.**
+- [ ] **Hide tournaments with no games left.**
+- [ ] **Search mail by player name.**
