@@ -6,6 +6,10 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com`
 
+## Credits
+
+Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141&u=Muli_1), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://www.warzone.com/Forum/106092).
+
 ## Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) (Chrome/Edge/Firefox) or a compatible userscript manager.
