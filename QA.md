@@ -23,7 +23,7 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 | Dashboard: "Show more", Multi-Day / Real-Time / Both | Rows change and the filter still applies to the new rows. |
 | **Settings menu** (account dropdown → "Muli's Userscript") | Opens. Footer shows "Originally created by Muli · Forum thread", and both links open. Feature switches save after **Close & Refresh**. |
 | **Open Games** `/MultiPlayer/OpenGames` | Filter link and Joined badges work here too. |
-| **A tournament** `/MultiPlayer/Tournament?ID=…` | "Created by X \| Bookmark \| Find Me" on one line. Players tab has the search box and sort. Find Me highlights your name if you're in it. Bookmark opens the add-bookmark dialog with the tournament's name. |
+| **A tournament** `/MultiPlayer/Tournament?ID=…` | "Created by X \| Bookmark" on one line; Bookmark opens the add-bookmark dialog with the tournament's name. Players tab: the search box and sort sit at the top right, above the list. Searching moves matches to the top; sorting and clearing the search keep every row in its own place. The toolbar is gone on the other tabs. |
 | **A forum thread** | "Bookmark" link next to Reply. Formatting toolbar above the reply box. |
 | **Forum overview** `/Forum/Forum` | The eye icon hides a thread. "Reset Hidden Threads" in the settings menu brings it back. |
 | **Mail** `/Discussion/MyMail` | "Filter by player" narrows the list and shows "N of M threads". |

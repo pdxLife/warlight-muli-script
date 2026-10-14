@@ -2,6 +2,8 @@
 
 ## 3.14.0
 
+- **Tournament player search and sort work again.** The toolbar was placed below the visible part of the Players tab; it now sits at the top right, above the list. Search results move to the top of the list instead of staying scattered where they were, and sorting uses war.app's row spacing (it used a fixed 34px and stacked rows on top of each other).
+- **Removed Find Me** on tournament pages: it highlighted names on tabs you couldn't see. war.app's own **Find...** and **>** buttons on the Bracket tab do this now.
 - **Block list search**: a search box on the Manage Block List page filters players by name, ignoring case and accents ("sana" finds "Šaňa"), and shows how many match. The player count above it keeps showing your whole list.
 
 ## 3.13.3
