@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.14.0
+
+- **Block list search**: a search box on the Manage Block List page filters players by name, ignoring case and accents ("sana" finds "Šaňa"), and shows how many match. The player count above it keeps showing your whole list.
+
 ## 3.13.3
 
 - The link to Muli's profile in the settings menu uses the profile ID alone, so it keeps working if the name changes.

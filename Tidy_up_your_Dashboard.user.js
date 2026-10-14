@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.13.3
+// @version 3.14.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,7 +18,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.13.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2587,6 +2587,7 @@ function mainFeatures() {
         { name: "private notes", match: function () { return pageIsProfile() && $("#BlockListLink").length > 0; }, run: function () { ifSettingIsEnabled('showPrivateNotesOnProfile', loadPrivateNotes); } },
         { name: "Hide ignored threads on Community page", section: "Community", match: pageIsCommunity, run: hideIgnoredForumThreadsFromCommnuityList },
         { name: "Blacklist counter", section: "Other", match: pageIsBlacklistPage, run: setupBlacklistCounter },
+        { name: "Block list search", section: "Other", match: pageIsBlacklistPage, run: setupBlockListSearch },
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
         { name: "Show who invited you", section: "Tournaments", match: pageIsTournament, run: displayTournamentInviter },
@@ -2666,11 +2667,49 @@ function runFeatures(features) {
     });
 }
 
+function foldForSearch(text) {
+    return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function filterBlockList(query) {
+    var needle = foldForSearch(query.trim());
+    var rows = $("li[id^='ListItem_']");
+    var shown = 0;
+    rows.each(function () {
+        var matches = needle === "" || foldForSearch($(this).find("a[href*='Profile']").text()).indexOf(needle) !== -1;
+        $(this).toggleClass("tuyd-filtered", !matches);
+        if (matches && this.style.display !== "none") {
+            shown++;
+        }
+    });
+    $("#BlockListSearchCount").text(needle === "" ? "" : shown + " matching");
+}
+
+function setupBlockListSearch() {
+    var $list = $("li[id^='ListItem_']").first().parent("ul");
+    if ($list.length === 0) {
+        return;
+    }
+    addCSS(`
+        li.tuyd-filtered { display: none; }
+        #BlockListSearch { margin: 8px 0; }
+        #BlockListSearchInput { padding: 4px 8px; width: 240px; max-width: 60%; background: #222; color: #ddd; border: 1px solid #555; }
+        #BlockListSearchCount { margin-left: 6px; white-space: nowrap; }
+    `);
+    $list.before(`<div id="BlockListSearch"><input type="text" id="BlockListSearchInput" placeholder="Search players"><span id="BlockListSearchCount" class="text-muted"></span></div>`);
+    $("#BlockListSearchInput").on("input", function () {
+        filterBlockList($(this).val());
+    });
+}
+
 function setupBlacklistCounter() {
     var $blacklist = $("li[id^='ListItem_']").first().parent("ul");
     $blacklist.before(`<span id="numBlacklisted">You have <b></b> players on your block list.</span>`);
+    // war.app hides removed players with an inline display: none; the search hides rows with a class.
     var updateBlacklistCount = function () {
-        $("#numBlacklisted b").text($blacklist.find("li:visible").length);
+        $("#numBlacklisted b").text($blacklist.find("li").filter(function () {
+            return this.style.display !== "none";
+        }).length);
     };
     updateBlacklistCount();
     var blacklistObserver = new MutationObserver(updateBlacklistCount);

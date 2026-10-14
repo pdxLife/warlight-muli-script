@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.13.3  
+> **Version:** 3.14.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app`, `warzone.com` and their subdomains
 
@@ -91,6 +91,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 ### Block List
 
 - **Player count** — shows how many players are on your block list with a live counter.
+- **Search** — a search box above the list filters players by name, ignoring case and accents.
 
 ## Settings
 
