@@ -25,10 +25,12 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 | **Open Games** `/MultiPlayer/OpenGames` | Filter link and Joined badges work here too. |
 | **A tournament, opened from the tournaments list** (click it in `/MultiPlayer/Tournaments/`, then go back and open a second one) | Same checks as the row below, for both tournaments. war.app switches views here without loading a page. |
 | **A tournament** `/MultiPlayer/Tournament?ID=…` | "Created by X \| Bookmark" on one line; Bookmark opens the add-bookmark dialog with the tournament's name. Players tab: the search box and sort sit at the top right, above the list. Click into the search box and type (don't just look at it), and pick a sort with the mouse. Searching moves matches to the top; sorting and clearing the search keep every row in its own place. The toolbar is gone on the other tabs. |
+| **Tournament 66354** `/MultiPlayer/Tournament?ID=66354` (a Titled Tuesday) | "Created by … \| Bookmark \| custom.wl-stats.com (Titled Tuesday)" on one line; both links open custom.wl-stats.com. A tournament custom doesn't know shows no link and logs nothing. |
 | **A forum thread** | "Bookmark" link next to Reply. Formatting toolbar above the reply box. |
 | **Forum overview** `/Forum/Forum` | The eye icon hides a thread. "Reset Hidden Threads" in the settings menu brings it back. |
 | **Mail** `/Discussion/MyMail` | "Filter by player" narrows the list and shows "N of M threads". |
 | **Someone else's profile** | "Private Notes" box after the feedback area: your note for a player you have one for, "You don't have any Private Notes." for one you don't. Clicking a stat heading collapses it. |
+| **An AWP player's profile** (e.g. `/Profile?p=2921525624`) | "AWP World Tour" box in the left column, below Private Notes if they're shown: race and 12-month rank, games, tournaments, titles, best placement, and a link to awp.wl-stats.com. A player who never played AWP gets no box. |
 | **Block list** `/ManageBlockList` | "You have N players on your block list." The search box narrows the list and shows "N matching" without changing the total. |
 | **Common Games** ("Common Games" link on the profile of someone you've played) | Column headers sort the list. A Head-To-Head box above it shows 1v1 games, wins, losses and win rate. The account menu and its dropdowns still work on this page. |
 | **Points** `/Points` | "In total, you've earned … points." |

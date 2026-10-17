@@ -2,13 +2,13 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.14.5  
+> **Version:** 3.15.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
-> **Supported sites:** `war.app`, `warzone.com` and their subdomains
+> **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
 ## Credits
 
-Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://www.warzone.com/Forum/106092).
+Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://war.app/Forum/106092).
 
 ## Installation
 
@@ -44,6 +44,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 - **Player search & sort** — a toolbar at the top right of the Players tab: search players by name (matches move to the top of the list) and sort by wins, losses, or name.
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Bookmark link** — quick-save a tournament to your bookmarks.
+- **custom.wl-stats.com link** — on a tournament that [custom.wl-stats.com](https://custom.wl-stats.com) has read (Titled Tuesday, War Gaming Live and P/R League groups played as war.app tournaments), links its page there and its series, next to "Created by".
 
 ### Clans
 
@@ -52,6 +53,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 ### Profile
 
 - **Collapsible stat sections** — click any section header to expand/collapse.
+- **AWP World Tour stats** — for a player who has played on the [AWP World Tour](https://awp.wl-stats.com), a box with their place in this year's race and in the 12-month ranking, games and win rate, tournaments, titles and best placement, with a link to their page on awp.wl-stats.com.
 - **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — on another player's profile, shows the private note you keep about them on war.app (the profile's "Private Notes" link). The notes are stored by war.app on your account; the script only displays them.
@@ -116,6 +118,14 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings and hidden forum threads. (Its `TournamentData` store held captured tournament inviters and is no longer used.)
 - **Cookies** — cached player profile data (~1 hour TTL).
+- **Session storage** — AWP World Tour stats and custom.wl-stats.com tournament links, kept for an hour.
+
+## Other sites the script contacts
+
+- **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID.
+- **custom.wl-stats.com**: when you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID.
+
+Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Both switches are in Features (Profile and Tournaments). maak.ch is contacted only if you turn on its setting.
 
 
 ## If war.app changes its domain
