@@ -132,9 +132,9 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
     assert.ok(container.textContent.includes(PAYLOAD));
 });
 
-test("custom.wl-stats.com series rows, the Seasonal line and Community Events lines escape API data", () => {
+test("custom.wl-stats.com series rows and Community Events lines escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeriesLadderRow", "renderSeasonalLadderLine", "communityEventLine", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
+    const ctx = load(["renderSeriesLadderRow", "communityEventLine", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
         "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $ });
     const link = { name: PAYLOAD, url: "javascript:alert(1)" };
     const evil = {
@@ -143,7 +143,7 @@ test("custom.wl-stats.com series rows, the Seasonal line and Community Events li
         you: { as: "nation", name: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" }
     };
     const running = { ...evil, current: { ...evil.current, status: "running" } };
-    const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0) + ctx.renderSeasonalLadderLine(running)
+    const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0)
         + ctx.communityEventLine("Evil event", { series: [evil], rankings: null, playerId: null });
     const container = render(html);
     assertInert(container);
@@ -163,7 +163,7 @@ test("custom.wl-stats.com profile stats escape API data", () => {
 });
 
 test("My Games badges and clan standings escape API data", () => {
-    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "standingParts", "signupsHtml", "formatCount",
+    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
         "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl"]);
     const badge = render(ctx.renderEventBadge({ game_id: PAYLOAD, series: PAYLOAD, label: PAYLOAD, url: "javascript:alert(1)" }));
     assertInert(badge);
@@ -171,7 +171,8 @@ test("My Games badges and clan standings escape API data", () => {
     assert.equal(badge.querySelector("a").getAttribute("href"), "#");
 
     const squad = { as: "clan", name: PAYLOAD, squad: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" };
-    const row = render(ctx.renderClanSeriesRow({ name: PAYLOAD, kind: PAYLOAD, url: "data:text/html,x", current: { name: PAYLOAD, status: "running", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD } }, squads: [squad] }));
+    const row = render(ctx.renderClanSeriesRow({ name: PAYLOAD, kind: PAYLOAD, url: "data:text/html,x", current: { name: PAYLOAD, status: "running", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD } }, squads: [squad],
+        titles: { count: PAYLOAD, editions: [{ name: PAYLOAD, url: "javascript:alert(1)" }] } }));
     assertInert(row);
     assert.ok(row.textContent.includes(PAYLOAD));
     assert.ok([...row.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"));

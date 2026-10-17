@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.20.0
+// @version 3.21.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.20.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.21.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2004,8 +2004,9 @@ function pageIsBlacklistPage() {
     return location.href.match(/^https?:\/\/[^\/]+\/ManageBl(?:ack|ock)List.*/i);
 }
 
-// war.app's clan page is drawn client-side; the panel hangs below the left column's last dialog
-// (Clan Wars), inside war.app's scrolling viewport, so a long panel extends the page's scroll.
+// war.app's clan page is drawn client-side; the panel hangs below Clan Wars, inside war.app's
+// scrolling viewport, so a long panel extends the page's scroll. In war.app's one-column layout
+// Clan Members comes after Clan Wars, so the panel moves below whatever is lowest in that column.
 function setupClanStandings() {
     var clans = {};
     var check = function () {
@@ -2033,7 +2034,7 @@ function setupClanStandings() {
             return;
         }
         addCommunityLaddersStyles();
-        var panel = $(renderClanStandings(rows)).attr("data-clan", name).css("width", dialog.outerWidth() + "px");
+        var panel = $(renderClanStandings(rows)).attr("data-clan", name);
         var art = warappArt(scene);
         Object.keys(art).forEach(function (key) {
             if (art[key]) {
@@ -2041,9 +2042,27 @@ function setupClanStandings() {
             }
         });
         dialog.parent().append(panel);
+        placeBelowColumn(panel, dialog, scene);
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () {
+                placeBelowColumn(panel, dialog, scene);
+            }).observe(dialog[0]);
+        }
     };
     check();
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+function placeBelowColumn(panel, dialog, scene) {
+    var box = dialog[0].getBoundingClientRect();
+    var lowest = box.bottom;
+    $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").each(function () {
+        var other = this.getBoundingClientRect();
+        if (this !== dialog[0] && other.height && other.top >= box.bottom - 1 && other.left < box.right && other.right > box.left) {
+            lowest = Math.max(lowest, other.bottom);
+        }
+    });
+    panel.css({ width: dialog.outerWidth() + "px", top: Math.round(lowest - box.bottom) + 10 + "px" });
 }
 
 function renderClanStandings(rows) {
@@ -2052,12 +2071,19 @@ function renderClanStandings(rows) {
 }
 
 function renderClanSeriesRow(series) {
-    var squads = series.squads.map(function (squad) {
+    // A clan can enter several Clan Cup squads; its best one stands for the clan.
+    var squads = (series.kind === "clan_cup" ? series.squads.slice(0, 1) : series.squads).map(function (squad) {
         var name = squad.squad || squad.name;
         var parts = standingParts(series.kind, squad);
         return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(squad.url)) + '">' + htmlEscape(name) + '</a>' + (parts.length ? ": " + parts.join(" · ") : "");
     });
-    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), youHtml: squads.join("<br>") });
+    var titles = series.titles && series.titles.count > 0 && Array.isArray(series.titles.editions) ? series.titles : null;
+    if (titles) {
+        squads.push('<span class="tuydClanTitles">🏆 Champion ×' + htmlEscape(titles.count) + ': ' + titles.editions.map(function (edition) {
+            return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(edition.url)) + '">' + htmlEscape(edition.name) + '</a>';
+        }).join(", ") + '</span>');
+    }
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, Date.now()), youHtml: squads.join("<br>") });
 }
 
 // war.app's My Games rows each link to their game, so community games are found by war.app game ID.
@@ -2080,15 +2106,18 @@ function setupEventBadges() {
             observer.observe(table, { childList: true, subtree: true });
         };
         var load = function () {
-            fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS).done(function (data) {
+            $.when(
+                settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS), "community games"),
+                settleRequest(fetchWlStats(AWP_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS), "AWP World Tour games")
+            ).done(function (custom, awp) {
                 games = {};
-                (data && Array.isArray(data.games) ? data.games : []).forEach(function (game) {
-                    games[String(game.game_id)] = game;
+                [[custom, "custom"], [awp, "awp"]].forEach(function (source) {
+                    (source[0] && Array.isArray(source[0].games) ? source[0].games : []).forEach(function (game) {
+                        games[String(game.game_id)] = $.extend({}, game, { source: source[1] });
+                    });
                 });
                 addCommunityLaddersStyles();
                 apply();
-            }).fail(function (xhr) {
-                log("Error loading community games: " + (xhr && xhr.statusText));
             });
         };
         load();
@@ -2100,17 +2129,25 @@ function setupEventBadges() {
     });
 }
 
+// The dashboard stretches a game's name link over its whole cell (clickable rows), so the badge
+// gets a line of its own under the name instead of sitting next to it as another link would.
 function markEventGames(games) {
     $("#MyGamesTable tr.GameRow").each(function () {
         var link = $(this).find("a[href*='GameID=']").last();
         var match = /[?&]GameID=(\d+)/i.exec(link.attr("href") || "");
         var game = match && games[match[1]];
-        var badge = $(this).find(".tuydEventBadge");
+        var line = $(this).find(".tuydEventBadgeLine");
         if (!game) {
-            badge.remove();
-        } else if (badge.attr("data-game-id") !== match[1]) {
-            badge.remove();
-            link.after(renderEventBadge(game));
+            line.remove();
+        } else if (line.attr("data-game-id") !== match[1]) {
+            line.remove();
+            var html = '<div class="tuydEventBadgeLine" data-game-id="' + htmlEscape(match[1]) + '">' + renderEventBadge(game) + '</div>';
+            var lineBreak = link.nextAll("br").first();
+            if (lineBreak.length) {
+                lineBreak.after(html);
+            } else {
+                link.after(html);
+            }
         }
     });
 }
@@ -2119,7 +2156,7 @@ function renderEventBadge(game) {
     var label = String(game.label || "");
     var series = String(game.series || "");
     var text = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
-    return '<a class="tuydEventBadge" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
+    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
 }
 
 function addCSS(css) {
@@ -2639,7 +2676,6 @@ function setupCommunityLadders() {
             return;
         }
         addCommunityLaddersStyles();
-        addSeasonalLadderLine(scene, community.series);
         var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
         if (!dialog.length || !rows.length || $("#communityLadders").length) {
             return;
@@ -2671,7 +2707,7 @@ function setupCommunityLadders() {
             }
             data.series.forEach(function (series) {
                 if (series.current) {
-                    rows.push(renderSeriesLadderRow(series, Date.now(), series.kind === "ladder" ? "communityLadderNarrowOnly" : ""));
+                    rows.push(renderSeriesLadderRow(series, Date.now()));
                 }
             });
             community = data;
@@ -2811,23 +2847,13 @@ function addCommunityLaddersStyles() {
             font-size: 11px;
             color: #777;
         }
-        .tuydCommunityPanel .communityLadderSignups {
+        .tuydCommunityPanel .communityLadderSignups,
+        .tuydCommunityPanel .tuydClanTitles,
+        .tuydCommunityPanel .tuydClanTitles a {
             color: #e0c060;
         }
-        .tuydSeasonalLine {
-            position: absolute;
-            left: 165px;
-            right: 4px;
-            bottom: -8px;
-            text-align: right;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .tuydCommunityPanel .tuydClanTitles a {
             white-space: nowrap;
-            pointer-events: auto;
-            color: #9a9a9a;
-            font-size: 11.5px;
-            line-height: 13px;
-            text-shadow: 0 0 2px #000;
         }
         .tuydEventStanding {
             position: absolute;
@@ -2844,10 +2870,14 @@ function addCommunityLaddersStyles() {
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
         }
+        .tuydEventBadgeLine {
+            position: relative;
+            z-index: 1;
+            line-height: 18px;
+        }
         .tuydEventBadge {
             display: inline-block;
-            max-width: 260px;
-            margin-left: 8px;
+            max-width: 100%;
             padding: 1px 6px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -2863,15 +2893,9 @@ function addCommunityLaddersStyles() {
         .tuydEventBadge:hover {
             filter: brightness(1.2);
         }
-        @container tuydLadders (min-width: 554px) {
-            .communityLadderNarrowOnly {
-                display: none !important;
-            }
-        }
-        @container tuydLadderRow (max-width: 539.98px) {
-            .tuydSeasonalLine {
-                display: none;
-            }
+        .tuydEventBadge.tuydEventBadgeAwp {
+            background: #e0c060;
+            color: #1b1b1b !important;
         }
         @container tuydEventCard (max-width: 599.98px) {
             .tuydEventStanding {
@@ -2898,7 +2922,7 @@ function renderCommunityLadders(rows) {
 
 // statusHtml, detailHtml and youHtml must already be escaped.
 function communityLadderRow(row) {
-    return '<div class="communityLadder' + (row.className ? " " + row.className : "") + '"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
+    return '<div class="communityLadder"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
         '<div class="communityLadderText">' +
         (row.statusHtml ? '<div class="tuydMuted">' + row.statusHtml + '</div>' : "") +
         (row.detailHtml ? '<div>' + row.detailHtml + '</div>' : "") +
@@ -2907,22 +2931,23 @@ function communityLadderRow(row) {
 
 // Resolves with the AWP ranking and the custom.wl-stats.com series, each left empty when its site
 // can't be reached, so one being down doesn't hide the other.
+function settleRequest(request, what) {
+    var settled = $.Deferred();
+    request.done(function (data) {
+        settled.resolve(data);
+    }).fail(function (xhr) {
+        log("Error loading " + what + ": " + (xhr && xhr.statusText));
+        settled.resolve(null);
+    });
+    return settled.promise();
+}
+
 function loadCommunityData() {
     var result = $.Deferred();
-    var settle = function (request, what) {
-        var settled = $.Deferred();
-        request.done(function (data) {
-            settled.resolve(data);
-        }).fail(function (xhr) {
-            log("Error loading " + what + ": " + (xhr && xhr.statusText));
-            settled.resolve(null);
-        });
-        return settled.promise();
-    };
     signedInPlayerId().done(function (playerId) {
         $.when(
-            settle(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
-            settle(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
+            settleRequest(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
         ).done(function (rankings, series) {
             result.resolve({
                 playerId: playerId,
@@ -3001,7 +3026,8 @@ function seriesYouHtml(series) {
 function standingParts(kind, you) {
     var parts = [];
     if (you.division) {
-        parts.push(htmlEscape(you.division));
+        // Clan League sends a bare division letter ("A"); leagues send "Division A".
+        parts.push(htmlEscape(/^[A-Z0-9]{1,2}$/i.test(String(you.division)) ? "Division " + you.division : you.division));
     }
     if (you.group && you.group !== you.division) {
         parts.push(htmlEscape(you.group));
@@ -3051,45 +3077,11 @@ function seriesDetailHtml(series, now) {
     return details.join(" · ");
 }
 
-function renderSeriesLadderRow(series, now, className) {
+function renderSeriesLadderRow(series, now) {
     var current = series.current;
     var you = series.you ? seriesYouHtml(series)
         : current.status === "signups" ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">Sign up on custom.wl-stats.com</a>' : "";
-    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, now), youHtml: you, className: className });
-}
-
-// war.app's own Seasonal Ladder row gets the current season from custom.wl-stats.com along its
-// bottom edge: the row is a fixed-size box whose description already fills it. Where the row is too
-// narrow for that line, the panel shows the season as a row of its own instead (container queries).
-function addSeasonalLadderLine(scene, seriesList) {
-    var ladder = seriesList.filter(function (series) {
-        return series.kind === "ladder" && series.current;
-    })[0];
-    var button = $(scene).find("[id^='ujs_SeasonalLadder']").filter(function () {
-        return /^ujs_SeasonalLadder(?:_\d+)?$/.test(this.id);
-    }).first();
-    var box = button.closest("[id^='ujs_LadderContainer']").children("[id$='_img']").first();
-    if (!ladder || !box.length || box.children(".tuydSeasonalLine").length) {
-        return;
-    }
-    box.css("container", "tuydLadderRow / inline-size").append(renderSeasonalLadderLine(ladder));
-}
-
-function renderSeasonalLadderLine(series) {
-    var current = series.current;
-    var finished = current.status === "finished";
-    var lead = finished ? current.winner : current.leader;
-    var parts = ['<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">' + htmlEscape(current.name) + '</a>'];
-    if (current.players && !series.you) {
-        parts.push(formatCount(current.players) + " players");
-    }
-    if (lead && lead.name) {
-        parts.push((finished ? "winner " : "leader ") + seriesLink(lead));
-    }
-    if (series.you) {
-        parts.push(seriesYouHtml({ kind: series.kind, you: $.extend({}, series.you, { wins: null, losses: null }) }));
-    }
-    return '<div class="tuydSeasonalLine">' + parts.join(" · ") + '</div>';
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, now), youHtml: you });
 }
 
 function renderAwpLadderRow(rankings, playerId) {

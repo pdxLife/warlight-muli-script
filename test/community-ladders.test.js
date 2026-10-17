@@ -16,8 +16,8 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
-    "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow", "addSeasonalLadderLine", "renderSeasonalLadderLine",
+    "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
+    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventLine"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -125,7 +125,6 @@ test("war.app redrawing the scene brings the panel back once, without another re
     $("#ujs_Section").append("<div>redraw</div>");
     await flush();
     assert.equal($("#communityLadders").length, 1);
-    assert.equal($(".tuydSeasonalLine").length, 1);
     assert.equal(requests.length, 2);
 });
 
@@ -161,13 +160,12 @@ test("one site down still shows the other's rows", async () => {
     const awpDown = laddersPage({ fail: true });
     awpDown.ctx.setupCommunityLadders();
     await flush();
-    assert.deepEqual(awpDown.$(".communityLadder:not(.communityLadderNarrowOnly) .communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["Clan Cup", "Nations Cup", "P/R League", "Titled Tuesday"]);
+    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
 
     const customDown = laddersPage({ seriesFail: true });
     customDown.ctx.setupCommunityLadders();
     await flush();
     assert.deepEqual(customDown.$(".communityLadderButton").map((i, a) => customDown.$(a).text()).get(), ["AWP World Tour"]);
-    assert.equal(customDown.$(".tuydSeasonalLine").length, 0);
 });
 
 test("the panel wears war.app's own dialog and row art, with war.app's blue button instead of the ladders' green", async () => {
@@ -195,18 +193,16 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     const { ctx, $ } = laddersPage();
     ctx.setupCommunityLadders();
     await flush();
-    const rows = $("#communityLadders .communityLadder").not(".communityLadderNarrowOnly");
-    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["AWP World Tour", "Clan Cup", "Nations Cup", "P/R League", "Titled Tuesday"],
-        "the Seasonal Ladder goes in war.app's own row instead");
-    const narrow = $("#communityLadders .communityLadderNarrowOnly");
-    assert.equal(narrow.find(".communityLadderButton").text(), "Seasonal Ladder", "a panel row stands in for it where war.app's row is too narrow");
-    assert.deepEqual(textOf($, narrow), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    const rows = $("#communityLadders .communityLadder");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["AWP World Tour", "Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
+    assert.deepEqual(textOf($, rows[4]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    assert.equal($(".tuydSeasonalLine").length, 0, "war.app's own Seasonal row is left alone: signed in, its Unlocked line fills it");
     assert.deepEqual(textOf($, rows[1]), ["Clan Cup II · running · 23 clans · 11/15 matches"]);
     assert.deepEqual(textOf($, rows[2]), ["Nations Cup 2026 · running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"]);
     assert.deepEqual(textOf($, rows[3]), ["Season 38 · running · 51 players · 77/161 games", "Leader: Stales78"]);
     assert.equal($(rows[2]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
     assert.equal($(rows[3]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
-    const titled = textOf($, rows[4]);
+    const titled = textOf($, rows[5]);
     assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
     assert.match(titled[1], /^Winner: CONSEQUENCER · Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
 });
@@ -241,24 +237,6 @@ test("a league player's line names division, group, place, record and a promotio
     assert.equal(render(html).textContent, "You: Division A · A2 · 1st of 7 · 5–1 · promoted");
     const ladder = ctx.seriesYouHtml({ kind: "ladder", you: { as: "player", name: "KKND", place: 12, of: 200, wins: 30, losses: 12, points: 1650, status: "playing", url: "/x" } });
     assert.equal(render(ladder).textContent, "You: 12th of 200 · 30–12 · rating 1,650");
-});
-
-test("war.app's own Seasonal Ladder row gets the current season along its bottom edge", async () => {
-    const { ctx, $ } = laddersPage();
-    ctx.setupCommunityLadders();
-    await flush();
-    const line = $("#ujs_LadderContainer3_img > .tuydSeasonalLine");
-    assert.equal(line.length, 1);
-    assert.equal(line.text(), "Season LXXI · 248 players · leader Eraserhead");
-    assert.equal(line.find("a").first().attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/71");
-});
-
-test("with your place in the Seasonal Ladder, its line shows that instead of the player count", () => {
-    const { $ } = createDom();
-    const ctx = load(["renderSeasonalLadderLine", "seriesYouHtml", "standingParts", "seriesLink", "formatCount", "getRankText", "htmlEscape", "safeUrl"], { $ });
-    const mine = { ...series.series[3], you: { as: "player", name: "KKND", place: 131, of: 218, wins: 9, losses: 6, points: 2637, status: "playing", url: "/x" } };
-    assert.equal(render(ctx.renderSeasonalLadderLine(mine)).textContent, "Season LXXI · leader Eraserhead · You: 131st of 218 · rating 2,637",
-        "the record is left out so the line fits beside war.app's button");
 });
 
 // Mirrors war.app's Community Events page: a card per event with a View button and a title.
@@ -329,11 +307,30 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
         requests.push(options.url);
         return $.Deferred().resolve(response).promise();
     };
-    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "pageIsClanPage"], {
+    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
         playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
     });
     return { ctx, dom, $, requests };
+}
+
+// Shaped like custom.wl-stats.com /api/v1/series?clan=Optimum: a finished Clan League the clan won,
+// with its titles, next to a Clan Cup it's still in.
+const optimum = {
+    series: [
+        { ...series.series[0], you: null, titles: { count: 0, editions: [] },
+            squads: [{ as: "clan", name: "Optimum", place: null, of: 23, wins: 2, losses: 0, status: "playing", squad: "X", url: "/c" }] },
+        { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "https://custom.wl-stats.com/series/clan-league", warapp_event: "Clan League",
+            current: { name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19", status: "finished", players: 18, progress: null, leader: null,
+                winner: { name: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum" }, next_event_at: null },
+            you: null,
+            squads: [{ as: "clan", name: "Optimum", division: "A", group: null, place: 1, of: 6, wins: 39, losses: 16, points: 141, status: "champion", squad: "Optimum", url: "/o" }],
+            titles: { count: 2, editions: [{ name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19" }, { name: "Clan League 18", url: "https://custom.wl-stats.com/series/clan-league/seasons/18" }] } }
+    ]
+};
+
+function clanPageWith(response) {
+    return clanPage({ name: "Optimum", response });
 }
 
 test("a clan page shows the clan's squads in each current series, below the Clan Wars dialog", async () => {
@@ -347,8 +344,7 @@ test("a clan page shows the clan's squads in each current series, below the Clan
     const rows = $("#clanStandings .communityLadder");
     assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"], "series the clan isn't in are left out");
     assert.equal(textOf($, rows[0])[0], "Clan Cup II · running · 23 clans · 11/15 matches");
-    const squadLines = $(rows[0]).find(".communityLadderYou").html().split("<br>").map((line) => $(`<div>${line}</div>`).text());
-    assert.deepEqual(squadLines, ["1celandic Turtles: 1–0", "2celandic Turtles: 0–1 · eliminated"], "one line per squad, by squad name");
+    assert.equal($(rows[0]).find(".communityLadderYou").text(), "1celandic Turtles: 1–0", "Clan Cup shows only the clan's best squad");
     assert.match(textOf($, rows[1])[0], /^Clan League 20 · Signups open until .+ · 14 clans$/);
     assert.equal(textOf($, rows[1])[1], "Icelandic Turtles: Division A · signed up");
     assert.match($("#clanStandings")[0].style.getPropertyValue("--tuyd-dialog"), /DialogBacking\.png/);
@@ -371,4 +367,43 @@ test("a clan in no current series gets no panel, and moving to another clan repl
     assert.deepEqual(requests, [clanUrl("Icelandic Turtles"), clanUrl("Optimum")]);
     assert.equal($("#clanStandings").attr("data-clan"), "Optimum");
     assert.equal($("#clanStandings").length, 1);
+});
+
+test("in war.app's one-column layout the clan box goes below Clan Members, not over it", async () => {
+    const scene = `<div id="ujs_ClanScene"><div id="ujs_ClanNameLabel"><div id="ujs_ClanNameLabel_tmp">Icelandic Turtles</div></div>`
+        + `<div id="ujs_ClanWarsSection"><div id="ujs_DialogBackgroundForDropShadow_8"><div id="ujs_DialogBackgroundForDropShadow_8_img"></div></div></div>`
+        + `<div id="ujs_DialogBackgroundForDropShadow_9"><div id="ujs_DialogBackgroundForDropShadow_9_img"></div></div>`
+        + `<div id="ujs_DialogBackgroundForDropShadow_2"><div id="ujs_DialogBackgroundForDropShadow_2_img"></div></div></div>`;
+    const { dom, $ } = createDom(scene, "https://war.app/Clans/?ID=33");
+    // Clan Wars at 130–360; Clan Members below it in the same column, to 2200; the Photo box above it.
+    const rects = { ujs_DialogBackgroundForDropShadow_8_img: [200, 130, 454, 230], ujs_DialogBackgroundForDropShadow_9_img: [200, 370, 454, 1830], ujs_DialogBackgroundForDropShadow_2_img: [200, -400, 454, 230] };
+    Object.entries(rects).forEach(([id, [x, y, w, h]]) => {
+        dom.window.document.getElementById(id).getBoundingClientRect = () => ({ x, y, left: x, top: y, width: w, height: h, right: x + w, bottom: y + h });
+    });
+    $.ajax = () => $.Deferred().resolve(clanSeries).promise();
+    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
+        ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
+    });
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    assert.equal($("#clanStandings").css("top"), `${2200 - 360 + 10}px`, "10px below the lowest dialog under Clan Wars");
+});
+
+test("a clan page shows the clan's last Clan League, even long finished, and how many times it won", async () => {
+    const { ctx, $ } = clanPageWith(optimum);
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    const rows = $("#clanStandings .communityLadder");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"]);
+    assert.deepEqual(textOf($, rows[1]), [
+        "Clan League 19 · finished · 18 clans",
+        "Winner: Optimum",
+        "Optimum: Division A · 1st of 6 · 39–16 · 141 points · champion🏆 Champion ×2: Clan League 19, Clan League 18"
+    ]);
+    assert.deepEqual($(rows[1]).find(".tuydClanTitles a").map((i, a) => $(a).attr("href")).get(),
+        ["https://custom.wl-stats.com/series/clan-league/seasons/19", "https://custom.wl-stats.com/series/clan-league/seasons/18"]);
+    assert.equal($(rows[0]).find(".tuydClanTitles").length, 0, "no title line for a clan that never won");
 });

@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.21.0
+
+- **AWP World Tour badges on My Games.** Games in an AWP World Tour event get a gold badge after their name, such as "AWP World Tour · Grand Slam - Timid Land · Round of 64", linking to the tournament on awp.wl-stats.com. custom.wl-stats.com's events keep their blue badges. If one site is down, the other's badges still show.
+- **Event badges no longer cover the game in My Games.** The dashboard makes a game's whole cell clickable by stretching its links over it, and it stretched the badge too, into a block over the game's details. Badges now sit on a line of their own under the game's name.
+- **The Seasonal Ladder is now a row in the Community ladders panel**, like the other series. Its line inside war.app's own Seasonal row covered war.app's "Unlocked: You may join this ladder" text when signed in.
+- **Clan pages show the clan's last Clan League and its titles.** The Community events box now includes the latest Clan League the clan played, even if it finished long ago ("Clan League 19 · finished · Winner: Optimum", then the clan's division, place, record and points). A clan that won Clan League or Clan Cup gets a gold "🏆 Champion ×2: Clan League 19, Clan League 18" line, linking to each edition. Only winning the top division counts as a Clan League title.
+- **Clan Cup on clan pages shows the clan's best squad** only. A clan can enter up to five squads, which made the box cluttered.
+- The "Community events" box on clan pages no longer hides under the member list when war.app shows the clan page in one column (a narrower window). It now goes below whatever is lowest in its column; in the usual two-column layout it stays right under Clan Wars.
+
 ## 3.20.0
 
 - **New version notice.** Once a day the script checks GitHub for a newer version. When one is out, the small version label in the bottom-right corner becomes a gold **Update to …** link; clicking it opens Tampermonkey's update screen. Nothing else on the page changes. If GitHub can't be reached it tries again an hour later. Turn it off under Features → Other.
