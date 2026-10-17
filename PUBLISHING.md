@@ -1,9 +1,14 @@
 # Publishing the site and the forum images
 
 The `docs/` folder is a small website, published for free by GitHub Pages at
-**https://pdxlife.github.io/warlight-muli-script/**. Its main job is to host the images (PNG and
-GIF) for forum posts about the script: war.app's forum doesn't store images, it only shows images
-that live somewhere else.
+**https://pdxlife.github.io/warlight-muli-script/**. Its main job is to host the images for forum
+posts about the script: war.app's forum doesn't store images, it only shows images that live
+somewhere else.
+
+**The rule that came out of testing:** images in a forum post are **PNG** (or JPG). war.app's phone
+app shows no GIFs at all, animated or still, whichever tool made them. Motion is shown in a post as
+a PNG "step strip" (two or three moments side by side) with a "See it in motion" link to the site,
+where a short MP4 video plays; the site is only opened in browsers, so it can use video.
 
 ## Part 1: Turn on GitHub Pages (once)
 
@@ -80,6 +85,8 @@ D, JPG:
 
 A and B show the Ladders panel, where a blue box and then a gold box appear. C and D show it without the boxes.
 
+**Result (October 2026): only D, the JPG, showed.** The app shows no GIFs, so posts use PNG and JPG only.
+
 | Result in the app | What it means |
 |---|---|
 | A or B show and move | The app plays GIFs; the real GIFs will be made with that tool. |
@@ -89,11 +96,11 @@ A and B show the Ladders panel, where a blue box and then a gold box appear. C a
 
 ## Adding images later
 
-1. Put the file in `docs/media/` (not `test/`), with a lowercase name made of words and dashes, e.g. `ladders-panel.png` or `my-games-badges.gif`.
+1. Put the file in `docs/media/` (not `test/`), with a lowercase name made of words and dashes, e.g. `ladders-panel.png` or `open-games-filter-strip.png`. Videos for the site go in `docs/media/video/` as `.mp4`.
 2. Commit and push to `main`. GitHub publishes it about a minute later.
 3. Use it in a post as `[img]https://pdxlife.github.io/warlight-muli-script/media/ladders-panel.png[/img]`.
 
-Size: about 700px wide, so images fit the forum column and stay readable in the app. Keep each GIF under about 3 MB.
+Size: about 700px wide, so images fit the forum column and stay readable in the app. Keep each image under about 1 MB, and each video under about 3 MB.
 
 **Never rename or delete a file that a post uses.** The post would show a broken image from then on. To change an image in a post, either replace the file under the same name, which changes it in every post that uses it, or add a new file and edit the post.
 
@@ -105,7 +112,7 @@ Size: about 700px wide, so images fit the forum column and stay readable in the 
 
 **Why Muli's images broke.** His thread is from 2015. Its images were on imgur and postimg, and most no longer load: those sites deleted old uploads, and some links start with `http://`, which browsers now refuse to load inside an `https://` page. Files in this repo stay as long as the repo does, and Pages serves them over `https`.
 
-**Formats.** war.app's forum can't play video in a post, and its phone app doesn't show SVG images. PNG (for stills) and GIF (for animations) are the formats every browser and the app can show.
+**Formats.** war.app's forum can't play video in a post, and its phone app shows neither SVG nor GIF images (a single-frame GIF fails too, so it's the format, not the animation). PNG and JPG are what every browser and the app can show. The site has no such limit: it's opened in browsers, so it plays MP4 videos, which are sharper and much smaller than GIFs.
 
 **Limits.** A Pages site can be up to 1 GB, and GitHub asks that it stay under about 100 GB of traffic a month. A 2 MB GIF opened 10,000 times is 20 GB, so a forum post is far from either.
 
