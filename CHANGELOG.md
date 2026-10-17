@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.23.2
+
+- The Website and GitHub links in the settings menu's title are a little bigger and centered on the title line.
+
 ## 3.23.1
 
 - **The AWP World Tour card on Community Events links to the rankings** ("Rankings: Top 16 ›", the 16 who qualify for the AWP Tour Finals) instead of to the race leader's page. Signed in but not in the race, the card says "You: not in the 2026 race yet"; signed out, it has no bottom line.
