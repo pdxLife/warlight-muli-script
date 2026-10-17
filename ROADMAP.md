@@ -188,20 +188,46 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
   - [x] Skeleton: `docs/index.html` (Install button, feature cards, a screenshot, credit and the fan-project note), `docs/.nojekyll`, and test images in `docs/media/test/`. `PUBLISHING.md` is the step-by-step guide: turning on Pages, checking the site, testing images in a forum preview and the phone app, adding images later, and how it all works.
   - [x] Pages is on (`main` / `/docs`). In a forum preview in the browser, the PNG and GIF both show and the GIF animates. In war.app's phone app the PNG shows but the hand-encoded `test.gif` doesn't.
   - [x] Tested GIFs from gifski and ffmpeg, a single-frame GIF and a JPG in the phone app: only the JPG showed. The app shows no GIFs at all, so posts use PNG and JPG; motion is a PNG step strip in the post with a "See it in motion" link to an MP4 on the site.
-  - [ ] Test an animated PNG (`media/test/test-apng.png`): browsers play APNG, and decoders that don't know it show the first frame, so if the app shows it, motion in posts can be APNG instead of step strips.
+  - [x] Tested an animated PNG (`media/test/test-apng.png`): it moves in browsers and shows as a still (its first frame) in war.app's phone app. Motion in posts is APNG, made with `tools/make_apng.py`, with a first frame that makes sense on its own.
   - [ ] Capture the stills and step strips on the maintainer's account, with other players' names blurred where they aren't public standings; MP4s for the site.
   - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
 - [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
+
+## Phase 12 — A browser extension
+
+The same code published as its own browser extension, so players install it from their browser's
+store in one click, without a userscript manager. The userscript stays: it updates within minutes
+of a push, and works in any manager.
+
+What it gains:
+- **One-click install and store updates** from the Chrome Web Store (Chrome and other Chromium browsers), Edge Add-ons and Firefox Add-ons.
+- **MTL without maak.ch or CORS:** an extension may fetch sites that send no CORS headers, if the user grants that site (`host_permissions` for www.warlight-mtl.com). The MTL features would read warlight-mtl.com's JSON directly, and the maak.ch JSONP relay could go.
+- **Settings that follow the player:** `storage.sync` keeps settings and bookmarks across the player's computers and across war.app's domains, which today's per-origin IndexedDB can't. This is Phase 4's "cross-browser sync".
+- It replaces Phase 3's "move off `@grant none`" for the same goals.
+
+What it costs:
+- **Store review on every update**, from hours to a few days, instead of going live within minutes.
+- **Fees:** the Chrome Web Store charges a one-time $5 developer fee; Firefox and Edge are free. Safari needs an Apple developer account ($99 a year) and is left out.
+- **No code loaded from the web:** stores don't allow it, so jQuery, jQuery UI and DataTables are bundled into the extension. That needs the build step from Phase 3's "split into modules".
+- **Two packages:** Manifest V3 for Chrome and Edge, with Firefox's small differences.
+
+How it would run: a content script with `"world": "MAIN"` (Chrome 111+, Firefox 128+) runs in the page, the way the userscript does with `@grant none`, so war.app's own jQuery, cookies and Bootstrap stay reachable. Requests that need the extension's permissions go through a small background script.
+
+- [ ] **Check the userscript in Violentmonkey** (open source; Chrome, Firefox, Edge) and name it in the README as an alternative to Tampermonkey. It uses only standard userscript features, so it should run unchanged.
+- [ ] **Build step and modules** (Phase 3), producing both the `.user.js` and the extension from the same source.
+- [ ] **Extension package**: manifest, content script in the main world, background script for MTL requests, `storage.sync` for settings, with the IndexedDB data moved over on first run.
+- [ ] **Store listings**: Chrome Web Store, Edge Add-ons, Firefox Add-ons, with a privacy description listing the sites contacted (as in the README).
+- Worth starting when players ask for a one-click install, or when the MTL data is wanted without maak.ch.
 
 ## What's left
 
 In suggested order:
 
-1. **The site and forum post** (Phase 11), and **AWP badges** once awp.wl-stats.com has its games endpoint.
+1. **The site and forum post** (Phase 11): the images, with motion as animated PNGs.
 2. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
-3. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+3. **A browser extension** (Phase 12), which would take over from moving off `@grant none` (Phase 3): MTL without maak.ch, synced settings, and the library upgrades. Start with the Violentmonkey check; the rest when players ask for a one-click install.
 4. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
-5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-6. **Split into modules** (Phase 3), once the feature work settles.
+5. **Cross-browser sync** (Phase 4), through the extension's `storage.sync`.
+6. **Split into modules** (Phase 3), which the extension needs first.
 
 Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), the clan box relies on `ujs_ClanScene`, `ujs_ClanNameLabel` and `ujs_ClanWarsSection`, the My Games badges on each row's `GameID=` link, the Community Events lines rely on `ujs_CommunityEventsScene`, `ujs_EventRow` and the card title being the first text in `ujs_vert`, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` (on both sites), `/api/v1/warapp-tournaments/{id}`, `/api/v1/series` (with `player` or `clan`) and `/api/v1/players/{id}/games` (on both sites).
