@@ -1470,8 +1470,8 @@ function setupUserscriptMenu() {
             align-items: center;
         }
         .menuLinks {
-            margin-left: 14px;
-            font-size: 15px;
+            margin-left: 16px;
+            font-size: 17px;
             font-weight: normal;
             line-height: 1;
         }
