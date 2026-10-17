@@ -85,7 +85,7 @@ Decided: show the stats on profiles, include the player's rank, and turn the fea
 
 ### Server side (awp.wl-stats.com)
 
-- [x] **Allow war.app to read the API.** `CORSMiddleware` on `/api/v1/` with `allow_methods=["GET"]` and `allow_credentials=False`, so the site's own login cookies are never sent with these requests. *(Done on both wl-stats sites. Only `https://war.app` and its subdomains are allowed, not warzone.com, so on warzone.com the wl-stats features show nothing.)*
+- [x] **Allow war.app to read the API.** `CORSMiddleware` on `/api/v1/` with `allow_methods=["GET"]` and `allow_credentials=False`, so the site's own login cookies are never sent with these requests. *(Done on both wl-stats sites, for `https://war.app` and its subdomains. warzone.com now only redirects to war.app, so it needs no entry.)*
 - [x] **Cache headers.** `Cache-Control: public, max-age=3600` on `/api/v1/players/{id}/stats`.
 - [x] **Rank in the stats response.** `/api/v1/players/{id}/stats` now has `rank` (this year's race, `null` if unranked), `rank_year`, `rank_12_months` and `page_url`.
 

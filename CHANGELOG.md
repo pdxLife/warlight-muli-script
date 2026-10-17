@@ -5,6 +5,7 @@
 - **AWP World Tour stats on profiles.** A player who has played on the AWP World Tour gets a box on their profile with their place in this year's race and in the 12-month ranking, games, wins and losses, tournaments, titles and best placement, and a link to their page on awp.wl-stats.com. This brings back the AWP integration from Muli's original script. Turn it off under Features → Profile.
 - **custom.wl-stats.com link on tournaments.** Tournaments that custom.wl-stats.com has read (Titled Tuesday, War Gaming Live, and P/R League groups played as war.app tournaments) show "custom.wl-stats.com (series)" next to "Created by". Turn it off under Features → Tournaments.
 - Both read plain JSON from the wl-stats sites, without your war.app login, and keep the answers for an hour. A player or tournament those sites don't know, or a site that's down, leaves the page as it was.
+- The script now runs only on war.app. Every warzone.com and warlight.net address redirects to war.app before a page loads, so the warzone.com entry did nothing. Bookmarks saved with those old addresses still open on war.app.
 
 ## 3.14.5
 
