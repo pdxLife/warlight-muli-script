@@ -3,12 +3,11 @@ const assert = require("node:assert/strict");
 const { source, createDom, load, domGlobals, flush } = require("./harness");
 
 const SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
-const CHANGELOG_URL = "https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md";
 const KEY = "tidyUpYourDashboard.updateCheck";
 const header = (v) => `// ==UserScript==\n// @name Tidy up your Dashboard - Modified \n// @version ${v}\n// ==/UserScript==\nvar x = 1;`;
 
 function page({ running = "3.19.0", remote = header("3.20.0"), fail = false } = {}) {
-    const { dom, $ } = createDom(`<div class="versionLabel">${running}</div><div id="userscriptMenu"><div class="modal-body"><div class="settingsListItem"></div></div></div>`);
+    const { dom, $ } = createDom(`<div class="versionLabel" data-toggle="modal" data-target="#userscriptMenu">${running}</div><div id="userscriptMenu"><div class="modal-body"><div class="settingsListItem"></div></div></div>`);
     const requests = [];
     $.ajax = (options) => {
         requests.push(options.url);
@@ -16,9 +15,9 @@ function page({ running = "3.19.0", remote = header("3.20.0"), fail = false } = 
         return (fail ? result.reject({ status: 0, statusText: "error" }) : result.resolve(remote)).promise();
     };
     const logs = [];
-    const ctx = load(["setupUpdateNotice", "latestScriptVersion", "parseScriptVersion", "compareVersions", "renderUpdateNotice", "htmlEscape"], {
+    const ctx = load(["setupUpdateNotice", "latestScriptVersion", "parseScriptVersion", "compareVersions", "renderUpdateLabel", "htmlEscape"], {
         ...domGlobals(dom, $), localStorage: dom.window.localStorage, log: (entry) => logs.push(entry), createSelector: () => {},
-        version: running, SCRIPT_URL, CHANGELOG_URL, UPDATE_CHECK_KEY: KEY, UPDATE_CHECK_MS: 24 * 60 * 60 * 1000, UPDATE_RETRY_MS: 60 * 60 * 1000
+        version: running, SCRIPT_URL, UPDATE_CHECK_KEY: KEY, UPDATE_CHECK_MS: 24 * 60 * 60 * 1000, UPDATE_RETRY_MS: 60 * 60 * 1000
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -39,19 +38,24 @@ test("versions compare by number, not as text", () => {
     assert.equal(parseScriptVersion("not a userscript"), null);
 });
 
-test("a newer version on GitHub turns the version label gold and puts an update button in the menu", async () => {
+test("a newer version on GitHub turns only the corner label into a gold update link", async () => {
     const { ctx, $, requests } = page();
     ctx.setupUpdateNotice();
     await flush();
     assert.deepEqual(requests, [SCRIPT_URL]);
-    assert.equal($(".versionLabel").text(), "3.19.0 · update available");
-    assert.ok($(".versionLabel").hasClass("updateAvailable"));
-    const notice = $("#userscriptMenu .modal-body > #updateNotice");
-    assert.equal(notice.length, 1, "at the top of the menu");
-    assert.equal($("#userscriptMenu .modal-body").children().first().attr("id"), "updateNotice");
-    assert.match(notice.text(), /Version 3\.20\.0 is available \(you have 3\.19\.0\)/);
-    assert.deepEqual(notice.find("a").map((i, a) => [$(a).text(), $(a).attr("href")]).get(),
-        ["Update to 3.20.0", SCRIPT_URL, "What's new", CHANGELOG_URL]);
+    const label = $(".versionLabel");
+    assert.equal(label.length, 1);
+    assert.equal(label.prop("tagName"), "A");
+    assert.equal(label.text(), "Update to 3.20.0");
+    assert.equal(label.attr("href"), SCRIPT_URL);
+    assert.equal(label.attr("title"), "Version 3.20.0 is available (you have 3.19.0). Click to update.");
+    assert.equal(label.attr("data-toggle"), undefined, "clicking updates instead of opening the menu");
+    assert.ok(label.hasClass("updateAvailable"));
+    assert.equal($("#userscriptMenu .modal-body").children().length, 1, "nothing is added to the menu");
+
+    ctx.setupUpdateNotice();
+    await flush();
+    assert.equal($(".versionLabel").length, 1, "running it again changes nothing");
 });
 
 test("the same or an older version on GitHub shows nothing", async () => {
@@ -59,7 +63,7 @@ test("the same or an older version on GitHub shows nothing", async () => {
         const { ctx, $ } = page({ remote });
         ctx.setupUpdateNotice();
         await flush();
-        assert.equal($("#updateNotice").length, 0);
+        assert.equal($(".versionLabel").prop("tagName"), "DIV");
         assert.equal($(".versionLabel").text(), "3.19.0");
     }
 });
@@ -75,7 +79,7 @@ test("GitHub is asked at most once a day, and the answer carries over to the nex
     second.ctx.setupUpdateNotice();
     await flush();
     assert.deepEqual(second.requests, [], "no request within the day");
-    assert.equal(second.$("#updateNotice").length, 1, "the stored answer still shows the notice");
+    assert.equal(second.$(".versionLabel").text(), "Update to 3.20.0", "the stored answer still shows the link");
 
     const nextDay = page();
     nextDay.dom.window.localStorage.setItem(KEY, JSON.stringify({ ...JSON.parse(stored), at: Date.now() - 25 * 60 * 60 * 1000 }));
@@ -88,7 +92,7 @@ test("when GitHub can't be reached, it's logged, nothing shows, and it's tried a
     const { ctx, dom, $, logs } = page({ fail: true });
     ctx.setupUpdateNotice();
     await flush();
-    assert.equal($("#updateNotice").length, 0);
+    assert.equal($(".versionLabel").text(), "3.19.0");
     assert.ok(logs.some((entry) => entry.includes("Error checking for a new version")));
     const stored = JSON.parse(dom.window.localStorage.getItem(KEY));
     assert.equal(stored.failed, true);

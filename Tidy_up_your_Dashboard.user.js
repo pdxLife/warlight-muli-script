@@ -28,7 +28,6 @@ var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
-var CHANGELOG_URL = "https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
 var UPDATE_RETRY_MS = 60 * 60 * 1000;
@@ -4739,22 +4738,22 @@ function latestScriptVersion() {
     return result.promise();
 }
 
+// Only the corner version label changes: it turns into a gold link that updates the script.
 function setupUpdateNotice() {
     latestScriptVersion().done(function (latest) {
-        if (!latest || compareVersions(latest, version) <= 0 || $("#updateNotice").length) {
+        var label = $(".versionLabel").not(".updateAvailable");
+        if (!latest || compareVersions(latest, version) <= 0 || !label.length) {
             return;
         }
-        $(".versionLabel").addClass("updateAvailable").attr("title", "Version " + latest + " is available").text(version + " · update available");
-        $("#userscriptMenu .modal-body").prepend(renderUpdateNotice(latest));
-        createSelector(".versionLabel.updateAvailable", "color: #e0c060 !important; font-weight: bold");
+        label.replaceWith(renderUpdateLabel(latest));
+        createSelector(".versionLabel.updateAvailable", "color: #e0c060 !important; font-weight: bold; text-decoration: none !important");
     });
 }
 
 // Opening the .user.js file is what makes Tampermonkey show its update screen.
-function renderUpdateNotice(latest) {
-    return '<div id="updateNotice" class="alert alert-warning" role="alert">Version ' + htmlEscape(latest) + ' is available (you have ' + htmlEscape(version) + '). ' +
-        '<a class="btn btn-sm btn-warning" target="_blank" rel="noopener" href="' + htmlEscape(SCRIPT_URL) + '">Update to ' + htmlEscape(latest) + '</a> ' +
-        '<a target="_blank" rel="noopener" href="' + htmlEscape(CHANGELOG_URL) + '">What\'s new</a></div>';
+function renderUpdateLabel(latest) {
+    return '<a class="versionLabel updateAvailable" target="_blank" rel="noopener" href="' + htmlEscape(SCRIPT_URL) + '" title="Version ' + htmlEscape(latest) +
+        ' is available (you have ' + htmlEscape(version) + '). Click to update.">Update to ' + htmlEscape(latest) + '</a>';
 }
 
 function setupCommunityLevels() {

@@ -125,7 +125,7 @@ The settings menu also has a **Features** section with a switch for each individ
 
 Settings also include **Import / Export** (Base64-encoded backup of bookmarks, settings, and hidden threads) and **Reset Hidden Threads**.
 
-**Updates:** once a day the script checks GitHub for a newer version. When there is one, the version label in the bottom-right corner turns gold ("update available") and the settings menu opens with an **Update** button, which hands you to Tampermonkey's update screen, and a link to what's new. Tampermonkey also updates the script by itself on its own schedule.
+**Updates:** once a day the script checks GitHub for a newer version. When there is one, the small version label in the bottom-right corner turns into a gold **Update to …** link; clicking it opens Tampermonkey's update screen. Nothing else on the page changes. Tampermonkey also updates the script by itself on its own schedule.
 
 ## Data Storage
 

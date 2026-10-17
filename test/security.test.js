@@ -178,8 +178,8 @@ test("My Games badges and clan standings escape API data", () => {
 });
 
 test("the update notice escapes the version read from GitHub", () => {
-    const ctx = load(["renderUpdateNotice", "htmlEscape"], { version: "3.19.0", SCRIPT_URL: "https://raw.githubusercontent.com/x.user.js", CHANGELOG_URL: "https://github.com/x" });
-    const container = render(ctx.renderUpdateNotice(PAYLOAD));
+    const ctx = load(["renderUpdateLabel", "htmlEscape"], { version: "3.19.0", SCRIPT_URL: "https://raw.githubusercontent.com/x.user.js" });
+    const container = render(ctx.renderUpdateLabel(PAYLOAD));
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
 });

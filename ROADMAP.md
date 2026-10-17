@@ -180,7 +180,7 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
 
 ## Phase 11 — Updates and a home for the script
 
-- [x] **New version notice** *(3.20.0)*: a daily check of the script's version on GitHub (raw.githubusercontent.com serves it to any site), a gold "update available" version label and an Update button in the settings menu that opens the `.user.js`, so Tampermonkey shows its update screen. Retries after an hour if GitHub can't be reached. Switch: Features → Other.
+- [x] **New version notice** *(3.20.0)*: a daily check of the script's version on GitHub (raw.githubusercontent.com serves it to any site), the corner version label becomes a gold "Update to …" link to the `.user.js`, so Tampermonkey shows its update screen; nothing else on the page changes. Retries after an hour if GitHub can't be reached. Switch: Features → Other.
 - [ ] **AWP badges on My Games**, once awp.wl-stats.com has `GET /api/v1/players/{id}/games` (same shape as custom's; AWP already stores war.app game IDs on its matches). In war.app's gold tint, next to custom's blue.
 - [ ] **A site on GitHub Pages** (`docs/` on `main`, plain HTML, no build), mainly to host the images for a forum post about the script: war.app's forum holds no media, and most of the images in Muli's original thread no longer load (deleted from imgur and postimg, or blocked as plain `http`).
   - Images as PNG (stills) and GIF (animations); war.app's forum can't play video and its phone app doesn't show SVG. About 700px wide, GIFs under about 3 MB.
