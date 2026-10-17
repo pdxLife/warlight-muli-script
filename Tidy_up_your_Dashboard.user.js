@@ -5,9 +5,11 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.22.0
+// @version 3.23.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
+// @homepageURL https://pdxlife.github.io/warlight-muli-script/
+// @supportURL https://github.com/pdxLife/warlight-muli-script/issues
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
 // @require https://code.jquery.com/ui/1.11.3/jquery-ui.min.js#sha256-xI/qyl9vpwWFOXz7+x/9WkG5j/SVnSw21viy8fWwbeE=
 // @require https://cdnjs.cloudflare.com/ajax/libs/datatables/1.10.21/js/jquery.dataTables.min.js#sha256-/7zo27Ll/hVKhCsE+y8m2SS5bhFPEQFheTCL87HuumA=
@@ -17,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.22.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -27,9 +29,15 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
-var CLAN_SERIES_KINDS = ["clan_cup", "clan_league", "nations_cup"];
+var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
+var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
+var REPO_URL = "https://github.com/pdxLife/warlight-muli-script";
+var MENU_SECTIONS_KEY = "tidyUpYourDashboard.menuSections";
+// The settings menu's sections, in order: the key a setting or feature names, and its heading.
+var MENU_SECTIONS = [["Dashboard", "Dashboard"], ["Tournaments", "Tournaments"], ["Community", "Ladders & community"], ["Profile", "Profile"], ["Clans", "Clans"],
+    ["Forum", "Forum"], ["Maps & levels", "Maps & levels"], ["Other", "Other"], ["Third-party data", "Third-party data"]];
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
 var UPDATE_RETRY_MS = 60 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -1294,86 +1302,75 @@ window.userscriptSettings = [
         id: 'scrollGames',
         text: 'Fixed Window with Scrollable Games',
         selected: true,
-        title: 'Dashboard',
-        addBreak: false,
+        section: 'Dashboard',
         help: 'This option displays My-, Open-, Coin-Games in a scrollable box, which removes a lot of unesessary scrolling. You can find tabs to switch between the different type of games. '
     },
     {
         id: 'hideMyGamesIcons',
         text: 'Hide Icons in "My Games"',
         selected: false,
-        title: '',
-        addBreak: false,
+        section: 'Dashboard',
         help: 'This option hides game icons for My Games on the dashboard'
     },
     {
         id: 'autoRefreshOnFocus',
         text: 'Automatically Refresh Games on Tab-Focus',
         selected: true,
-        title: '',
-        addBreak: false,
+        section: 'Dashboard',
         help: 'This option automatically refreshes your games after switching back to War.app from a different tab / program. This only applies if War.app was idle for 30 or more seconds.'
     },
     {
         id: 'hideCoinsGlobally',
         text: 'Hide Coins Globally',
         selected: false,
-        title: '',
-        addBreak: false,
+        section: 'Other',
         help: 'This option removes everything from War.app related to Coins'
     },
     {
         id: 'useDefaultBootLabel',
         text: 'Use the Default Boot Time Label',
         selected: false,
-        title: 'Advanced',
-        addBreak: false
+        section: 'Dashboard'
     },
     {
         id: 'showPrivateNotesOnProfile',
         text: 'Show Private Notes on Profile',
         selected: true,
-        title: '',
-        addBreak: false,
+        section: 'Profile',
         help: 'This option will show you your private notes which you made on a player directly on their profile page. You can find them on the left side under the profile picture.'
     },
     {
         id: 'hideOffTopic',
         text: 'Automatically Hide Off-Topic Threads',
         selected: false,
-        title: '',
-        addBreak: false,
+        section: 'Forum',
         help: 'This option automatically hides all off-topic threads everytime you visit the All Forum Posts page'
     }, {
         id: 'hideWarzoneIdle',
         text: 'Automatically Hide War.app Idle Threads',
         selected: false,
-        title: '',
-        addBreak: false,
+        section: 'Forum',
         help: 'This option automatically hides all War.app Idle threads everytime you visit the All Forum Posts page'
     },
     {
         id: 'disableHideThreadOnDashboard',
         text: 'Disable Right-Click on the Forum Table',
         selected: false,
-        title: '',
-        addBreak: false,
+        section: 'Forum',
         help: 'This option will allow you to right-click forum thread on the dashboard and use the default browser options.'
     },
     {
         id: 'turnNotifications',
         text: 'Desktop Notification When a Game Needs You',
         selected: false,
-        title: 'Notifications',
-        addBreak: false,
+        section: 'Dashboard',
         help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
     },
     {
         id: 'useMaakServices',
         text: 'Load MTL Ladder and Community Level Records (via maak.ch)',
         selected: false,
-        title: 'Third-party data',
-        addBreak: false,
+        section: 'Third-party data',
         help: 'Shows Multi-Template Ladder (MTL) ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
@@ -1446,34 +1443,97 @@ function setupUserscriptMenu() {
             padding-top: 25px;
             font-size: 15px;
         }
-        .featureSection {
-            margin-top: 20px;
-            font-weight: bold;
-            color: #C1C1C1;
+        #menuSearchBar {
+            position: sticky;
+            top: -16px;
+            z-index: 5;
+            margin: -16px -16px 8px;
+            padding: 12px 16px 8px;
+            background: inherit;
+            background-color: #1b1b1b;
+            border-bottom: 1px solid #333;
+        }
+        #menuSearch {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #222;
+            color: #e0e0e0;
+        }
+        #menuSearchBar .text-muted {
+            margin-top: 4px;
+            font-size: 12px;
+        }
+        .menuLinks {
+            margin-left: 12px;
+            font-size: 13px;
+            font-weight: normal;
+        }
+        .menuSection {
+            border-bottom: 1px solid #333;
+        }
+        .menuSectionHeader {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            padding: 12px 4px;
+            border: 0;
+            background: none;
+            color: #e0e0e0;
+            font-size: 17px;
+            text-align: left;
+            cursor: pointer;
+        }
+        .menuSectionHeader:before {
+            content: "▸";
+            width: 18px;
+            color: #888;
+        }
+        .menuSection.open > .menuSectionHeader:before,
+        #userscriptMenu.menuSearching .menuSectionMatch > .menuSectionHeader:before {
+            content: "▾";
+        }
+        .menuSectionCount {
+            margin-left: 8px;
+            padding: 0 7px;
+            border-radius: 9px;
+            background: #333;
+            color: #aaa;
+            font-size: 12px;
+        }
+        .menuSectionBody {
+            display: none;
+            padding: 0 4px 16px 22px;
+        }
+        .menuSection.open > .menuSectionBody,
+        #userscriptMenu.menuSearching .menuSectionMatch > .menuSectionBody {
+            display: block;
+        }
+        #userscriptMenu.menuSearching .menuSectionHidden,
+        #userscriptMenu.menuSearching .menuItemHidden,
+        #userscriptMenu.menuSearching .menuSection:not(.menuHeadingMatch) > .menuSectionBody > :not(.settingsListItem) {
+            display: none;
+        }
+        .menuSectionBody .settingsListItem:first-child {
+            padding-top: 4px;
         }
     `);
-    var inputs = '';
-    $.each(userscriptSettings, function (key, setting) {
-        if (setting.title != '') {
-            inputs += `<div class="title">${setting.title}</div>`;
-        }
-        var help = setting.help != undefined ? `<img tabindex="0" class="help-icon" src="${IMAGES.QUESTION}" data-content="${getSettingInfo(setting.id)}" data-toggle="popover">` : '';
-        inputs += '<div class="settingsListItem">' + setting.text + help + '<label class="switch"><input id="' + setting.id + '" type="checkbox"><div class="slider round"></div></label></div>';
-        if (setting.addBreak) {
-            inputs += '<hr>';
-        }
+    var inputs = renderMenuSections(userscriptSettings, toggleableFeatures(), disabledFeatures(), openMenuSections(), function (setting) {
+        return setting.help != undefined ? `<img tabindex="0" class="help-icon" src="${IMAGES.QUESTION}" data-content="${getSettingInfo(setting.id)}" data-toggle="popover">` : '';
     });
     $("body").append(`
         <div class="modal modal-750 fade" id="userscriptMenu" tabindex="-1" role="dialog">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLongTitle">Muli's Userscript  ${version}</h5>
+                <h5 class="modal-title" id="exampleModalLongTitle">Muli's Userscript  ${version}<span class="menuLinks"><a href="${SITE_URL}" target="_blank" rel="noopener">Website</a> · <a href="${REPO_URL}" target="_blank" rel="noopener">GitHub</a></span></h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
               <div class="modal-body">
+                <div id="menuSearchBar"><input type="search" id="menuSearch" placeholder="Search settings and features" autocomplete="off"><div class="text-muted">Changes apply after Close &amp; Refresh.</div></div>
                 ${inputs}
               </div>
               <div class="modal-footer">
@@ -1498,7 +1558,7 @@ function setupUserscriptMenu() {
     $(".close-userscript").on("click", function () {
         location.reload();
     });
-    $("#hideCoinsGlobally").parent().parent().after('<button class="btn btn-primary" data-toggle="modal" data-target="#dashboardTableSortMenu" style="margin-top:15px;">Sort Right Column Tables</button><br>');
+    $("#userscriptMenu .menuSection[data-section='Dashboard'] > .menuSectionBody").append('<button class="btn btn-primary" data-toggle="modal" data-target="#dashboardTableSortMenu" style="margin-top:15px;">Sort Right Column Tables</button>');
     addCSS(`
         .userscriptSettingsButtons {
             display: flex;
@@ -1506,8 +1566,8 @@ function setupUserscriptMenu() {
             margin-top: 25px;
         }
     `);
-    $("#userscriptMenu .modal-body").append(renderFeatureToggles());
-    $("#userscriptMenu .modal-body").append("<div class='userscriptSettingsButtons'></div>");
+    $("#userscriptMenu .modal-body").append(menuSection("Backup", "Backup", null, "<div class='userscriptSettingsButtons'></div>", openMenuSections().indexOf("Backup") !== -1));
+    setupMenuSections();
     //Export settings button
     $(".userscriptSettingsButtons").append('<button data-target="#userscriptExportSettings" data-toggle="modal" id="exportSettings" class="btn btn-primary">Export Settings</button>');
     //Import settings button
@@ -1833,23 +1893,86 @@ function checkUserscriptMenuButtons() {
     });
 }
 
-/**
- * Stores User-Settings to local Storage
- */
-function renderFeatureToggles() {
-    var disabled = disabledFeatures();
-    var sections = {};
-    toggleableFeatures().forEach(function (feature) {
-        (sections[feature.section] = sections[feature.section] || []).push(feature.name);
+// One foldable section per area, holding that area's settings and then its feature switches.
+function renderMenuSections(settings, features, disabled, open, helpIcon) {
+    var order = MENU_SECTIONS.map(function (entry) {
+        return entry[0];
     });
-    var html = '<div class="title">Features</div><p class="text-muted" style="font-size: 13px">Turn individual features off. Changes apply after Close & Refresh.</p>';
-    $.each(sections, function (section, names) {
-        html += '<div class="featureSection">' + htmlEscape(section) + '</div>';
-        names.forEach(function (name) {
-            html += '<div class="settingsListItem">' + htmlEscape(name) + '<label class="switch"><input class="featureToggle" data-feature="' + htmlEscape(name) + '" type="checkbox"' + (disabled.indexOf(name) === -1 ? ' checked' : '') + '><div class="slider round"></div></label></div>';
+    var groups = {};
+    var add = function (section, html) {
+        if (order.indexOf(section) === -1) {
+            order.push(section);
+        }
+        (groups[section] = groups[section] || []).push(html);
+    };
+    settings.forEach(function (setting) {
+        add(setting.section || "Other", '<div class="settingsListItem">' + setting.text + helpIcon(setting) + '<label class="switch"><input id="' + setting.id + '" type="checkbox"><div class="slider round"></div></label></div>');
+    });
+    features.forEach(function (feature) {
+        add(feature.section, '<div class="settingsListItem">' + htmlEscape(feature.name) + '<label class="switch"><input class="featureToggle" data-feature="' + htmlEscape(feature.name) +
+            '" type="checkbox"' + (disabled.indexOf(feature.name) === -1 ? ' checked' : '') + '><div class="slider round"></div></label></div>');
+    });
+    return order.filter(function (section) {
+        return groups[section];
+    }).map(function (section) {
+        var label = (MENU_SECTIONS.filter(function (entry) {
+            return entry[0] === section;
+        })[0] || [section, section])[1];
+        return menuSection(section, label, groups[section].length, groups[section].join(""), open.indexOf(section) !== -1);
+    }).join("");
+}
+
+function menuSection(key, label, count, body, open) {
+    return '<div class="menuSection' + (open ? " open" : "") + '" data-section="' + htmlEscape(key) + '"><button type="button" class="menuSectionHeader">' + htmlEscape(label) +
+        (count ? '<span class="menuSectionCount">' + htmlEscape(count) + '</span>' : "") + '</button><div class="menuSectionBody">' + body + '</div></div>';
+}
+
+function openMenuSections() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(MENU_SECTIONS_KEY));
+        if (Array.isArray(stored)) {
+            return stored;
+        }
+    } catch (e) {
+    }
+    return ["Dashboard"];
+}
+
+function setupMenuSections() {
+    var menu = $("#userscriptMenu");
+    menu.on("click", ".menuSectionHeader", function () {
+        if (menu.hasClass("menuSearching")) {
+            return;
+        }
+        $(this).parent().toggleClass("open");
+        try {
+            localStorage.setItem(MENU_SECTIONS_KEY, JSON.stringify(menu.find(".menuSection.open").map(function () {
+                return $(this).attr("data-section");
+            }).get()));
+        } catch (e) {
+        }
+    });
+    menu.on("input", "#menuSearch", function () {
+        filterMenu(menu, $(this).val());
+    });
+}
+
+// While searching, only matching switches show, in their sections opened; a section whose heading
+// matches shows all of its switches and its buttons (e.g. "backup").
+function filterMenu(menu, query) {
+    var needle = String(query || "").trim().toLowerCase();
+    menu.toggleClass("menuSearching", needle !== "");
+    menu.find(".menuSection").each(function () {
+        var section = $(this);
+        var headingMatches = needle !== "" && section.children(".menuSectionHeader").text().toLowerCase().indexOf(needle) !== -1;
+        var any = headingMatches;
+        section.find(".settingsListItem").each(function () {
+            var hit = needle === "" || headingMatches || $(this).text().toLowerCase().indexOf(needle) !== -1;
+            $(this).toggleClass("menuItemHidden", !hit);
+            any = any || hit;
         });
+        section.toggleClass("menuSectionHidden", !any).toggleClass("menuSectionMatch", needle !== "" && any).toggleClass("menuHeadingMatch", headingMatches);
     });
-    return html;
 }
 
 function storeFeatureToggles() {
@@ -2026,7 +2149,7 @@ function setupClanStandings() {
             });
             return;
         }
-        var rows = (clans[name] || []).filter(function (series) {
+        var rows = inClanSeriesOrder(clans[name] || []).filter(function (series) {
             return series.current && Array.isArray(series.squads) && series.squads.length;
         }).map(renderClanSeriesRow);
         var dialog = $(ujsElement("ClanWarsSection")).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
@@ -2064,6 +2187,17 @@ function placeBelowColumn(panel, dialog, scene) {
         }
     });
     panel.css({ width: dialog.outerWidth() + "px", top: Math.round(lowest - box.bottom) + 10 + "px" });
+}
+
+// Clan League is the biggest clan event, so it leads; other series keep the server's order.
+function inClanSeriesOrder(list) {
+    var rank = function (series) {
+        var i = CLAN_SERIES_KINDS.indexOf(series.kind);
+        return i === -1 ? CLAN_SERIES_KINDS.length : i;
+    };
+    return list.slice().sort(function (a, b) {
+        return rank(a) - rank(b);
+    });
 }
 
 function renderClanStandings(rows) {
@@ -2711,7 +2845,7 @@ function setupCommunityLadders() {
             if (data.rankings) {
                 rows.players.push(renderAwpLadderRow(data.rankings, data.playerId));
             }
-            data.series.forEach(function (series) {
+            inClanSeriesOrder(data.series).forEach(function (series) {
                 if (series.current) {
                     rows[CLAN_SERIES_KINDS.indexOf(series.kind) !== -1 ? "clans" : "players"].push(renderSeriesLadderRow(series, Date.now()));
                 }

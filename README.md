@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.22.0  
+> **Version:** 3.23.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -51,13 +51,13 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 
 ### Ladders
 
-- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green, in two lists: **Players** and **Clans & nations**. On a wide window it's wider than war.app's ladders and the two lists sit side by side. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, Nations Cup, Clan Cup, Clan League, the Seasonal Ladder, Titled Tuesday): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
+- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green, in two lists: **Players** and **Clans & nations**. On a wide window it's wider than war.app's ladders and the two lists sit side by side. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, the Seasonal Ladder, Titled Tuesday; Clan League first among the clan series, then Clan Cup and Nations Cup): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
 - **Your standing on Community Events** — on war.app's Community Events page, the cards for events you take part in (AWP World Tour, Nations Cup, Clan Cup, Clan League, Titled Tuesdays) get your line at the top right, and events taking signups say so. Hidden when the cards are too narrow for it.
 
 ### Clans
 
 - **Clan list search** — live text filter on the `/Clans/List` page with match count.
-- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan Cup, Clan League, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad. The clan's last Clan League shows even when it finished long ago, and a clan that won Clan League or Clan Cup gets a gold "🏆 Champion ×N" line listing those editions.
+- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan League first, then Clan Cup, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad. The clan's last Clan League shows even when it finished long ago, and a clan that won Clan League or Clan Cup gets a gold "🏆 Champion ×N" line listing those editions.
 
 ### Profile
 
@@ -120,7 +120,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
 | Load MTL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 
-The settings menu also has a **Features** section with a switch for each individual feature, grouped by area (Dashboard, Forum, Tournaments, Profile, and so on), so you can turn off anything you don't want. Changes apply after **Close & Refresh**.
+The menu is split into foldable sections by area: Dashboard, Tournaments, Ladders & community, Profile, Clans, Forum, Maps & levels, Other, Third-party data and Backup. Each holds that area's settings and a switch for each of its features, so you can turn off anything you don't want. Click a heading to fold or unfold it; the menu remembers which ones you left open. The search box at the top finds any setting or feature by name. The title links to the project's [website](https://pdxlife.github.io/warlight-muli-script/) and GitHub. Changes apply after **Close & Refresh**.
 
 Settings also include **Import / Export** (Base64-encoded backup of bookmarks, settings, and hidden threads) and **Reset Hidden Threads**.
 

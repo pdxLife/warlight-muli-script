@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.23.0
+
+- **The settings menu is reorganized into foldable sections**, one per area (Dashboard, Tournaments, Ladders & community, Profile, Clans, Forum, Maps & levels, Other, Third-party data, Backup). Each holds that area's settings and its feature switches together, with a count; the menu remembers which sections you left open and starts with Dashboard. Your existing choices carry over.
+- **Search** at the top of the menu finds any setting or feature by name and opens its section.
+- **Website and GitHub links** in the menu's title, and the website is the script's homepage in Tampermonkey's dashboard.
+- **Clan League leads the clan lists**, being the biggest clan event: first under Clans & nations on the Ladders page and first in the Community events box on clan pages, then Clan Cup and Nations Cup.
+
 ## 3.22.0
 
 - **Event badges on My Games moved to the game's top-right corner and say just the series:** "Nations Cup", "AWP Tour", "P/R League", "Titled Tuesday". The full label ("Nations Cup 2026 · Group C") shows when you hover the badge, and the game's name wraps before running under it.
