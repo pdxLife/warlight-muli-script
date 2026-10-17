@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.20.0
+// @version 3.20.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.20.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.20.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2004,8 +2004,9 @@ function pageIsBlacklistPage() {
     return location.href.match(/^https?:\/\/[^\/]+\/ManageBl(?:ack|ock)List.*/i);
 }
 
-// war.app's clan page is drawn client-side; the panel hangs below the left column's last dialog
-// (Clan Wars), inside war.app's scrolling viewport, so a long panel extends the page's scroll.
+// war.app's clan page is drawn client-side; the panel hangs below Clan Wars, inside war.app's
+// scrolling viewport, so a long panel extends the page's scroll. In war.app's one-column layout
+// Clan Members comes after Clan Wars, so the panel moves below whatever is lowest in that column.
 function setupClanStandings() {
     var clans = {};
     var check = function () {
@@ -2033,7 +2034,7 @@ function setupClanStandings() {
             return;
         }
         addCommunityLaddersStyles();
-        var panel = $(renderClanStandings(rows)).attr("data-clan", name).css("width", dialog.outerWidth() + "px");
+        var panel = $(renderClanStandings(rows)).attr("data-clan", name);
         var art = warappArt(scene);
         Object.keys(art).forEach(function (key) {
             if (art[key]) {
@@ -2041,9 +2042,27 @@ function setupClanStandings() {
             }
         });
         dialog.parent().append(panel);
+        placeBelowColumn(panel, dialog, scene);
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () {
+                placeBelowColumn(panel, dialog, scene);
+            }).observe(dialog[0]);
+        }
     };
     check();
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+function placeBelowColumn(panel, dialog, scene) {
+    var box = dialog[0].getBoundingClientRect();
+    var lowest = box.bottom;
+    $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").each(function () {
+        var other = this.getBoundingClientRect();
+        if (this !== dialog[0] && other.height && other.top >= box.bottom - 1 && other.left < box.right && other.right > box.left) {
+            lowest = Math.max(lowest, other.bottom);
+        }
+    });
+    panel.css({ width: dialog.outerWidth() + "px", top: Math.round(lowest - box.bottom) + 10 + "px" });
 }
 
 function renderClanStandings(rows) {

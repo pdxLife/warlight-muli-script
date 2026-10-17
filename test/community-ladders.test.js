@@ -329,7 +329,7 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
         requests.push(options.url);
         return $.Deferred().resolve(response).promise();
     };
-    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "pageIsClanPage"], {
+    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
         playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
     });
@@ -371,4 +371,26 @@ test("a clan in no current series gets no panel, and moving to another clan repl
     assert.deepEqual(requests, [clanUrl("Icelandic Turtles"), clanUrl("Optimum")]);
     assert.equal($("#clanStandings").attr("data-clan"), "Optimum");
     assert.equal($("#clanStandings").length, 1);
+});
+
+test("in war.app's one-column layout the clan box goes below Clan Members, not over it", async () => {
+    const scene = `<div id="ujs_ClanScene"><div id="ujs_ClanNameLabel"><div id="ujs_ClanNameLabel_tmp">Icelandic Turtles</div></div>`
+        + `<div id="ujs_ClanWarsSection"><div id="ujs_DialogBackgroundForDropShadow_8"><div id="ujs_DialogBackgroundForDropShadow_8_img"></div></div></div>`
+        + `<div id="ujs_DialogBackgroundForDropShadow_9"><div id="ujs_DialogBackgroundForDropShadow_9_img"></div></div>`
+        + `<div id="ujs_DialogBackgroundForDropShadow_2"><div id="ujs_DialogBackgroundForDropShadow_2_img"></div></div></div>`;
+    const { dom, $ } = createDom(scene, "https://war.app/Clans/?ID=33");
+    // Clan Wars at 130–360; Clan Members below it in the same column, to 2200; the Photo box above it.
+    const rects = { ujs_DialogBackgroundForDropShadow_8_img: [200, 130, 454, 230], ujs_DialogBackgroundForDropShadow_9_img: [200, 370, 454, 1830], ujs_DialogBackgroundForDropShadow_2_img: [200, -400, 454, 230] };
+    Object.entries(rects).forEach(([id, [x, y, w, h]]) => {
+        dom.window.document.getElementById(id).getBoundingClientRect = () => ({ x, y, left: x, top: y, width: w, height: h, right: x + w, bottom: y + h });
+    });
+    $.ajax = () => $.Deferred().resolve(clanSeries).promise();
+    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
+        ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
+    });
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    assert.equal($("#clanStandings").css("top"), `${2200 - 360 + 10}px`, "10px below the lowest dialog under Clan Wars");
 });

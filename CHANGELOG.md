@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.20.1
+
+- The "Community events" box on clan pages no longer hides under the member list when war.app shows the clan page in one column (a narrower window). It now goes below whatever is lowest in its column; in the usual two-column layout it stays right under Clan Wars.
+
 ## 3.20.0
 
 - **New version notice.** Once a day the script checks GitHub for a newer version. When one is out, the small version label in the bottom-right corner becomes a gold **Update to …** link; clicking it opens Tampermonkey's update screen. Nothing else on the page changes. If GitHub can't be reached it tries again an hour later. Turn it off under Features → Other.
