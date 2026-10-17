@@ -2123,17 +2123,25 @@ function setupEventBadges() {
     });
 }
 
+// The dashboard stretches a game's name link over its whole cell (clickable rows), so the badge
+// gets a line of its own under the name instead of sitting next to it as another link would.
 function markEventGames(games) {
     $("#MyGamesTable tr.GameRow").each(function () {
         var link = $(this).find("a[href*='GameID=']").last();
         var match = /[?&]GameID=(\d+)/i.exec(link.attr("href") || "");
         var game = match && games[match[1]];
-        var badge = $(this).find(".tuydEventBadge");
+        var line = $(this).find(".tuydEventBadgeLine");
         if (!game) {
-            badge.remove();
-        } else if (badge.attr("data-game-id") !== match[1]) {
-            badge.remove();
-            link.after(renderEventBadge(game));
+            line.remove();
+        } else if (line.attr("data-game-id") !== match[1]) {
+            line.remove();
+            var html = '<div class="tuydEventBadgeLine" data-game-id="' + htmlEscape(match[1]) + '">' + renderEventBadge(game) + '</div>';
+            var lineBreak = link.nextAll("br").first();
+            if (lineBreak.length) {
+                lineBreak.after(html);
+            } else {
+                link.after(html);
+            }
         }
     });
 }
@@ -2867,10 +2875,14 @@ function addCommunityLaddersStyles() {
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
         }
+        .tuydEventBadgeLine {
+            position: relative;
+            z-index: 1;
+            line-height: 18px;
+        }
         .tuydEventBadge {
             display: inline-block;
-            max-width: 260px;
-            margin-left: 8px;
+            max-width: 100%;
             padding: 1px 6px;
             overflow: hidden;
             text-overflow: ellipsis;

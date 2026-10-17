@@ -17,7 +17,7 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 
 | Page | Check |
 |---|---|
-| **Dashboard** `/MultiPlayer/` | "Filter" link and "N hidden" count in the Open Games header. Green "Joined" badge on open games you're in. Tab title starts with "(N)" when it's your turn. Your-turn games are ordered by time left before boot. Community games (Nations Cup, P/R League, …) have a blue badge after their name that opens the event on custom.wl-stats.com, and AWP World Tour games a gold one that opens the tournament on awp.wl-stats.com; casual games have none. |
+| **Dashboard** `/MultiPlayer/` | "Filter" link and "N hidden" count in the Open Games header. Green "Joined" badge on open games you're in. Tab title starts with "(N)" when it's your turn. Your-turn games are ordered by time left before boot. Community games (Nations Cup, P/R League, …) have a blue badge on a line under their name (not a block over the row) that opens the event on custom.wl-stats.com, and AWP World Tour games a gold one that opens the tournament on awp.wl-stats.com; casual games have none. |
 | Dashboard: press **R** | Both tables refresh. "+ Show N more open games" and "Past games / Create Game" are still there afterwards. |
 | Dashboard: type "r" in the Open Games filter's keyword box | The games don't refresh. |
 | Dashboard: "Show more", Multi-Day / Real-Time / Both | Rows change and the filter still applies to the new rows. |

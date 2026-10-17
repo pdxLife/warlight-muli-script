@@ -56,9 +56,14 @@ test("community games on My Games get a badge after their name, linking to the e
     assert.deepEqual(badges($), ["Nations Cup 2026 · Group C", "-", "P/R League · Season 38 · Group A2", "92nd Titled Tuesday - MME"],
         "the series name is added only where the label lacks it");
     const badge = $("tr[gameid='45419715'] .tuydEventBadge");
-    assert.equal(badge.prev().text(), "NC Group C", "right after the game's name");
     assert.equal(badge.attr("href"), "https://custom.wl-stats.com/series/fixtures/3122");
     assert.equal($("tr[gameid='45419715'] td:first-child .tuydEventBadge").length, 0, "not on the thumbnail");
+    const line = badge.parent();
+    assert.ok(line.hasClass("tuydEventBadgeLine"), "on a line of its own");
+    assert.equal(line.prev().prop("tagName"), "BR", "right under the game's name");
+    assert.equal(line.prev().prev().text(), "NC Group C");
+    assert.equal($("tr[gameid='45419715'] td:nth-of-type(2) > a.tuydEventBadge").length, 0,
+        "not a direct link of the cell, which the dashboard's clickable rows stretch over the whole cell");
 });
 
 test("badges come back when war.app or a refresh redraws My Games, once each", async () => {
@@ -71,6 +76,7 @@ test("badges come back when war.app or a refresh redraws My Games, once each", a
     $("#MyGamesTable tbody").append("<tr><td>footer</td></tr>");
     await flush();
     assert.equal($(".tuydEventBadge").length, 2);
+    assert.equal($(".tuydEventBadgeLine").length, 2);
 });
 
 test("a refreshed game list adds new games' badges and drops finished ones", async () => {
