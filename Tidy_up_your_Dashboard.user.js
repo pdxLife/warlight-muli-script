@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.21.1
+// @version 3.22.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.21.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.22.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -27,6 +27,7 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
+var CLAN_SERIES_KINDS = ["clan_cup", "clan_league", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
@@ -2665,8 +2666,9 @@ function signedInPlayerId() {
     return result.promise();
 }
 
-// war.app draws the Ladders page client-side, in a viewport that clips what overflows it, so the
-// panel hangs below the ladders dialog and its rows scroll on their own when the window is short.
+// war.app draws the Ladders page client-side, in a 600px viewport that clips what overflows it. The
+// panel sits in the full-width area around that viewport instead, below the ladders dialog, so on a
+// wide window its two lists (players, clans) go side by side; its rows scroll when the window is short.
 function setupCommunityLadders() {
     var rows = null;
     var community = null;
@@ -2677,7 +2679,7 @@ function setupCommunityLadders() {
         }
         addCommunityLaddersStyles();
         var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
-        if (!dialog.length || !rows.length || $("#communityLadders").length) {
+        if (!dialog.length || !(rows.players.length + rows.clans.length) || $("#communityLadders").length) {
             return;
         }
         var panel = $(renderCommunityLadders(rows));
@@ -2687,27 +2689,30 @@ function setupCommunityLadders() {
                 panel[0].style.setProperty(name, art[name]);
             }
         });
-        dialog.parent().parent().append(panel);
+        var holder = $("#UjsCanvasHolder");
+        (holder.length ? holder : dialog.parent().parent()).append(panel);
         fitCommunityLadders(panel, dialog);
-        // war.app re-lays out the dialog shortly after a resize, so follow the dialog itself.
+        // war.app re-lays out the dialog shortly after a resize, so follow the dialog and the page area.
         if (window.ResizeObserver) {
-            new ResizeObserver(function () {
+            var observer = new ResizeObserver(function () {
                 fitCommunityLadders(panel, dialog);
-            }).observe(dialog[0]);
+            });
+            observer.observe(dialog[0]);
+            observer.observe(panel.parent()[0]);
         }
     };
     var load = function () {
         if (rows || !pageIsLadders()) {
             return;
         }
-        rows = [];
+        rows = { players: [], clans: [] };
         loadCommunityData().done(function (data) {
             if (data.rankings) {
-                rows.push(renderAwpLadderRow(data.rankings, data.playerId));
+                rows.players.push(renderAwpLadderRow(data.rankings, data.playerId));
             }
             data.series.forEach(function (series) {
                 if (series.current) {
-                    rows.push(renderSeriesLadderRow(series, Date.now()));
+                    rows[CLAN_SERIES_KINDS.indexOf(series.kind) !== -1 ? "clans" : "players"].push(renderSeriesLadderRow(series, Date.now()));
                 }
             });
             community = data;
@@ -2722,14 +2727,23 @@ function setupCommunityLadders() {
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
 }
 
+// Two columns need about 940px; below that the panel takes the dialog's width and its lists stack.
 function fitCommunityLadders(panel, dialog) {
-    panel.css("width", dialog.outerWidth() + "px");
+    var box = dialog[0].getBoundingClientRect();
     var viewport = panel.closest("[id^='ujs_Viewport']");
     if (viewport.length) {
-        var list = panel.find(".communityLaddersRows");
-        var room = viewport[0].getBoundingClientRect().bottom - list[0].getBoundingClientRect().top - panel.find(".communityLaddersCredit").outerHeight() - 20;
-        list.css("max-height", Math.max(66, room) + "px");
+        panel.css("width", box.width + "px");
+    } else {
+        var area = panel.parent()[0].getBoundingClientRect();
+        var room = area.width - 32;
+        var width = room >= 940 ? Math.min(room, 1040) : box.width;
+        var left = Math.max(0, Math.min(box.left - area.left + (box.width - width) / 2, area.width - width));
+        panel.css({ width: width + "px", left: Math.round(left) + "px", top: Math.round(box.bottom - area.top + 10) + "px" });
     }
+    var bottom = viewport.length ? viewport[0].getBoundingClientRect().bottom : Math.min(window.innerHeight, panel.parent()[0].getBoundingClientRect().bottom);
+    var list = panel.find(".communityLaddersRows");
+    var room = bottom - list[0].getBoundingClientRect().top - panel.find(".communityLaddersCredit").outerHeight() - 20;
+    list.css("max-height", Math.max(66, room) + "px");
 }
 
 // The panels wear war.app's own dialog, row and button art, found by file name on the page so they
@@ -2793,6 +2807,21 @@ function addCommunityLaddersStyles() {
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #555 transparent;
+        }
+        .tuydCommunityPanel .communityLaddersSection h4 {
+            margin: 2px 4px 6px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        @container tuydLadders (min-width: 900px) {
+            .tuydCommunityPanel .communityLaddersRows {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                align-items: start;
+                gap: 0 14px;
+            }
         }
         .tuydCommunityPanel .communityLadder {
             display: flex;
@@ -2916,7 +2945,11 @@ function addCommunityLaddersStyles() {
 }
 
 function renderCommunityLadders(rows) {
-    return '<div id="communityLadders" class="tuydCommunityPanel"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' + rows.join("") +
+    var section = function (title, list) {
+        return list.length ? '<div class="communityLaddersSection"><h4>' + title + '</h4>' + list.join("") + '</div>' : "";
+    };
+    return '<div id="communityLadders" class="tuydCommunityPanel"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' +
+        section("Players", rows.players) + section("Clans &amp; nations", rows.clans) +
         '</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
 }
 
