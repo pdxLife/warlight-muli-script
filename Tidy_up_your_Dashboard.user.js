@@ -3049,6 +3049,9 @@ function addCommunityLaddersStyles() {
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
         }
+        .tuydEventStanding .tuydMuted {
+            color: #8d8d8d;
+        }
         .tuydHasEventBadge {
             position: relative;
         }
@@ -3261,13 +3264,35 @@ function seriesDetailHtml(series, now) {
     var details = [];
     var finished = current.status === "finished";
     var lead = finished ? current.winner : current.leader;
-    if (lead && lead.name) {
+    // A knockout's squads are too many names; its round, linking to the bracket, says where it stands.
+    var standings = series.kind === "clan_cup" ? (current.status === "running" && current.standings && current.standings.label ? siteLink(current.url, current.standings.label) : "")
+        : standingsHtml(current.standings);
+    if (standings) {
+        details.push(standings);
+    } else if (lead && lead.name) {
         details.push((finished ? "Winner: " : "Leader: ") + seriesLink(lead));
     }
     if (current.next_event_at && parseUtcTime(current.next_event_at)) {
         details.push("Next: " + htmlEscape(formatEventTime(current.next_event_at)) + " (" + htmlEscape(timeUntil(current.next_event_at, now)) + ")");
     }
     return details.join(" · ");
+}
+
+// custom.wl-stats.com's short standings for formats with no single leader: a division's top
+// three or each group's leader.
+function standingsHtml(standings) {
+    var entries = standings && Array.isArray(standings.entries) ? standings.entries.filter(function (entry) {
+        return entry && entry.name;
+    }) : [];
+    if (!entries.length) {
+        return "";
+    }
+    return (standings.label ? htmlEscape(standings.label) + ": " : "") + entries.map(function (entry) {
+        var prefix = entry.group ? '<span class="tuydMuted">' + htmlEscape(entry.group) + '</span> ' : entry.place ? htmlEscape(entry.place) + ". " : "";
+        var score = entry.points != null ? " " + formatCount(entry.points)
+            : entry.wins != null && entry.losses != null ? " " + htmlEscape(entry.wins) + "–" + htmlEscape(entry.losses) : "";
+        return prefix + (entry.url ? seriesLink(entry) : htmlEscape(entry.name)) + score;
+    }).join(" · ");
 }
 
 function renderSeriesLadderRow(series, now) {
