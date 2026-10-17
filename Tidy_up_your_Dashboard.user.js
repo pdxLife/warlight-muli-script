@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.17.0
+// @version 3.18.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.17.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.18.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2400,14 +2400,68 @@ function setupAwpProfileStats() {
         return;
     }
     fetchWlStats(AWP_SITE + "/api/v1/players/" + match[1] + "/stats").done(function (player) {
-        if (!player || !player.stats || $("#awpStats").length) {
-            return;
+        if (player && player.stats && !$("#awpStats").length) {
+            placeProfileBox("awpStats", renderAwpStats(player));
         }
-        var notes = $("#privateNotes");
-        (notes.length ? notes : $("#FeedbackMsg")).first().after(renderAwpStats(player));
     }).fail(function (xhr) {
         log("Error loading AWP World Tour stats: " + (xhr && xhr.statusText));
     });
+}
+
+// The boxes from other sites keep this order below the feedback area, whichever answers first.
+function placeProfileBox(id, html) {
+    var order = ["privateNotes", "awpStats", "customStats"];
+    var above = order.slice(0, order.indexOf(id)).map(function (other) {
+        return $("#" + other);
+    }).filter(function (box) {
+        return box.length > 0;
+    }).pop();
+    (above || $("#FeedbackMsg")).first().after(html);
+}
+
+function setupCustomProfileStats() {
+    var match = location.href.match(/[?&]p=(\d+)/i);
+    if (!match) {
+        return;
+    }
+    fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + match[1] + "/stats").done(function (player) {
+        if (player && player.stats && !$("#customStats").length) {
+            placeProfileBox("customStats", renderCustomStats(player, CUSTOM_SITE + "/players/" + match[1]));
+        }
+    }).fail(function (xhr) {
+        log("Error loading custom.wl-stats.com stats: " + (xhr && xhr.statusText));
+    });
+}
+
+function renderCustomStats(player, pageUrl) {
+    var stats = player.stats;
+    var rows = [
+        ["Games", stats.games
+            ? htmlEscape(stats.games) + " (" + htmlEscape(stats.wins) + " W, " + htmlEscape(stats.losses) + " L, " + htmlEscape(stats.win_pct) + "%)"
+            : "None yet"],
+        ["Tournaments", htmlEscape(stats.tournaments || 0)],
+        ["Titles", htmlEscape(stats.titles || 0) + (stats.finals ? " (" + htmlEscape(stats.finals) + " final" + (stats.finals == 1 ? "" : "s") + ")" : "")]
+    ];
+    if (stats.best_placement) {
+        rows.push(["Best placement", htmlEscape(getRankText(stats.best_placement))]);
+    }
+    if (stats.organized) {
+        rows.push(["Organized", htmlEscape(stats.organized) + " tournament" + (stats.organized == 1 ? "" : "s")]);
+    }
+    var formats = (Array.isArray(stats.by_format) ? stats.by_format.slice() : []).filter(function (format) {
+        return format && format.played;
+    }).sort(function (a, b) {
+        return b.played - a.played;
+    }).slice(0, 3);
+    formats.forEach(function (format) {
+        var lost = Number(format.played) - Number(format.won);
+        rows.push([htmlEscape(format.label), htmlEscape(format.won) + "–" + htmlEscape(isNaN(lost) ? "?" : lost) + " (" + htmlEscape(format.win_pct) + "%)"]);
+    });
+    return '<div class="profileBox" id="customStats"><h3>Community tournaments</h3><table class="table table-sm" style="width: auto"><tbody>' +
+        rows.map(function (row) {
+            return '<tr><td class="text-muted">' + row[0] + '</td><td>' + row[1] + '</td></tr>';
+        }).join("") +
+        '</tbody></table><a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(pageUrl)) + '">More on custom.wl-stats.com</a></div>';
 }
 
 function renderAwpStats(player) {
@@ -3055,6 +3109,7 @@ function pageFeatures() {
         { name: "Trophies", section: "Profile", match: pageIsProfile, run: displayTrophies },
         { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
         { name: "AWP World Tour stats", section: "Profile", match: pageIsProfile, run: setupAwpProfileStats },
+        { name: "custom.wl-stats.com stats", section: "Profile", match: pageIsProfile, run: setupCustomProfileStats },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];

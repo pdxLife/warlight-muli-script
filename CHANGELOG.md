@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.18.0
+
+- **Community tournament stats on profiles.** Players custom.wl-stats.com knows get a "Community tournaments" box below the AWP World Tour one: games, wins and losses, tournaments, titles and finals, best placement, tournaments organized, and their record in their three most played formats. It links to their page on custom.wl-stats.com. Turn it off under Features → Profile.
+- The profile boxes (Private Notes, AWP World Tour, Community tournaments) now always appear in that order, whichever site answers first.
+
 ## 3.17.0
 
 - **Community series on the Ladders page.** Under the AWP row, the panel now has a row for each series custom.wl-stats.com is running or finished in the last 30 days: Clan Cup, Nations Cup, P/R League, Titled Tuesday and others. Each shows the current season, how far it is, its leader or winner and, when you're signed in, your line: your place, record and points, or your clan's or country's. Titled Tuesday shows when the next one starts, in your time zone, with a countdown.

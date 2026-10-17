@@ -36,6 +36,22 @@ function fakeAjax($, responses, requests) {
     };
 }
 
+// Recorded from custom.wl-stats.com /api/v1/players/2921525624/stats, with the per-year and per-template lists trimmed.
+const customPlayer = {
+    player_id: "2921525624", player_name: "KKND", profile_url: "https://war.app/Profile?p=2921525624", is_member: true, level: 61, clan: "Icelandic Turtles",
+    stats: {
+        games: 84, wins: 54, losses: 30, win_pct: 64, tournaments: 18, titles: 2, finals: 2, best_placement: 1, organized: 1,
+        by_format: [
+            { label: "Clan league", played: 64, won: 33, win_pct: 52 },
+            { label: "Single elimination", played: 28, won: 14, win_pct: 50 },
+            { label: "Round robin", played: 6, won: 4, win_pct: 67 },
+            { label: "Swiss", played: 2, won: 1, win_pct: 50 }
+        ],
+        by_year: [], by_template: [], template_ids: {}
+    }
+};
+const customStatsUrl = (id) => `${CUSTOM_SITE}/api/v1/players/${id}/stats`;
+
 const profile = `<div class="container"><span id="FeedbackMsg"></span><h3>Ladders</h3></div>`;
 const statsUrl = (id) => `${AWP_SITE}/api/v1/players/${id}/stats`;
 
@@ -44,8 +60,8 @@ function profilePage(responses, { html = profile, url = "https://war.app/Profile
     const requests = [];
     const logs = [];
     fakeAjax($, responses, requests);
-    const ctx = load(["setupAwpProfileStats", "renderAwpStats", "fetchWlStats", "htmlEscape", "safeUrl", "getRankText"], {
-        ...domGlobals(dom, $), location: dom.window.location, log: (entry) => logs.push(entry), AWP_SITE, WL_STATS_CACHE_MS
+    const ctx = load(["setupAwpProfileStats", "renderAwpStats", "setupCustomProfileStats", "renderCustomStats", "placeProfileBox", "fetchWlStats", "htmlEscape", "safeUrl", "getRankText"], {
+        ...domGlobals(dom, $), location: dom.window.location, log: (entry) => logs.push(entry), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -193,4 +209,66 @@ test("an answer that arrives after you've moved to another tournament isn't show
     answers[lookupUrl(66354)].resolve(customTournament);
     await flush();
     assert.equal($(".customTournamentLink").length, 0);
+});
+
+test("a profile shows the player's custom.wl-stats.com record with their three most played formats", async () => {
+    const { ctx, $, requests } = profilePage({ [customStatsUrl("2921525624")]: customPlayer });
+    ctx.setupCustomProfileStats();
+    await flush();
+    assert.deepEqual(requests, [customStatsUrl("2921525624")]);
+    assert.equal($("#FeedbackMsg").next().attr("id"), "customStats");
+    assert.equal($("#customStats h3").text(), "Community tournaments");
+    const rows = $("#customStats tr").map((i, row) => $(row).children().map((j, cell) => $(cell).text()).get().join(": ")).get();
+    assert.deepEqual(rows, [
+        "Games: 84 (54 W, 30 L, 64%)",
+        "Tournaments: 18",
+        "Titles: 2 (2 finals)",
+        "Best placement: 1st",
+        "Organized: 1 tournament",
+        "Clan league: 33–31 (52%)",
+        "Single elimination: 14–14 (50%)",
+        "Round robin: 4–2 (67%)"
+    ]);
+    assert.equal($("#customStats a").attr("href"), "https://custom.wl-stats.com/players/2921525624");
+});
+
+test("the profile boxes keep their order whichever site answers first", async () => {
+    const html = `<span id="FeedbackMsg"></span><div class="profileBox" id="privateNotes"></div><h3>Ladders</h3>`;
+    const order = ($) => $("#FeedbackMsg").nextAll(".profileBox").map((i, box) => box.id).get();
+
+    const customFirst = profilePage({ [customStatsUrl("2921525624")]: customPlayer, [statsUrl("2921525624")]: awpPlayer }, { html });
+    customFirst.ctx.setupCustomProfileStats();
+    await flush();
+    customFirst.ctx.setupAwpProfileStats();
+    await flush();
+    assert.deepEqual(order(customFirst.$), ["privateNotes", "awpStats", "customStats"]);
+
+    const awpFirst = profilePage({ [customStatsUrl("2921525624")]: customPlayer, [statsUrl("2921525624")]: awpPlayer }, { html });
+    awpFirst.ctx.setupAwpProfileStats();
+    await flush();
+    awpFirst.ctx.setupCustomProfileStats();
+    await flush();
+    assert.deepEqual(order(awpFirst.$), ["privateNotes", "awpStats", "customStats"]);
+});
+
+test("a player custom.wl-stats.com doesn't know gets no box, and a site that's down is logged", async () => {
+    const unknown = profilePage({}, { url: "https://war.app/Profile?p=5" });
+    unknown.ctx.setupCustomProfileStats();
+    await flush();
+    assert.equal(unknown.$("#customStats").length, 0);
+    assert.deepEqual(unknown.logs, []);
+
+    const down = profilePage({ [customStatsUrl("2921525624")]: { httpError: 0 } });
+    down.ctx.setupCustomProfileStats();
+    await flush();
+    assert.equal(down.$("#customStats").length, 0);
+    assert.ok(down.logs.some((entry) => entry.includes("Error loading custom.wl-stats.com stats")));
+});
+
+test("a player with no community games yet reads as such, without format rows", () => {
+    const { renderCustomStats } = load(["renderCustomStats", "htmlEscape", "safeUrl", "getRankText"]);
+    const { dom } = createDom();
+    const box = dom.window.document.createElement("div");
+    box.innerHTML = renderCustomStats({ stats: { games: 0, wins: 0, losses: 0, win_pct: 0, tournaments: 0, titles: 0, finals: 0, best_placement: null, organized: 0, by_format: [] } }, "https://custom.wl-stats.com/players/5");
+    assert.deepEqual([...box.querySelectorAll("tr")].map((row) => row.textContent), ["GamesNone yet", "Tournaments0", "Titles0"]);
 });
