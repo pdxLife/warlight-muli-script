@@ -134,8 +134,8 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
 
 test("custom.wl-stats.com series rows and Community Events lines escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeriesLadderRow", "communityEventLine", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
-        "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $ });
+    const ctx = load(["renderSeriesLadderRow", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
+        "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $, AWP_SITE: "https://awp.wl-stats.com" });
     const link = { name: PAYLOAD, url: "javascript:alert(1)" };
     const evil = {
         name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
@@ -144,11 +144,13 @@ test("custom.wl-stats.com series rows and Community Events lines escape API data
     };
     const running = { ...evil, current: { ...evil.current, status: "running" } };
     const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0)
-        + ctx.communityEventLine("Evil event", { series: [evil], rankings: null, playerId: null });
+        + ctx.communityEventHtml("Evil event", { series: [evil], rankings: null, playerId: null })
+        + ctx.communityEventHtml("Evil event", { series: [{ ...running, you: null }], rankings: null, playerId: null })
+        + ctx.communityEventHtml("AWP World Tour", { series: [], rankings: { year: PAYLOAD, rankings: [{ rank: PAYLOAD, player_id: PAYLOAD, player_name: PAYLOAD, points: PAYLOAD }] }, playerId: null });
     const container = render(html);
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
-    assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"), container.innerHTML);
+    assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#" || a.getAttribute("href").startsWith("https://awp.wl-stats.com/")), container.innerHTML);
 });
 
 test("custom.wl-stats.com profile stats escape API data", () => {

@@ -18,7 +18,7 @@ const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", 
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
-    "setupCommunityEventsStanding", "communityEventLine"];
+    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
 const series = {
@@ -269,22 +269,34 @@ const card = (n, title) => `<div id="ujs_EventRow${n}"><div id="ujs_EventRow${n}
 const eventsScene = `<div id="ujs_CommunityEventsScene"><div id="ujs_Rows">${card("", "Clan League 19")}${card("_2", "Nations Cup 2026")}${card("_3", "AWP World Tour")}`
     + `${card("_4", "Multi Template Ladder (MTL)")}${card("_5", "Clan Cup")}${card("_6", "Titled Tuesdays")}</div></div>`;
 
-test("Community Events cards get your line where you take part", async () => {
+const eventLines = ($, id) => $(`#${id}_img`).find(".tuydEventLine").map((i, line) => $(line).text()).get();
+
+test("Community Events cards show each event's standings, and your place where you take part", async () => {
     const { ctx, $, requests } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene });
     ctx.setupCommunityEventsStanding();
     await flush();
     assert.deepEqual(requests, [RANKINGS_URL, seriesUrl("2921525624")]);
-    const line = (id) => $(`#${id}_img > .tuydEventStanding`).text();
-    assert.equal(line("ujs_EventRow_2"), "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points");
-    assert.equal(line("ujs_EventRow_3"), "You: #144 in the 2026 race · 55 points");
-    assert.equal($(".tuydEventStanding").length, 2, "no line where you don't take part");
+    assert.deepEqual(eventLines($, "ujs_EventRow_2"), ["Running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"],
+        "war.app's title already names the edition, so the status starts after it");
+    assert.equal($("#ujs_EventRow_2_img > .tuydEventMore").text(), "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points");
+    assert.deepEqual(eventLines($, "ujs_EventRow_3"), ["2026 race · 5 players", "Leader: tornado · 5,765 points", "You: #144 · 55 points"]);
+    assert.equal($("#ujs_EventRow_3_img a").first().attr("href"), "https://awp.wl-stats.com/players/3678797622");
+    assert.deepEqual(eventLines($, "ujs_EventRow_5"), ["Clan Cup II · running · 23 clans · 11/15 matches", "Full standings on custom.wl-stats.com ›"]);
+    assert.equal($("#ujs_EventRow_5_img > .tuydEventMore a").attr("href"), "https://custom.wl-stats.com/series/cups/3");
+    const titled = eventLines($, "ujs_EventRow_6");
+    assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
+    assert.match(titled[1], /^Winner: CONSEQUENCER · Next: /);
+    assert.equal(titled[2], "Full standings on custom.wl-stats.com ›");
+    assert.equal($("#ujs_EventRow_4_img .tuydEventStanding").length, 0, "MTL isn't on the community sites yet");
+    assert.equal($("#ujs_EventRow_img .tuydEventStanding").length, 0, "Clan League is left out while the series list has no season of it");
+    assert.equal($("#ujs_EventRow_6_img .tuydEventLine").first().attr("title"), titled[0], "a cut line shows in full on hover");
 
     $("#ujs_Rows").append("<div>redraw</div>");
     await flush();
-    assert.equal($(".tuydEventStanding").length, 2, "nothing is added twice");
+    assert.equal($(".tuydEventStanding").length, 4, "nothing is added twice");
 });
 
-test("signed out, Community Events cards only show open signups", async () => {
+test("signed out, Community Events cards still show the standings, with links to the sites", async () => {
     const open = JSON.parse(JSON.stringify(series));
     open.series[0].current.status = "signups";
     open.series[0].current.signups_close_at = "2026-10-26T18:00:00";
@@ -292,8 +304,13 @@ test("signed out, Community Events cards only show open signups", async () => {
     const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, playerId: null, seriesResponse: open });
     ctx.setupCommunityEventsStanding();
     await flush();
-    assert.equal($(".tuydEventStanding").length, 1);
-    assert.match($("#ujs_EventRow_5_img > .tuydEventStanding").text(), /^Signups open until /);
+    assert.equal($(".tuydEventStanding").length, 4);
+    const cup = eventLines($, "ujs_EventRow_5");
+    assert.match(cup[0], /^Clan Cup II · Signups open until .+ · 23 clans · 11\/15 matches$/);
+    assert.equal(cup[1], "Sign up on custom.wl-stats.com ›");
+    assert.equal(eventLines($, "ujs_EventRow_3")[2], "Full rankings on awp.wl-stats.com ›");
+    assert.equal($("#ujs_EventRow_3_img > .tuydEventMore a").attr("href"), "https://awp.wl-stats.com/rankings");
+    assert.equal(eventLines($, "ujs_EventRow_2")[1], "Full standings on custom.wl-stats.com ›");
 });
 
 test("Community Events lines stay off other pages", async () => {
