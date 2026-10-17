@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.19.0  
+> **Version:** 3.20.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -125,6 +125,8 @@ The settings menu also has a **Features** section with a switch for each individ
 
 Settings also include **Import / Export** (Base64-encoded backup of bookmarks, settings, and hidden threads) and **Reset Hidden Threads**.
 
+**Updates:** once a day the script checks GitHub for a newer version. When there is one, the version label in the bottom-right corner turns gold ("update available") and the settings menu opens with an **Update** button, which hands you to Tampermonkey's update screen, and a link to what's new. Tampermonkey also updates the script by itself on its own schedule.
+
 ## Data Storage
 
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings and hidden forum threads. (Its `TournamentData` store held captured tournament inviters and is no longer used.)
@@ -133,6 +135,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 ## Other sites the script contacts
 
+- **GitHub** (raw.githubusercontent.com): once a day, the script reads its own file there to see whether a newer version is out. No player data is sent.
 - **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
 - **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard it asks which of your games belong to community events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 

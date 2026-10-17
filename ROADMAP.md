@@ -178,14 +178,26 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
   - **Server side** *(live)*: a `clan` option on `/api/v1/series` (`?clan=Icelandic%20Turtles`), returning the same list with `you` as the clan's line (`as: "clan"`). The existing `/api/v1/clans/{name}/rankings` ranks players inside a clan and doesn't cover this.
   - Done as a "Community events" box below the left column's Clan Wars dialog (`ujs_ClanWarsSection`), one line per squad (the endpoint lists every squad, best first). The page scrolls natively, so the box extends the scroll area and stays reachable for clans with short member lists. The clan's name is read from `ujs_ClanNameLabel`.
 
+## Phase 11 — Updates and a home for the script
+
+- [x] **New version notice** *(3.20.0)*: a daily check of the script's version on GitHub (raw.githubusercontent.com serves it to any site), a gold "update available" version label and an Update button in the settings menu that opens the `.user.js`, so Tampermonkey shows its update screen. Retries after an hour if GitHub can't be reached. Switch: Features → Other.
+- [ ] **AWP badges on My Games**, once awp.wl-stats.com has `GET /api/v1/players/{id}/games` (same shape as custom's; AWP already stores war.app game IDs on its matches). In war.app's gold tint, next to custom's blue.
+- [ ] **A site on GitHub Pages** (`docs/` on `main`, plain HTML, no build), mainly to host the images for a forum post about the script: war.app's forum holds no media, and most of the images in Muli's original thread no longer load (deleted from imgur and postimg, or blocked as plain `http`).
+  - Images as PNG (stills) and GIF (animations); war.app's forum can't play video and its phone app doesn't show SVG. About 700px wide, GIFs under about 3 MB.
+  - A home page with the Install button, the images with short captions and a link to the forum thread; interactive demos running the script's own functions on sample markup can come later.
+  - Test one PNG and one GIF in a forum preview and in war.app's phone app before writing the post.
+  - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
+- [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
+
 ## What's left
 
 In suggested order:
 
-1. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
-2. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
-3. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
-4. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-5. **Split into modules** (Phase 3), once the feature work settles.
+1. **The site and forum post** (Phase 11), and **AWP badges** once awp.wl-stats.com has its games endpoint.
+2. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
+3. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+4. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
+5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+6. **Split into modules** (Phase 3), once the feature work settles.
 
 Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_SeasonalLadder` (its own row), `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), the clan box relies on `ujs_ClanScene`, `ujs_ClanNameLabel` and `ujs_ClanWarsSection`, the My Games badges on each row's `GameID=` link, the Community Events lines rely on `ujs_CommunityEventsScene`, `ujs_EventRow` and the card title being the first text in `ujs_vert`, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` (on both sites), `/api/v1/warapp-tournaments/{id}`, `/api/v1/series` (with `player` or `clan`) and `/api/v1/players/{id}/games` on the wl-stats sites.
