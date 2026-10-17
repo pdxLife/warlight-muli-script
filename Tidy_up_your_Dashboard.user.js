@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.20.1
+// @version 3.21.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.20.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.21.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2071,7 +2071,8 @@ function renderClanStandings(rows) {
 }
 
 function renderClanSeriesRow(series) {
-    var squads = series.squads.map(function (squad) {
+    // A clan can enter several Clan Cup squads; its best one stands for the clan.
+    var squads = (series.kind === "clan_cup" ? series.squads.slice(0, 1) : series.squads).map(function (squad) {
         var name = squad.squad || squad.name;
         var parts = standingParts(series.kind, squad);
         return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(squad.url)) + '">' + htmlEscape(name) + '</a>' + (parts.length ? ": " + parts.join(" · ") : "");
@@ -2099,15 +2100,18 @@ function setupEventBadges() {
             observer.observe(table, { childList: true, subtree: true });
         };
         var load = function () {
-            fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS).done(function (data) {
+            $.when(
+                settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS), "community games"),
+                settleRequest(fetchWlStats(AWP_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS), "AWP World Tour games")
+            ).done(function (custom, awp) {
                 games = {};
-                (data && Array.isArray(data.games) ? data.games : []).forEach(function (game) {
-                    games[String(game.game_id)] = game;
+                [[custom, "custom"], [awp, "awp"]].forEach(function (source) {
+                    (source[0] && Array.isArray(source[0].games) ? source[0].games : []).forEach(function (game) {
+                        games[String(game.game_id)] = $.extend({}, game, { source: source[1] });
+                    });
                 });
                 addCommunityLaddersStyles();
                 apply();
-            }).fail(function (xhr) {
-                log("Error loading community games: " + (xhr && xhr.statusText));
             });
         };
         load();
@@ -2138,7 +2142,7 @@ function renderEventBadge(game) {
     var label = String(game.label || "");
     var series = String(game.series || "");
     var text = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
-    return '<a class="tuydEventBadge" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
+    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
 }
 
 function addCSS(css) {
@@ -2882,6 +2886,10 @@ function addCommunityLaddersStyles() {
         .tuydEventBadge:hover {
             filter: brightness(1.2);
         }
+        .tuydEventBadge.tuydEventBadgeAwp {
+            background: #e0c060;
+            color: #1b1b1b !important;
+        }
         @container tuydLadders (min-width: 554px) {
             .communityLadderNarrowOnly {
                 display: none !important;
@@ -2926,22 +2934,23 @@ function communityLadderRow(row) {
 
 // Resolves with the AWP ranking and the custom.wl-stats.com series, each left empty when its site
 // can't be reached, so one being down doesn't hide the other.
+function settleRequest(request, what) {
+    var settled = $.Deferred();
+    request.done(function (data) {
+        settled.resolve(data);
+    }).fail(function (xhr) {
+        log("Error loading " + what + ": " + (xhr && xhr.statusText));
+        settled.resolve(null);
+    });
+    return settled.promise();
+}
+
 function loadCommunityData() {
     var result = $.Deferred();
-    var settle = function (request, what) {
-        var settled = $.Deferred();
-        request.done(function (data) {
-            settled.resolve(data);
-        }).fail(function (xhr) {
-            log("Error loading " + what + ": " + (xhr && xhr.statusText));
-            settled.resolve(null);
-        });
-        return settled.promise();
-    };
     signedInPlayerId().done(function (playerId) {
         $.when(
-            settle(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
-            settle(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
+            settleRequest(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
         ).done(function (rankings, series) {
             result.resolve({
                 playerId: playerId,

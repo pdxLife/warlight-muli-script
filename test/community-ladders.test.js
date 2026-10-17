@@ -16,7 +16,7 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
-    "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
+    "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow", "addSeasonalLadderLine", "renderSeasonalLadderLine",
     "setupCommunityEventsStanding", "communityEventLine"];
 
@@ -347,8 +347,7 @@ test("a clan page shows the clan's squads in each current series, below the Clan
     const rows = $("#clanStandings .communityLadder");
     assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"], "series the clan isn't in are left out");
     assert.equal(textOf($, rows[0])[0], "Clan Cup II · running · 23 clans · 11/15 matches");
-    const squadLines = $(rows[0]).find(".communityLadderYou").html().split("<br>").map((line) => $(`<div>${line}</div>`).text());
-    assert.deepEqual(squadLines, ["1celandic Turtles: 1–0", "2celandic Turtles: 0–1 · eliminated"], "one line per squad, by squad name");
+    assert.equal($(rows[0]).find(".communityLadderYou").text(), "1celandic Turtles: 1–0", "Clan Cup shows only the clan's best squad");
     assert.match(textOf($, rows[1])[0], /^Clan League 20 · Signups open until .+ · 14 clans$/);
     assert.equal(textOf($, rows[1])[1], "Icelandic Turtles: Division A · signed up");
     assert.match($("#clanStandings")[0].style.getPropertyValue("--tuyd-dialog"), /DialogBacking\.png/);

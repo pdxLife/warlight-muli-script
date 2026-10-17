@@ -1,7 +1,9 @@
 # Changelog
 
-## 3.20.1
+## 3.21.0
 
+- **AWP World Tour badges on My Games.** Games in an AWP World Tour event get a gold badge after their name, such as "AWP World Tour · Grand Slam - Timid Land · Round of 64", linking to the tournament on awp.wl-stats.com. custom.wl-stats.com's events keep their blue badges. If one site is down, the other's badges still show.
+- **Clan Cup on clan pages shows the clan's best squad** only. A clan can enter up to five squads, which made the box cluttered.
 - The "Community events" box on clan pages no longer hides under the member list when war.app shows the clan page in one column (a narrower window). It now goes below whatever is lowest in its column; in the usual two-column layout it stays right under Clan Wars.
 
 ## 3.20.0

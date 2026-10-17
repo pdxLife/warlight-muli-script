@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.20.1  
+> **Version:** 3.21.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -25,7 +25,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Redesigned layout** with fixed header, scrollable game area, and tabbed My / Open / Past games.
 - **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam). One request refreshes both tables, and the My Games and open-games counts stay current.
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
-- **Community event badges** — My Games rows that belong to a community event on [custom.wl-stats.com](https://custom.wl-stats.com) get a small blue badge after the game's name, e.g. "Nations Cup 2026 · Group C" or "P/R League · Season 38 · Group A2", linking to that event.
+- **Community event badges** — My Games rows that belong to a community event get a small badge after the game's name, linking to that event: blue for [custom.wl-stats.com](https://custom.wl-stats.com) events (e.g. "Nations Cup 2026 · Group C", "P/R League · Season 38 · Group A2"), gold for the [AWP World Tour](https://awp.wl-stats.com) (e.g. "AWP World Tour · Grand Slam - Timid Land · Round of 64").
 - **Your-turn alerts** — the tab title shows how many games are waiting for you, e.g. `(2) Multi-Player Dashboard`. While the dashboard tab is open but not in focus, it re-checks your games every 5 minutes, and can show a desktop notification when a game becomes your turn (opt-in setting).
 - **Open Games filter** — a **Filter** link in the Open Games header (dashboard and View All page) hides Auto Games, coin games, games with a boot time under a number of hours you set, and games whose name contains any of your keywords (whole words, comma-separated). The header shows how many games are hidden.
 - **Boot-time sorting** — games where it's your turn are ordered by time left before you're booted (boot time plus bank, minus how long it's been your turn), most urgent first. Other games keep their place.
@@ -58,7 +58,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 ### Clans
 
 - **Clan list search** — live text filter on the `/Clans/List` page with match count.
-- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's squads in each current custom.wl-stats.com series (Clan Cup, Clan League, …): their place, record and points.
+- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan Cup, Clan League, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad.
 
 ### Profile
 
@@ -137,7 +137,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **GitHub** (raw.githubusercontent.com): once a day, the script reads its own file there to see whether a newer version is out. No player data is sent.
 - **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
-- **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard it asks which of your games belong to community events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
+- **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard both wl-stats sites are asked which of your games belong to their events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 
 Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Dashboard, Profile, Tournaments, Clans and Community). maak.ch is contacted only if you turn on its setting.
 
