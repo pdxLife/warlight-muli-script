@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidy Up Your Dashboard</title>
+<meta name="description" content="A userscript for war.app: a tidier dashboard, tournament player search, community ladders and leagues, profile stats and more.">
+<style>
+  :root {
+    --bg: #141414;
+    --panel: #1f1f1f;
+    --line: #333;
+    --text: #d6d6d6;
+    --muted: #8d8d8d;
+    --green: #198225;
+    --blue: #242d9a;
+    --gold: #e0c060;
+    --link: #5a9da5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  a { color: var(--link); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { text-align: center; padding: 24px 0 8px; }
+  h1 { margin: 0; font-size: 34px; color: #fff; letter-spacing: 0.3px; }
+  .tagline { margin: 8px 0 24px; color: var(--muted); }
+  .install {
+    display: inline-block;
+    padding: 12px 28px;
+    border-radius: 6px;
+    background: var(--green);
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    text-decoration: none;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35);
+  }
+  .install:hover { filter: brightness(1.15); }
+  .steps { margin: 16px auto 0; max-width: 520px; color: var(--muted); font-size: 14px; }
+  h2 { margin: 48px 0 12px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; color: #fff; }
+  .card p { margin: 0; font-size: 14px; color: var(--text); }
+  figure { margin: 16px 0 0; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tidy Up Your Dashboard</h1>
+    <p class="tagline">A userscript for <a href="https://war.app">war.app</a> in a desktop browser: a tidier dashboard, tournament tools, community ladders and leagues, and more.</p>
+    <a class="install" href="https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js">Install</a>
+    <p class="steps">1. Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> in Chrome, Edge or Firefox. 2. Click <strong>Install</strong> above and confirm in Tampermonkey. 3. Open war.app. Updates arrive by themselves.</p>
+  </header>
+
+  <h2>What it adds</h2>
+  <div class="grid">
+    <div class="card"><h3>Dashboard</h3><p>Press R to refresh. Your-turn count in the tab title. Your-turn games sorted by time left before boot. Open Games filter, "Joined" badges, and badges for community event games.</p></div>
+    <div class="card"><h3>Tournaments</h3><p>Search and sort a tournament's players. Bookmark tournaments. A link to the tournament's page on custom.wl-stats.com.</p></div>
+    <div class="card"><h3>Ladders &amp; community events</h3><p>AWP World Tour, P/R League, Nations Cup, Clan Cup and more on the Ladders page, with your own place. Your standing on Community Events.</p></div>
+    <div class="card"><h3>Profiles</h3><p>Your private notes, AWP World Tour stats and community tournament stats on a player's profile.</p></div>
+    <div class="card"><h3>Clans</h3><p>Clan list search, and a clan's squads in the current community events on its page.</p></div>
+    <div class="card"><h3>Forum, mail &amp; more</h3><p>Bookmarks, a formatting toolbar, hiding threads, mail search by player, block list search, map search.</p></div>
+  </div>
+
+  <h2>A look</h2>
+  <figure>
+    <img src="media/ladders-awp.png" width="432" height="144" alt="The Community ladders and leagues panel on war.app's Ladders page, with an AWP World Tour row: 2026 race, 226 players, You: #144, 55 points">
+    <figcaption>Community ladders &amp; leagues on the Ladders page, drawn in war.app's own style with blue buttons.</figcaption>
+  </figure>
+
+  <footer>
+    Tidy Up Your Dashboard was created by <a href="https://war.app/Profile?p=2211733141">Muli</a> in 2015 (<a href="https://war.app/Forum/106092">original forum thread</a>); this version keeps it working on today's war.app.
+    Source, changelog and issues on <a href="https://github.com/pdxLife/warlight-muli-script">GitHub</a>.
+    A fan project, not affiliated with war.app.
+  </footer>
+</main>
+</body>
+</html>

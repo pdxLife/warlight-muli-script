@@ -12,6 +12,8 @@ npm run check      # syntax check of the userscript
 
 To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
 
+`docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. Images there are PNG or GIF (war.app's forum can't play video and its phone app doesn't show SVG), and a file a forum post uses must never be renamed or deleted.
+
 ## How the script is put together
 
 - **Header:** `@grant none`, so the script runs in the page context. The site's own globals (`$.cookie`, `wljs_WaitDialogJS`, `CreateModal`, Bootstrap's `.modal()`) are available. Switching to any `GM_*` grant sandboxes the script and breaks these.
