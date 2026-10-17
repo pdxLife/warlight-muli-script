@@ -297,8 +297,8 @@ test("Community Events cards show each event's standings, and your place where y
     assert.deepEqual(eventLines($, "ujs_EventRow_2"), ["Running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"],
         "war.app's title already names the edition, so the status starts after it");
     assert.equal($("#ujs_EventRow_2_img > .tuydEventMore").text(), "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points");
-    assert.deepEqual(eventLines($, "ujs_EventRow_3"), ["2026 race · 5 players", "Leader: tornado · 5,765 points", "You: #144 · 55 points"]);
-    assert.equal($("#ujs_EventRow_3_img a").first().attr("href"), "https://awp.wl-stats.com/players/3678797622");
+    assert.deepEqual(eventLines($, "ujs_EventRow_3"), ["2026 race · 5 players", "Rankings: Top 16 ›", "You: #144 · 55 points"]);
+    assert.equal($("#ujs_EventRow_3_img a").first().attr("href"), "https://awp.wl-stats.com/rankings", "the rankings, not the leader's page");
     assert.deepEqual(eventLines($, "ujs_EventRow_5"), ["Clan Cup II · running · 23 clans · 11/15 matches", "Full standings on custom.wl-stats.com ›"]);
     assert.equal($("#ujs_EventRow_5_img > .tuydEventMore a").attr("href"), "https://custom.wl-stats.com/series/cups/3");
     const titled = eventLines($, "ujs_EventRow_6");
@@ -326,9 +326,16 @@ test("signed out, Community Events cards still show the standings, with links to
     const cup = eventLines($, "ujs_EventRow_5");
     assert.match(cup[0], /^Clan Cup II · Signups open until .+ · 23 clans · 11\/15 matches$/);
     assert.equal(cup[1], "Sign up on custom.wl-stats.com ›");
-    assert.equal(eventLines($, "ujs_EventRow_3")[2], "Full rankings on awp.wl-stats.com ›");
-    assert.equal($("#ujs_EventRow_3_img > .tuydEventMore a").attr("href"), "https://awp.wl-stats.com/rankings");
+    assert.deepEqual(eventLines($, "ujs_EventRow_3"), ["2026 race · 5 players", "Rankings: Top 16 ›"], "signed out, no You line");
+    assert.equal($("#ujs_EventRow_3_img .tuydEventMore").length, 0);
     assert.equal(eventLines($, "ujs_EventRow_2")[1], "Full standings on custom.wl-stats.com ›");
+});
+
+test("a signed-in player outside the AWP race is told so on its card", async () => {
+    const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, playerId: "999" });
+    ctx.setupCommunityEventsStanding();
+    await flush();
+    assert.equal($("#ujs_EventRow_3_img > .tuydEventMore").text(), "You: not in the 2026 race yet");
 });
 
 test("Community Events lines stay off other pages", async () => {

@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.23.0
+// @version 3.23.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3383,13 +3383,13 @@ function awpEventLines(community) {
     if (!rankings) {
         return null;
     }
-    var leader = rankings.rankings[0];
     var mine = awpStanding(rankings, community.playerId);
+    // The race's top 16 qualify for the AWP Tour Finals.
     return {
         status: htmlEscape(rankings.year) + " race · " + formatCount(rankings.rankings.length) + " players",
-        detail: leader ? "Leader: " + seriesLink({ name: leader.player_name, url: AWP_SITE + "/players/" + encodeURIComponent(leader.player_id) }) + " · " + formatCount(leader.points) + " points" : "",
+        detail: siteLink(AWP_SITE + "/rankings", "Rankings: Top 16"),
         bottom: mine ? "You: #" + htmlEscape(mine.rank) + " · " + formatCount(mine.points) + " points"
-            : siteLink(AWP_SITE + "/rankings", "Full rankings on awp.wl-stats.com")
+            : community.playerId ? "You: not in the " + htmlEscape(rankings.year) + " race yet" : ""
     };
 }
 
