@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.19.0
+
+- **Community event badges on My Games.** Games that belong to a community event get a small blue badge after their name, such as "Nations Cup 2026 · Group C" or "P/R League · Season 38 · Group A2", linking to the event on custom.wl-stats.com. They follow every refresh and war.app's own Filter. Turn them off under Features → Dashboard.
+- **Community events on clan pages.** A clan page gets a "Community events" box below Clan Wars with the clan's squads in each current custom.wl-stats.com series and how they stand. Turn it off under Features → Clans.
+- The panels find war.app's dialog and button art by file name on any page, so the clan page's box wears the same frame and blue buttons as the Ladders panel.
+
 ## 3.18.0
 
 - **Community tournament stats on profiles.** Players custom.wl-stats.com knows get a "Community tournaments" box below the AWP World Tour one: games, wins and losses, tournaments, titles and finals, best placement, tournaments organized, and their record in their three most played formats. It links to their page on custom.wl-stats.com. Turn it off under Features → Profile.
