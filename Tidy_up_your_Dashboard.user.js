@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.18.0
+// @version 3.19.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.18.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.19.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -26,6 +26,7 @@ var AWP_SITE = "https://awp.wl-stats.com";
 var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
+var GAMES_CACHE_MS = 5 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -1943,6 +1944,10 @@ function pageIsClanForumThread() {
     return location.href.match(/^https?:\/\/[^\/]+\/Discussion\/\?ID=[0-9]+.*/);
 }
 
+function pageIsClanPage() {
+    return location.href.match(/^https?:\/\/[^\/]+\/Clans\/?\?(?:[^#]*&)?ID=\d+/i);
+}
+
 function pageIsClanList() {
     return location.href.match(/^https?:\/\/[^\/]+\/Clans\/List/i);
 }
@@ -1993,6 +1998,124 @@ function pageIsMyMail() {
 
 function pageIsBlacklistPage() {
     return location.href.match(/^https?:\/\/[^\/]+\/ManageBl(?:ack|ock)List.*/i);
+}
+
+// war.app's clan page is drawn client-side; the panel hangs below the left column's last dialog
+// (Clan Wars), inside war.app's scrolling viewport, so a long panel extends the page's scroll.
+function setupClanStandings() {
+    var clans = {};
+    var check = function () {
+        var scene = pageIsClanPage() && ujsElement("ClanScene");
+        var name = scene && $(ujsElement("ClanNameLabel", "_tmp")).text().trim();
+        if (!name || $("#clanStandings").attr("data-clan") === name) {
+            return;
+        }
+        if (!(name in clans)) {
+            clans[name] = null;
+            fetchWlStats(CUSTOM_SITE + "/api/v1/series?clan=" + encodeURIComponent(name), SERIES_CACHE_MS).done(function (data) {
+                clans[name] = data && Array.isArray(data.series) ? data.series : [];
+                check();
+            }).fail(function (xhr) {
+                log("Error loading the clan's custom.wl-stats.com series: " + (xhr && xhr.statusText));
+            });
+            return;
+        }
+        var rows = (clans[name] || []).filter(function (series) {
+            return series.current && Array.isArray(series.squads) && series.squads.length;
+        }).map(renderClanSeriesRow);
+        var dialog = $(ujsElement("ClanWarsSection")).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
+        $("#clanStandings").remove();
+        if (!rows.length || !dialog.length) {
+            return;
+        }
+        addCommunityLaddersStyles();
+        var panel = $(renderClanStandings(rows)).attr("data-clan", name).css("width", dialog.outerWidth() + "px");
+        var art = warappArt(scene);
+        Object.keys(art).forEach(function (key) {
+            if (art[key]) {
+                panel[0].style.setProperty(key, art[key]);
+            }
+        });
+        dialog.parent().append(panel);
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+function renderClanStandings(rows) {
+    return '<div id="clanStandings" class="tuydCommunityPanel"><h3>Community events</h3><div class="communityLaddersRows">' + rows.join("") +
+        '</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
+}
+
+function renderClanSeriesRow(series) {
+    var squads = series.squads.map(function (squad) {
+        var name = squad.squad || squad.name;
+        var parts = standingParts(series.kind, squad);
+        return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(squad.url)) + '">' + htmlEscape(name) + '</a>' + (parts.length ? ": " + parts.join(" · ") : "");
+    });
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), youHtml: squads.join("<br>") });
+}
+
+// war.app's My Games rows each link to their game, so community games are found by war.app game ID.
+function setupEventBadges() {
+    var table = document.getElementById("MyGamesTable");
+    if (!table) {
+        return;
+    }
+    signedInPlayerId().done(function (playerId) {
+        if (!playerId) {
+            return;
+        }
+        var games = {};
+        var observer = new MutationObserver(function () {
+            apply();
+        });
+        var apply = function () {
+            observer.disconnect();
+            markEventGames(games);
+            observer.observe(table, { childList: true, subtree: true });
+        };
+        var load = function () {
+            fetchWlStats(CUSTOM_SITE + "/api/v1/players/" + playerId + "/games", GAMES_CACHE_MS).done(function (data) {
+                games = {};
+                (data && Array.isArray(data.games) ? data.games : []).forEach(function (game) {
+                    games[String(game.game_id)] = game;
+                });
+                addCommunityLaddersStyles();
+                apply();
+            }).fail(function (xhr) {
+                log("Error loading community games: " + (xhr && xhr.statusText));
+            });
+        };
+        load();
+        $(document).on("tuyd:gamesRefreshed", function (e, selector) {
+            if (selector === "#MyGamesTable") {
+                load();
+            }
+        });
+    });
+}
+
+function markEventGames(games) {
+    $("#MyGamesTable tr.GameRow").each(function () {
+        var link = $(this).find("a[href*='GameID=']").last();
+        var match = /[?&]GameID=(\d+)/i.exec(link.attr("href") || "");
+        var game = match && games[match[1]];
+        var badge = $(this).find(".tuydEventBadge");
+        if (!game) {
+            badge.remove();
+        } else if (badge.attr("data-game-id") !== match[1]) {
+            badge.remove();
+            link.after(renderEventBadge(game));
+        }
+    });
+}
+
+function renderEventBadge(game) {
+    var label = String(game.label || "");
+    var series = String(game.series || "");
+    var text = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
+    return '<a class="tuydEventBadge" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
 }
 
 function addCSS(css) {
@@ -2518,7 +2641,7 @@ function setupCommunityLadders() {
             return;
         }
         var panel = $(renderCommunityLadders(rows));
-        var art = laddersArt(scene);
+        var art = warappArt(scene);
         Object.keys(art).forEach(function (name) {
             if (art[name]) {
                 panel[0].style.setProperty(name, art[name]);
@@ -2569,19 +2692,24 @@ function fitCommunityLadders(panel, dialog) {
     }
 }
 
-// The panel wears war.app's own dialog, row and button art, read from the ladders on the page so it
-// follows war.app's updates. Its buttons use war.app's blue tint instead of the ladders' green, so
-// the panel reads as an addition; war.app's CDN serves only the tints the game itself uses.
-function laddersArt(scene) {
-    var source = function (name) {
-        var value = $(scene).find("[id^='ujs_" + name + "'][id$='_img']").first().css("border-image-source") || "";
-        return /^url\(/.test(value) ? value : "";
+// The panels wear war.app's own dialog, row and button art, found by file name on the page so they
+// follow war.app's updates. Their buttons use war.app's blue tint instead of its green, so the
+// panels read as additions; war.app's CDN serves only the tints the game itself uses.
+function warappArt(scene) {
+    var sources = $(scene).find("[id$='_img']").map(function () {
+        var value = $(this).css("border-image-source") || "";
+        return /^url\(/.test(value) ? value : null;
+    }).get();
+    var find = function (pattern) {
+        return sources.filter(function (value) {
+            return pattern.test(value);
+        })[0] || "";
     };
-    var button = source("OneVersusOneLadder");
+    var button = find(/UIButton-[0-9A-Fa-f]{6}\.png/);
     return {
-        "--tuyd-dialog": source("DialogBackgroundForDropShadow"),
-        "--tuyd-row": source("LadderContainer"),
-        "--tuyd-button": /UIButton-[0-9A-Fa-f]{6}/.test(button) ? button.replace(/UIButton-[0-9A-Fa-f]{6}/, "UIButton-242D9A") : ""
+        "--tuyd-dialog": find(/\/DialogBacking\.png/),
+        "--tuyd-row": find(/\/DialogForeground\.png/),
+        "--tuyd-button": button.replace(/UIButton-[0-9A-Fa-f]{6}/, "UIButton-242D9A")
     };
 }
 
@@ -2591,7 +2719,7 @@ function addCommunityLaddersStyles() {
     }
     addCommunityLaddersStyles.done = true;
     addCSS(`
-        #communityLadders {
+        .tuydCommunityPanel {
             container: tuydLadders / inline-size;
             position: absolute;
             top: 10px;
@@ -2606,7 +2734,7 @@ function addCommunityLaddersStyles() {
             border-width: 54px 18px 12px 17px;
             border-image: var(--tuyd-dialog, none) 82 27 19 26 fill / 54px 18px 12px 17px stretch;
         }
-        #communityLadders h3 {
+        .tuydCommunityPanel h3 {
             position: absolute;
             top: -46px;
             left: 0;
@@ -2621,12 +2749,12 @@ function addCommunityLaddersStyles() {
             font-weight: 700;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
         }
-        #communityLadders .communityLaddersRows {
+        .tuydCommunityPanel .communityLaddersRows {
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #555 transparent;
         }
-        #communityLadders .communityLadder {
+        .tuydCommunityPanel .communityLadder {
             display: flex;
             align-items: center;
             gap: 8px;
@@ -2638,7 +2766,7 @@ function addCommunityLaddersStyles() {
             border-width: 12px 10px 10px;
             border-image: var(--tuyd-row, none) 19 15 15 16 fill / 12px 10px 10px stretch;
         }
-        #communityLadders .communityLadderButton {
+        .tuydCommunityPanel .communityLadderButton {
             flex: 0 0 160px;
             max-width: 35%;
             min-height: 50px;
@@ -2661,25 +2789,25 @@ function addCommunityLaddersStyles() {
             background: #242d9a padding-box;
             border-image: var(--tuyd-button, none) 15 15 13 fill / 5px 5px 4px stretch;
         }
-        #communityLadders .communityLadderButton:hover {
+        .tuydCommunityPanel .communityLadderButton:hover {
             filter: brightness(1.15);
         }
-        #communityLadders .communityLadderText {
+        .tuydCommunityPanel .communityLadderText {
             flex: 1;
             min-width: 0;
         }
-        #communityLadders .tuydMuted {
+        .tuydCommunityPanel .tuydMuted {
             color: #8d8d8d;
         }
-        #communityLadders .communityLadderYou {
+        .tuydCommunityPanel .communityLadderYou {
             color: #fff;
         }
-        #communityLadders .communityLaddersCredit {
+        .tuydCommunityPanel .communityLaddersCredit {
             text-align: right;
             font-size: 11px;
             color: #777;
         }
-        #communityLadders .communityLadderSignups {
+        .tuydCommunityPanel .communityLadderSignups {
             color: #e0c060;
         }
         .tuydSeasonalLine {
@@ -2712,6 +2840,25 @@ function addCommunityLaddersStyles() {
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
         }
+        .tuydEventBadge {
+            display: inline-block;
+            max-width: 260px;
+            margin-left: 8px;
+            padding: 1px 6px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            vertical-align: middle;
+            border-radius: 3px;
+            background: #242d9a;
+            color: #fff !important;
+            font-size: 12px;
+            line-height: 16px;
+            text-decoration: none !important;
+        }
+        .tuydEventBadge:hover {
+            filter: brightness(1.2);
+        }
         @container tuydLadders (min-width: 554px) {
             .communityLadderNarrowOnly {
                 display: none !important;
@@ -2728,11 +2875,11 @@ function addCommunityLaddersStyles() {
             }
         }
         @media (max-width: 600px) {
-            #communityLadders h3 {
+            .tuydCommunityPanel h3 {
                 font-size: 14px;
                 white-space: nowrap;
             }
-            #communityLadders .communityLadderText {
+            .tuydCommunityPanel .communityLadderText {
                 font-size: 13px;
                 line-height: 16px;
             }
@@ -2741,7 +2888,7 @@ function addCommunityLaddersStyles() {
 }
 
 function renderCommunityLadders(rows) {
-    return '<div id="communityLadders"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' + rows.join("") +
+    return '<div id="communityLadders" class="tuydCommunityPanel"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' + rows.join("") +
         '</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
 }
 
@@ -2843,6 +2990,11 @@ function seriesYouHtml(series) {
     if (you.status === "signed_up") {
         return label + ": signed up";
     }
+    var parts = standingParts(series.kind, you);
+    return parts.length ? label + ": " + parts.join(" · ") : label;
+}
+
+function standingParts(kind, you) {
     var parts = [];
     if (you.division) {
         parts.push(htmlEscape(you.division));
@@ -2853,19 +3005,22 @@ function seriesYouHtml(series) {
     if (you.place) {
         parts.push(htmlEscape(getRankText(you.place)) + (you.of ? " of " + htmlEscape(you.of) : ""));
     }
+    if (you.status === "signed_up") {
+        parts.push("signed up");
+    }
     if (you.wins != null && you.losses != null) {
         parts.push(htmlEscape(you.wins) + "–" + htmlEscape(you.losses));
     }
     if (you.points != null) {
-        parts.push(series.kind === "ladder" ? "rating " + formatCount(you.points) : formatCount(you.points) + " points");
+        parts.push(kind === "ladder" ? "rating " + formatCount(you.points) : formatCount(you.points) + " points");
     }
     if (["promoted", "relegated", "eliminated", "champion"].indexOf(you.status) !== -1) {
         parts.push(htmlEscape(you.status));
     }
-    return parts.length ? label + ": " + parts.join(" · ") : label;
+    return parts;
 }
 
-function renderSeriesLadderRow(series, now, className) {
+function seriesStatusHtml(series) {
     var current = series.current;
     var units = { nations_cup: "teams", clan_cup: "clans", clan_league: "clans" }[series.kind] || "players";
     var status = [htmlEscape(current.name), current.status === "signups" ? signupsHtml(current) : current.status === "running" ? "running" : "finished"];
@@ -2875,6 +3030,11 @@ function renderSeriesLadderRow(series, now, className) {
     if (current.progress) {
         status.push(formatCount(current.progress.played) + "/" + formatCount(current.progress.total) + (series.kind === "clan_cup" ? " matches" : " games"));
     }
+    return status.join(" · ");
+}
+
+function seriesDetailHtml(series, now) {
+    var current = series.current;
     var details = [];
     var finished = current.status === "finished";
     var lead = finished ? current.winner : current.leader;
@@ -2884,9 +3044,14 @@ function renderSeriesLadderRow(series, now, className) {
     if (current.next_event_at && parseUtcTime(current.next_event_at)) {
         details.push("Next: " + htmlEscape(formatEventTime(current.next_event_at)) + " (" + htmlEscape(timeUntil(current.next_event_at, now)) + ")");
     }
+    return details.join(" · ");
+}
+
+function renderSeriesLadderRow(series, now, className) {
+    var current = series.current;
     var you = series.you ? seriesYouHtml(series)
         : current.status === "signups" ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">Sign up on custom.wl-stats.com</a>' : "";
-    return communityLadderRow({ name: series.name, url: series.url, statusHtml: status.join(" · "), detailHtml: details.join(" · "), youHtml: you, className: className });
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, now), youHtml: you, className: className });
 }
 
 // war.app's own Seasonal Ladder row gets the current season from custom.wl-stats.com along its
@@ -3101,6 +3266,7 @@ function pageFeatures() {
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
         { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },
+        { name: "Community event standings on clan pages", section: "Clans", run: setupClanStandings },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
@@ -3129,6 +3295,7 @@ function mainFeatures() {
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
+        { name: "Community event badges on My Games", section: "Dashboard", match: pageIsDashboard, run: setupEventBadges },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },

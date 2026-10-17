@@ -134,7 +134,7 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
 
 test("custom.wl-stats.com series rows, the Seasonal line and Community Events lines escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeriesLadderRow", "renderSeasonalLadderLine", "communityEventLine", "communityLadderRow", "seriesYouHtml", "seriesLink", "signupsHtml",
+    const ctx = load(["renderSeriesLadderRow", "renderSeasonalLadderLine", "communityEventLine", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
         "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $ });
     const link = { name: PAYLOAD, url: "javascript:alert(1)" };
     const evil = {
@@ -160,4 +160,19 @@ test("custom.wl-stats.com profile stats escape API data", () => {
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
     assert.equal(container.querySelector("a").getAttribute("href"), "#");
+});
+
+test("My Games badges and clan standings escape API data", () => {
+    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "standingParts", "signupsHtml", "formatCount",
+        "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl"]);
+    const badge = render(ctx.renderEventBadge({ game_id: PAYLOAD, series: PAYLOAD, label: PAYLOAD, url: "javascript:alert(1)" }));
+    assertInert(badge);
+    assert.ok(badge.textContent.includes(PAYLOAD));
+    assert.equal(badge.querySelector("a").getAttribute("href"), "#");
+
+    const squad = { as: "clan", name: PAYLOAD, squad: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" };
+    const row = render(ctx.renderClanSeriesRow({ name: PAYLOAD, kind: PAYLOAD, url: "data:text/html,x", current: { name: PAYLOAD, status: "running", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD } }, squads: [squad] }));
+    assertInert(row);
+    assert.ok(row.textContent.includes(PAYLOAD));
+    assert.ok([...row.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"));
 });

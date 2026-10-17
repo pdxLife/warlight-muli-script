@@ -5,7 +5,7 @@ const { source, load } = require("./harness");
 
 const SITE_AND_BROWSER_GLOBALS = new Set([
     "$", "$$$", "jQuery", "CNCDialog", "CreateModal", "PopErrorDialog", "ReportError",
-    "Number", "String", "alert", "atob", "btoa", "clearInterval", "clearTimeout", "decodeURIComponent",
+    "Number", "String", "alert", "atob", "btoa", "clearInterval", "clearTimeout", "decodeURIComponent", "encodeURIComponent",
     "encodeURI", "isNaN", "parseInt", "setInterval", "setTimeout", "structuredClone", "unescape"
 ]);
 

@@ -14,10 +14,10 @@ const CUSTOM_SITE = "https://custom.wl-stats.com";
 const RANKINGS_URL = `${AWP_SITE}/api/v1/rankings`;
 const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?player=${playerId}` : ""}`;
 
-const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "laddersArt",
+const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "renderSeriesLadderRow", "addSeasonalLadderLine", "renderSeasonalLadderLine",
+    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow", "addSeasonalLadderLine", "renderSeasonalLadderLine",
     "setupCommunityEventsStanding", "communityEventLine"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -236,7 +236,7 @@ test("a series taking signups says until when, and offers signing up unless you'
 });
 
 test("a league player's line names division, group, place, record and a promotion", () => {
-    const ctx = load(["seriesYouHtml", "htmlEscape", "safeUrl", "getRankText", "formatCount"]);
+    const ctx = load(["seriesYouHtml", "standingParts", "htmlEscape", "safeUrl", "getRankText", "formatCount"]);
     const html = ctx.seriesYouHtml({ kind: "league", you: { as: "player", name: "KKND", division: "Division A", group: "A2", place: 1, of: 7, wins: 5, losses: 1, points: null, status: "promoted", url: "/x" } });
     assert.equal(render(html).textContent, "You: Division A · A2 · 1st of 7 · 5–1 · promoted");
     const ladder = ctx.seriesYouHtml({ kind: "ladder", you: { as: "player", name: "KKND", place: 12, of: 200, wins: 30, losses: 12, points: 1650, status: "playing", url: "/x" } });
@@ -255,7 +255,7 @@ test("war.app's own Seasonal Ladder row gets the current season along its bottom
 
 test("with your place in the Seasonal Ladder, its line shows that instead of the player count", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeasonalLadderLine", "seriesYouHtml", "seriesLink", "formatCount", "getRankText", "htmlEscape", "safeUrl"], { $ });
+    const ctx = load(["renderSeasonalLadderLine", "seriesYouHtml", "standingParts", "seriesLink", "formatCount", "getRankText", "htmlEscape", "safeUrl"], { $ });
     const mine = { ...series.series[3], you: { as: "player", name: "KKND", place: 131, of: 218, wins: 9, losses: 6, points: 2637, status: "playing", url: "/x" } };
     assert.equal(render(ctx.renderSeasonalLadderLine(mine)).textContent, "Season LXXI · leader Eraserhead · You: 131st of 218 · rating 2,637",
         "the record is left out so the line fits beside war.app's button");
@@ -300,4 +300,75 @@ test("Community Events lines stay off other pages", async () => {
     await flush();
     assert.equal($(".tuydEventStanding").length, 0);
     assert.deepEqual(requests, []);
+});
+
+// Mirrors war.app's clan page: the clan's name label and the left column's Clan Wars dialog.
+const clanScene = (name) => `<div id="ujs_ClanScene"><div id="ujs_ClanNameLabel"><div id="ujs_ClanNameLabel_tmp" class="ujsTextInner">${name}</div></div>`
+    + `<div id="ujs_ClanWarsSection"><div id="ujs_DialogBackgroundForDropShadow_8"><div id="ujs_DialogBackgroundForDropShadow_8_img" style="${art("Resources/DialogBacking.png")}"></div></div></div></div>`;
+
+// Shaped like custom.wl-stats.com /api/v1/series?clan=…: each clan series lists the clan's squads, best first.
+const clanSeries = {
+    series: [
+        { ...series.series[0], you: { as: "clan", name: "Icelandic Turtles", place: null, of: 23, wins: 1, losses: 0, status: "playing", squad: "1celandic Turtles", url: "https://custom.wl-stats.com/clans/Icelandic%20Turtles" },
+            squads: [
+                { as: "clan", name: "Icelandic Turtles", place: null, of: 23, wins: 1, losses: 0, status: "playing", squad: "1celandic Turtles", url: "https://custom.wl-stats.com/clans/Icelandic%20Turtles" },
+                { as: "clan", name: "Icelandic Turtles", place: null, of: 23, wins: 0, losses: 1, status: "eliminated", squad: "2celandic Turtles", url: "https://custom.wl-stats.com/clans/Icelandic%20Turtles" }
+            ] },
+        { ...series.series[2], you: null, squads: [] },
+        { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "https://custom.wl-stats.com/series/clan-league", warapp_event: "Clan League",
+            current: { name: "Clan League 20", url: "https://custom.wl-stats.com/series/clan-league/seasons/20", status: "signups", signups_close_at: "2026-11-01T00:00:00", players: 14, progress: null, leader: null, winner: null },
+            you: null, squads: [{ as: "clan", name: "Icelandic Turtles", division: "Division A", status: "signed_up", squad: "Icelandic Turtles", url: "/x" }] }
+    ]
+};
+const clanUrl = (name) => `${CUSTOM_SITE}/api/v1/series?clan=${encodeURIComponent(name)}`;
+
+function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
+    const { dom, $ } = createDom(`<div id="scene">${clanScene(name)}</div>`, "https://war.app/Clans/?ID=33");
+    const requests = [];
+    $.ajax = (options) => {
+        requests.push(options.url);
+        return $.Deferred().resolve(response).promise();
+    };
+    const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "pageIsClanPage"], {
+        ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
+    });
+    return { ctx, dom, $, requests };
+}
+
+test("a clan page shows the clan's squads in each current series, below the Clan Wars dialog", async () => {
+    const { ctx, $, requests } = clanPage();
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    assert.deepEqual(requests, [clanUrl("Icelandic Turtles")]);
+    assert.equal($("#ujs_DialogBackgroundForDropShadow_8 > #clanStandings").length, 1);
+    assert.equal($("#clanStandings h3").text(), "Community events");
+    const rows = $("#clanStandings .communityLadder");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"], "series the clan isn't in are left out");
+    assert.equal(textOf($, rows[0])[0], "Clan Cup II · running · 23 clans · 11/15 matches");
+    const squadLines = $(rows[0]).find(".communityLadderYou").html().split("<br>").map((line) => $(`<div>${line}</div>`).text());
+    assert.deepEqual(squadLines, ["1celandic Turtles: 1–0", "2celandic Turtles: 0–1 · eliminated"], "one line per squad, by squad name");
+    assert.match(textOf($, rows[1])[0], /^Clan League 20 · Signups open until .+ · 14 clans$/);
+    assert.equal(textOf($, rows[1])[1], "Icelandic Turtles: Division A · signed up");
+    assert.match($("#clanStandings")[0].style.getPropertyValue("--tuyd-dialog"), /DialogBacking\.png/);
+});
+
+test("a clan in no current series gets no panel, and moving to another clan replaces it", async () => {
+    const empty = clanPage({ response: { series: [{ ...series.series[2], you: null, squads: [] }] } });
+    empty.ctx.setupClanStandings();
+    await flush();
+    await flush();
+    assert.equal(empty.$("#clanStandings").length, 0);
+
+    const { ctx, $, requests } = clanPage();
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    $("#scene").html(clanScene("Optimum"));
+    await flush();
+    await flush();
+    assert.deepEqual(requests, [clanUrl("Icelandic Turtles"), clanUrl("Optimum")]);
+    assert.equal($("#clanStandings").attr("data-clan"), "Optimum");
+    assert.equal($("#clanStandings").length, 1);
 });
