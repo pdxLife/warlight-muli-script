@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.21.1
+
+- Hovering an option in the Open Games filter no longer turns it into a blue, bold bar. The dashboard's hover style for the Multi-Day / Real-Time / Both buttons applied to every label in the Open Games header, including the filter's options.
+
 ## 3.21.0
 
 - **AWP World Tour badges on My Games.** Games in an AWP World Tour event get a gold badge after their name, such as "AWP World Tour · Grand Slam - Timid Land · Round of 64", linking to the tournament on awp.wl-stats.com. custom.wl-stats.com's events keep their blue badges. If one site is down, the other's badges still show.
