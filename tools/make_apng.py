@@ -2,6 +2,8 @@
 Browsers play it; viewers that don't know APNG show its first frame as a plain PNG.
 
     python3 -I make_apng.py out.png delay_ms frame1.png frame2.png ...
+
+delay_ms is one number for every frame, or one per frame separated by commas (e.g. 2500,1500,1500).
 """
 import struct, sys, zlib
 
@@ -50,12 +52,15 @@ def chunk(kind, body):
 
 def encode(out, delay_ms, paths):
     frames = [decode(p) for p in paths]
+    delays = [int(d) for d in str(delay_ms).split(",")]
+    delays = delays * len(frames) if len(delays) == 1 else delays
+    assert len(delays) == len(frames), "give one delay, or one per frame"
     ihdr, width, height, _ = frames[0]
     assert all(f[1:3] == (width, height) for f in frames), "frames must be the same size"
     png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"acTL", struct.pack(">II", len(frames), 0))
     seq = 0
     for index, (_, _, _, rows) in enumerate(frames):
-        png += chunk(b"fcTL", struct.pack(">IIIIIHHBB", seq, width, height, 0, 0, delay_ms, 1000, 0, 0))
+        png += chunk(b"fcTL", struct.pack(">IIIIIHHBB", seq, width, height, 0, 0, delays[index], 1000, 0, 0))
         seq += 1
         data = zlib.compress(b"".join(b"\x00" + r for r in rows), 9)
         if index == 0:
@@ -68,4 +73,4 @@ def encode(out, delay_ms, paths):
     return len(png)
 
 if __name__ == "__main__":
-    print(encode(sys.argv[1], int(sys.argv[2]), sys.argv[3:]), "bytes")
+    print(encode(sys.argv[1], sys.argv[2], sys.argv[3:]), "bytes")
