@@ -130,7 +130,7 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
 - [x] **custom.wl-stats.com rows** *(3.17.0)*: one row per series with its season, progress, leader or winner, Titled Tuesday's next start (local time, with a countdown) and your line. One request with your player ID, kept for 10 minutes; AWP and custom load side by side, so one being down doesn't hide the other. The endpoint's times have no zone and are read as UTC.
 - [x] **Seasonal Ladder in war.app's own row** *(3.17.0)*: the season, its leader and your place along the row's bottom edge (your record is left out so it fits). A CSS container query hides it where the row is under 540px and shows a Seasonal Ladder row in the panel instead.
 - [x] **Signups highlight** *(3.17.0)*: "Signups open until …" in gold with a link to sign up, or "signed up".
-- [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px. Phones never see this page: war.app sends phone browsers on Multi-Player pages to its app page (`/Mobile`).
+- [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px, which only happens in a narrow desktop window.
 - [ ] **MTL row**, once MTL runs on custom.wl-stats.com (on its roadmap, no date yet). It then comes from the same endpoint as one more series.
 
 ### Server side (custom.wl-stats.com)
