@@ -17,7 +17,7 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow", "addSeasonalLadderLine", "renderSeasonalLadderLine",
+    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventLine"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -125,7 +125,6 @@ test("war.app redrawing the scene brings the panel back once, without another re
     $("#ujs_Section").append("<div>redraw</div>");
     await flush();
     assert.equal($("#communityLadders").length, 1);
-    assert.equal($(".tuydSeasonalLine").length, 1);
     assert.equal(requests.length, 2);
 });
 
@@ -161,13 +160,12 @@ test("one site down still shows the other's rows", async () => {
     const awpDown = laddersPage({ fail: true });
     awpDown.ctx.setupCommunityLadders();
     await flush();
-    assert.deepEqual(awpDown.$(".communityLadder:not(.communityLadderNarrowOnly) .communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["Clan Cup", "Nations Cup", "P/R League", "Titled Tuesday"]);
+    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
 
     const customDown = laddersPage({ seriesFail: true });
     customDown.ctx.setupCommunityLadders();
     await flush();
     assert.deepEqual(customDown.$(".communityLadderButton").map((i, a) => customDown.$(a).text()).get(), ["AWP World Tour"]);
-    assert.equal(customDown.$(".tuydSeasonalLine").length, 0);
 });
 
 test("the panel wears war.app's own dialog and row art, with war.app's blue button instead of the ladders' green", async () => {
@@ -195,18 +193,16 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     const { ctx, $ } = laddersPage();
     ctx.setupCommunityLadders();
     await flush();
-    const rows = $("#communityLadders .communityLadder").not(".communityLadderNarrowOnly");
-    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["AWP World Tour", "Clan Cup", "Nations Cup", "P/R League", "Titled Tuesday"],
-        "the Seasonal Ladder goes in war.app's own row instead");
-    const narrow = $("#communityLadders .communityLadderNarrowOnly");
-    assert.equal(narrow.find(".communityLadderButton").text(), "Seasonal Ladder", "a panel row stands in for it where war.app's row is too narrow");
-    assert.deepEqual(textOf($, narrow), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    const rows = $("#communityLadders .communityLadder");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["AWP World Tour", "Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
+    assert.deepEqual(textOf($, rows[4]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    assert.equal($(".tuydSeasonalLine").length, 0, "war.app's own Seasonal row is left alone: signed in, its Unlocked line fills it");
     assert.deepEqual(textOf($, rows[1]), ["Clan Cup II · running · 23 clans · 11/15 matches"]);
     assert.deepEqual(textOf($, rows[2]), ["Nations Cup 2026 · running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"]);
     assert.deepEqual(textOf($, rows[3]), ["Season 38 · running · 51 players · 77/161 games", "Leader: Stales78"]);
     assert.equal($(rows[2]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
     assert.equal($(rows[3]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
-    const titled = textOf($, rows[4]);
+    const titled = textOf($, rows[5]);
     assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
     assert.match(titled[1], /^Winner: CONSEQUENCER · Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
 });
@@ -241,24 +237,6 @@ test("a league player's line names division, group, place, record and a promotio
     assert.equal(render(html).textContent, "You: Division A · A2 · 1st of 7 · 5–1 · promoted");
     const ladder = ctx.seriesYouHtml({ kind: "ladder", you: { as: "player", name: "KKND", place: 12, of: 200, wins: 30, losses: 12, points: 1650, status: "playing", url: "/x" } });
     assert.equal(render(ladder).textContent, "You: 12th of 200 · 30–12 · rating 1,650");
-});
-
-test("war.app's own Seasonal Ladder row gets the current season along its bottom edge", async () => {
-    const { ctx, $ } = laddersPage();
-    ctx.setupCommunityLadders();
-    await flush();
-    const line = $("#ujs_LadderContainer3_img > .tuydSeasonalLine");
-    assert.equal(line.length, 1);
-    assert.equal(line.text(), "Season LXXI · 248 players · leader Eraserhead");
-    assert.equal(line.find("a").first().attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/71");
-});
-
-test("with your place in the Seasonal Ladder, its line shows that instead of the player count", () => {
-    const { $ } = createDom();
-    const ctx = load(["renderSeasonalLadderLine", "seriesYouHtml", "standingParts", "seriesLink", "formatCount", "getRankText", "htmlEscape", "safeUrl"], { $ });
-    const mine = { ...series.series[3], you: { as: "player", name: "KKND", place: 131, of: 218, wins: 9, losses: 6, points: 2637, status: "playing", url: "/x" } };
-    assert.equal(render(ctx.renderSeasonalLadderLine(mine)).textContent, "Season LXXI · leader Eraserhead · You: 131st of 218 · rating 2,637",
-        "the record is left out so the line fits beside war.app's button");
 });
 
 // Mirrors war.app's Community Events page: a card per event with a View button and a title.

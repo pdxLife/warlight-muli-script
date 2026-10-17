@@ -2670,7 +2670,6 @@ function setupCommunityLadders() {
             return;
         }
         addCommunityLaddersStyles();
-        addSeasonalLadderLine(scene, community.series);
         var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
         if (!dialog.length || !rows.length || $("#communityLadders").length) {
             return;
@@ -2702,7 +2701,7 @@ function setupCommunityLadders() {
             }
             data.series.forEach(function (series) {
                 if (series.current) {
-                    rows.push(renderSeriesLadderRow(series, Date.now(), series.kind === "ladder" ? "communityLadderNarrowOnly" : ""));
+                    rows.push(renderSeriesLadderRow(series, Date.now()));
                 }
             });
             community = data;
@@ -2845,21 +2844,6 @@ function addCommunityLaddersStyles() {
         .tuydCommunityPanel .communityLadderSignups {
             color: #e0c060;
         }
-        .tuydSeasonalLine {
-            position: absolute;
-            left: 165px;
-            right: 4px;
-            bottom: -8px;
-            text-align: right;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            pointer-events: auto;
-            color: #9a9a9a;
-            font-size: 11.5px;
-            line-height: 13px;
-            text-shadow: 0 0 2px #000;
-        }
         .tuydEventStanding {
             position: absolute;
             top: 0;
@@ -2902,16 +2886,6 @@ function addCommunityLaddersStyles() {
             background: #e0c060;
             color: #1b1b1b !important;
         }
-        @container tuydLadders (min-width: 554px) {
-            .communityLadderNarrowOnly {
-                display: none !important;
-            }
-        }
-        @container tuydLadderRow (max-width: 539.98px) {
-            .tuydSeasonalLine {
-                display: none;
-            }
-        }
         @container tuydEventCard (max-width: 599.98px) {
             .tuydEventStanding {
                 display: none;
@@ -2937,7 +2911,7 @@ function renderCommunityLadders(rows) {
 
 // statusHtml, detailHtml and youHtml must already be escaped.
 function communityLadderRow(row) {
-    return '<div class="communityLadder' + (row.className ? " " + row.className : "") + '"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
+    return '<div class="communityLadder"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
         '<div class="communityLadderText">' +
         (row.statusHtml ? '<div class="tuydMuted">' + row.statusHtml + '</div>' : "") +
         (row.detailHtml ? '<div>' + row.detailHtml + '</div>' : "") +
@@ -3091,45 +3065,11 @@ function seriesDetailHtml(series, now) {
     return details.join(" · ");
 }
 
-function renderSeriesLadderRow(series, now, className) {
+function renderSeriesLadderRow(series, now) {
     var current = series.current;
     var you = series.you ? seriesYouHtml(series)
         : current.status === "signups" ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">Sign up on custom.wl-stats.com</a>' : "";
-    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, now), youHtml: you, className: className });
-}
-
-// war.app's own Seasonal Ladder row gets the current season from custom.wl-stats.com along its
-// bottom edge: the row is a fixed-size box whose description already fills it. Where the row is too
-// narrow for that line, the panel shows the season as a row of its own instead (container queries).
-function addSeasonalLadderLine(scene, seriesList) {
-    var ladder = seriesList.filter(function (series) {
-        return series.kind === "ladder" && series.current;
-    })[0];
-    var button = $(scene).find("[id^='ujs_SeasonalLadder']").filter(function () {
-        return /^ujs_SeasonalLadder(?:_\d+)?$/.test(this.id);
-    }).first();
-    var box = button.closest("[id^='ujs_LadderContainer']").children("[id$='_img']").first();
-    if (!ladder || !box.length || box.children(".tuydSeasonalLine").length) {
-        return;
-    }
-    box.css("container", "tuydLadderRow / inline-size").append(renderSeasonalLadderLine(ladder));
-}
-
-function renderSeasonalLadderLine(series) {
-    var current = series.current;
-    var finished = current.status === "finished";
-    var lead = finished ? current.winner : current.leader;
-    var parts = ['<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">' + htmlEscape(current.name) + '</a>'];
-    if (current.players && !series.you) {
-        parts.push(formatCount(current.players) + " players");
-    }
-    if (lead && lead.name) {
-        parts.push((finished ? "winner " : "leader ") + seriesLink(lead));
-    }
-    if (series.you) {
-        parts.push(seriesYouHtml({ kind: series.kind, you: $.extend({}, series.you, { wins: null, losses: null }) }));
-    }
-    return '<div class="tuydSeasonalLine">' + parts.join(" · ") + '</div>';
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, now), youHtml: you });
 }
 
 function renderAwpLadderRow(rankings, playerId) {
