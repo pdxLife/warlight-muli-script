@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.23.1
+
+- **The AWP World Tour card on Community Events links to the rankings** ("Rankings: Top 16 ›", the 16 who qualify for the AWP Tour Finals) instead of to the race leader's page. Signed in but not in the race, the card says "You: not in the 2026 race yet"; signed out, it has no bottom line.
+
 ## 3.23.0
 
 - **The settings menu is reorganized into foldable sections**, one per area (Dashboard, Tournaments, Ladders & community, Profile, Clans, Forum, Maps & levels, Other, Third-party data, Backup). Each holds that area's settings and its feature switches together, with a count; the menu remembers which sections you left open and starts with Dashboard. Your existing choices carry over.
