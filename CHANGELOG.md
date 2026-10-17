@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.17.0
+
+- **Community series on the Ladders page.** Under the AWP row, the panel now has a row for each series custom.wl-stats.com is running or finished in the last 30 days: Clan Cup, Nations Cup, P/R League, Titled Tuesday and others. Each shows the current season, how far it is, its leader or winner and, when you're signed in, your line: your place, record and points, or your clan's or country's. Titled Tuesday shows when the next one starts, in your time zone, with a countdown.
+- **Signups.** A series taking signups says "Signups open until …" in gold and links to signing up on custom.wl-stats.com, or says you're signed up.
+- **Seasonal Ladder.** war.app's own Seasonal Ladder row gets the current season, its leader and your place along its bottom edge, instead of a second Seasonal Ladder button. Where that row is too narrow, the panel shows it as a row of its own.
+- **Your standing on Community Events.** The cards on war.app's Community Events page get your line for the events you take part in: your country in Nations Cup, your clan in Clan Cup or Clan League, your AWP race rank. Turn it off under Features → Community.
+- One site being down no longer hides the other's rows: AWP and custom.wl-stats.com are loaded side by side.
+
 ## 3.16.0
 
 - **Community ladders & leagues on the Ladders page.** A panel below war.app's four ladders, drawn with war.app's own dialog, row and button art, shows the AWP World Tour race: how many players are in it, and your rank and points when you're signed in. The script loads the whole ranking and finds you in it itself, so your player ID isn't sent anywhere. Its buttons are war.app's blue instead of the ladders' green, so it's clear which part the script adds. The panel follows war.app's layout when the window is resized and scrolls on its own when the window is short. Turn it off under Features → Community. P/R League, Nations Cup, Clan League and the other series on custom.wl-stats.com will join it once that site offers the data.

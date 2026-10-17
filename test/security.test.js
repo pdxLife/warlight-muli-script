@@ -125,9 +125,28 @@ test("custom.wl-stats.com tournament links escape API data", () => {
 });
 
 test("the AWP World Tour row on the Ladders page escapes API data", () => {
-    const ctx = load(["renderAwpLadderRow", "communityLadderRow", "htmlEscape", "safeUrl"], { AWP_SITE: "https://awp.wl-stats.com" });
+    const ctx = load(["renderAwpLadderRow", "communityLadderRow", "awpStanding", "formatCount", "htmlEscape", "safeUrl"], { AWP_SITE: "https://awp.wl-stats.com" });
     const evil = { rank: PAYLOAD, player_id: PAYLOAD, player_name: PAYLOAD, points: PAYLOAD };
     const container = render(ctx.renderAwpLadderRow({ year: PAYLOAD, rankings: [evil, { ...evil, player_id: "5" }] }, "5"));
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
+});
+
+test("custom.wl-stats.com series rows, the Seasonal line and Community Events lines escape API data", () => {
+    const { $ } = createDom();
+    const ctx = load(["renderSeriesLadderRow", "renderSeasonalLadderLine", "communityEventLine", "communityLadderRow", "seriesYouHtml", "seriesLink", "signupsHtml",
+        "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $ });
+    const link = { name: PAYLOAD, url: "javascript:alert(1)" };
+    const evil = {
+        name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
+        current: { name: PAYLOAD, url: "data:text/html,x", status: "signups", signups_close_at: PAYLOAD, next_event_at: PAYLOAD, players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, leader: link, winner: link },
+        you: { as: "nation", name: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" }
+    };
+    const running = { ...evil, current: { ...evil.current, status: "running" } };
+    const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0) + ctx.renderSeasonalLadderLine(running)
+        + ctx.communityEventLine("Evil event", { series: [evil], rankings: null, playerId: null });
+    const container = render(html);
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"), container.innerHTML);
 });

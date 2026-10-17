@@ -127,13 +127,15 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
 ### Script side
 
 - [x] **The panel, with an AWP World Tour row** *(3.16.0)*: this year's race, how many players are in it, and your rank and points. It loads awp.wl-stats.com's `/api/v1/rankings` (about 17 KB, every ranked player) and finds you in it locally, so no player ID is sent. It hangs below the ladders dialog inside war.app's clipping viewport, follows the dialog's size, and scrolls on its own when the window is short. It wears war.app's own dialog, row and button art, read from the ladders on the page, with war.app's blue button tint (`UIButton-242D9A`) instead of the ladders' green. Switch: Features → Community.
-- [ ] **custom.wl-stats.com rows**, once the endpoint below exists: one row per series, e.g. "P/R League · Season 38 running, 77/161 games · You: Division A, 3rd of 7 (2–1)". One request per page load with your player ID, kept for 10 minutes. Signed out, the rows show without the "You" line.
-- [ ] **"You: …" on war.app's Community Events cards** (`/MultiPlayer?CommunityEvents=1`), from the same data: each card whose title starts with a series' `warapp_event` gets your line, and the AWP card gets your race rank. That page is drawn client-side too, so it follows the tournament-page rules.
+- [x] **custom.wl-stats.com rows** *(3.17.0)*: one row per series with its season, progress, leader or winner, Titled Tuesday's next start (local time, with a countdown) and your line. One request with your player ID, kept for 10 minutes; AWP and custom load side by side, so one being down doesn't hide the other. The endpoint's times have no zone and are read as UTC.
+- [x] **Seasonal Ladder in war.app's own row** *(3.17.0)*: the season, its leader and your place along the row's bottom edge (your record is left out so it fits). A CSS container query hides it where the row is under 540px and shows a Seasonal Ladder row in the panel instead.
+- [x] **Signups highlight** *(3.17.0)*: "Signups open until …" in gold with a link to sign up, or "signed up".
+- [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px. Phones never see this page: war.app sends phone browsers on Multi-Player pages to its app page (`/Mobile`).
 - [ ] **MTL row**, once MTL runs on custom.wl-stats.com (on its roadmap, no date yet). It then comes from the same endpoint as one more series.
 
 ### Server side (custom.wl-stats.com)
 
-- [ ] **`GET /api/v1/series?player={war.app player ID}`** (`player` optional), with the same CORS and no-credentials setup as `/api/v1/warapp-tournaments`.
+- [x] **`GET /api/v1/series?player={war.app player ID}`** *(live)* (`player` optional), with the same CORS and no-credentials setup as `/api/v1/warapp-tournaments`.
   - **Which series:** those whose current season or edition is taking signups or running, or finished in the last 30 days. Finished-and-idle series (Small Earth P/R League, War Gaming Live) are left out, and private clan tournaments never appear. Order: running, then signups, then recently finished.
   - **Each series:**
     - `slug`, `name`, `kind` (league, clan_cup, clan_league, nations_cup, events, ladder) and `url`.
@@ -164,11 +166,10 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
 
 In suggested order:
 
-1. **Community ladders & leagues** (Phase 9): the `/api/v1/series` endpoint on custom.wl-stats.com, then its rows on the Ladders page and the "You: …" lines on Community Events.
-2. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
-3. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
-4. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
-5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-6. **Split into modules** (Phase 3), once the feature work settles.
+1. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
+2. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+3. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
+4. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+5. **Split into modules** (Phase 3), once the feature work settles.
 
-Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` and `/api/v1/warapp-tournaments/{id}` on the wl-stats sites.
+Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_SeasonalLadder` (its own row), `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), the Community Events lines rely on `ujs_CommunityEventsScene`, `ujs_EventRow` and the card title being the first text in `ujs_vert`, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats`, `/api/v1/warapp-tournaments/{id}` and `/api/v1/series` on the wl-stats sites.
