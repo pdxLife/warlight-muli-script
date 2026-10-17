@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.23.3
+
+- **Nations Cup and Clan Cup show their stage instead of names.** On the Ladders panel, the Community Events cards and clan pages, a running cup shows the stage it's in ("Qualifiers ›", "Round 2 ›"), linking to it on custom.wl-stats.com, instead of every group leader. It appears once custom.wl-stats.com sends the stage's name.
+- **Titled Tuesday shows its last event and the next one, not the winner:** "Last: 91st Titled Tuesday - AUL · 20 players" (linking to that event) and "Next: Wed, Oct 21, 12:00 AM (in 3 days)". While one is being played it says "Now: …" with its progress. On its Community Events card the bottom link opens the whole series ("All events on custom.wl-stats.com ›").
+- A card no longer shows two links to the same page: where the stage or the last event already links there, the bottom "Full standings" link is left out.
+
 ## 3.23.2
 
 - The Website and GitHub links in the settings menu's title are a little bigger and centered on the title line.

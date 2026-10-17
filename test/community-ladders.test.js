@@ -17,8 +17,8 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "renderSeriesLadderRow",
-    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink"];
+    "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
+    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
 const series = {
@@ -85,7 +85,7 @@ function laddersPage({ response = rankings, fail = false, seriesResponse = serie
         CUSTOM_SITE,
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
         SERIES_CACHE_MS: 10 * 60 * 1000,
-        CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
+        CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"]
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -208,8 +208,9 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     assert.equal($(rows[5]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
     assert.equal($(rows[1]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
     const titled = textOf($, rows[3]);
-    assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
-    assert.match(titled[1], /^Winner: CONSEQUENCER · Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
+    assert.equal(titled[0], "Last: 91st Titled Tuesday - AUL · 20 players", "a weekly series names its last event, with no winner");
+    assert.match(titled[1], /^Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
+    assert.equal($(rows[3]).find(".tuydMuted a").attr("href"), "https://custom.wl-stats.com/tournaments/941", "the last event links to its page");
 });
 
 test("Clan League leads the clans list, ahead of the cups the server lists first", async () => {
@@ -237,14 +238,18 @@ test("a series' standings take the leader's place: a division's top three, group
     const league = { kind: "clan_league", current: { status: "finished", winner: { name: "Optimum", url: "/o" }, next_event_at: null,
         standings: { label: "Division A", entries: [{ place: 1, name: "Optimum", url: "/o", points: 141 }, { place: 2, name: "MASTER Clan", url: "/m", points: 116 }, { place: 3, name: "Harmony", url: null, points: 116 }] } } };
     assert.equal(text(ctx.seriesDetailHtml(league, 0)), "Division A: 1. Optimum 141 · 2. MASTER Clan 116 · 3. Harmony 116", "no Winner: line next to them");
-    const groups = { kind: "nations_cup", current: { status: "running", leader: null, standings: { label: "Group leaders", entries: [{ group: "A", name: "Spain", url: "/s", points: 21 }, { group: "B", name: "Poland B", url: "/p", points: 15 }] } } };
-    assert.equal(text(ctx.seriesDetailHtml(groups, 0)), "Group leaders: A Spain 21 · B Poland B 15");
-    const cup = { kind: "clan_cup", current: { status: "running", url: "https://custom.wl-stats.com/series/cups/3", leader: null, standings: { label: "Quarterfinals", entries: [{ name: "X", url: "/x" }] } } };
+    const groups = { kind: "nations_cup", current: { status: "running", url: "https://custom.wl-stats.com/series/nations-cup/seasons/2026", leader: null, stage: "Qualifiers",
+        standings: { label: "Group leaders", entries: [{ group: "A", name: "Spain", url: "/s", points: 21 }, { group: "B", name: "Poland B", url: "/p", points: 15 }] } } };
+    assert.equal(text(ctx.seriesDetailHtml(groups, 0)), "Qualifiers ›", "a staged cup shows its stage, not its group leaders");
+    assert.equal(text(ctx.seriesDetailHtml({ kind: "nations_cup", current: { ...groups.current, stage: null } }, 0)), "", "nothing until the server names the stage");
+    const cup = { kind: "clan_cup", current: { status: "running", url: "https://custom.wl-stats.com/series/cups/3", leader: null, stage: "Quarterfinals", standings: { label: "Quarterfinals", entries: [{ name: "X", url: "/x" }] } } };
     const cupHtml = ctx.seriesDetailHtml(cup, 0);
     assert.equal(text(cupHtml), "Quarterfinals ›", "a knockout shows its round, not its squads");
     assert.match(cupHtml, /href="https:\/\/custom\.wl-stats\.com\/series\/cups\/3"/);
     const finishedCup = { kind: "clan_cup", current: { status: "finished", url: "/c", winner: { name: "Optimum", url: "/o" }, standings: { label: "Final", entries: [] } } };
     assert.equal(text(ctx.seriesDetailHtml(finishedCup, 0)), "Winner: Optimum");
+    const live = { kind: "events", current: { name: "92nd Titled Tuesday - EUR", url: "/t/942", status: "running", players: 24, progress: { played: 5, total: 23 }, winner: null, leader: null, next_event_at: null } };
+    assert.equal(text(ctx.seriesStatusHtml(live)), "Now: 92nd Titled Tuesday - EUR · 24 players · 5/23 games");
     const empty = { kind: "clan_league", current: { status: "running", leader: { name: "Optimum", url: "/o" }, standings: { label: "Division A", entries: [] } } };
     assert.equal(text(ctx.seriesDetailHtml(empty, 0)), "Leader: Optimum", "no entries, so the leader stays");
 });
@@ -262,7 +267,7 @@ test("series times without a zone are UTC, and the countdown reads them that way
 });
 
 test("a series taking signups says until when, and offers signing up unless you're in", () => {
-    const ctx = load(COMMUNITY_FUNCTIONS.filter((name) => !/^setup/.test(name)), { CUSTOM_SITE, AWP_SITE });
+    const ctx = load(COMMUNITY_FUNCTIONS.filter((name) => !/^setup/.test(name)), { CUSTOM_SITE, AWP_SITE, STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"] });
     const open = { ...series.series[2], current: { ...series.series[2].current, name: "Season 39", status: "signups", signups_close_at: "2026-10-26T18:00:00", progress: null, leader: null } };
     const row = render(ctx.renderSeriesLadderRow(open, Date.parse("2026-10-17T00:00:00Z")));
     assert.match(row.querySelector(".communityLadderSignups").textContent, /^Signups open until .+/);
@@ -302,9 +307,10 @@ test("Community Events cards show each event's standings, and your place where y
     assert.deepEqual(eventLines($, "ujs_EventRow_5"), ["Clan Cup II · running · 23 clans · 11/15 matches", "Full standings on custom.wl-stats.com ›"]);
     assert.equal($("#ujs_EventRow_5_img > .tuydEventMore a").attr("href"), "https://custom.wl-stats.com/series/cups/3");
     const titled = eventLines($, "ujs_EventRow_6");
-    assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
-    assert.match(titled[1], /^Winner: CONSEQUENCER · Next: /);
-    assert.equal(titled[2], "Full standings on custom.wl-stats.com ›");
+    assert.equal(titled[0], "Last: 91st Titled Tuesday - AUL · 20 players");
+    assert.match(titled[1], /^Next: /);
+    assert.equal(titled[2], "All events on custom.wl-stats.com ›", "the last event is linked above, so the bottom opens the series");
+    assert.equal($("#ujs_EventRow_6_img > .tuydEventMore a").attr("href"), "https://custom.wl-stats.com/series/titled-tuesday");
     assert.equal($("#ujs_EventRow_4_img .tuydEventStanding").length, 0, "MTL isn't on the community sites yet");
     assert.equal($("#ujs_EventRow_img .tuydEventStanding").length, 0, "Clan League is left out while the series list has no season of it");
     assert.equal($("#ujs_EventRow_6_img .tuydEventLine").first().attr("title"), titled[0], "a cut line shows in full on hover");
@@ -312,6 +318,18 @@ test("Community Events cards show each event's standings, and your place where y
     $("#ujs_Rows").append("<div>redraw</div>");
     await flush();
     assert.equal($(".tuydEventStanding").length, 4, "nothing is added twice");
+});
+
+test("a staged cup's card shows its stage as the link, without a second link to the same page", async () => {
+    const staged = JSON.parse(JSON.stringify(series));
+    staged.series.forEach((entry) => { entry.you = null; });
+    staged.series[0].current.stage = "Round 2";
+    const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, playerId: null, seriesResponse: staged });
+    ctx.setupCommunityEventsStanding();
+    await flush();
+    assert.deepEqual(eventLines($, "ujs_EventRow_5"), ["Clan Cup II · running · 23 clans · 11/15 matches", "Round 2 ›"]);
+    assert.equal($("#ujs_EventRow_5_img .tuydEventStanding a").attr("href"), "https://custom.wl-stats.com/series/cups/3");
+    assert.equal($("#ujs_EventRow_5_img .tuydEventMore").length, 0);
 });
 
 test("signed out, Community Events cards still show the standings, with links to the sites", async () => {
@@ -375,7 +393,7 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
     };
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"]
     });
     return { ctx, dom, $, requests };
 }
@@ -449,7 +467,7 @@ test("in war.app's one-column layout the clan box goes below Clan Members, not o
     $.ajax = () => $.Deferred().resolve(clanSeries).promise();
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"]
     });
     ctx.setupClanStandings();
     await flush();
