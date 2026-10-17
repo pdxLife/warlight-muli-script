@@ -3019,17 +3019,32 @@ function addCommunityLaddersStyles() {
         .tuydCommunityPanel .tuydClanTitles a {
             white-space: nowrap;
         }
-        .tuydEventStanding {
+        .tuydEventStanding,
+        .tuydEventMore {
             position: absolute;
-            top: 0;
-            right: 0;
-            max-width: 50%;
+            right: 12px;
             text-align: right;
             pointer-events: auto;
             color: #fff;
             font-size: 13px;
-            line-height: 16px;
+            line-height: 20px;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        .tuydEventStanding {
+            top: 6px;
+            max-width: calc(100% - 300px);
+        }
+        .tuydEventStanding .tuydEventLine:first-child {
+            color: #babbbb;
+        }
+        .tuydEventMore {
+            top: 62px;
+            max-width: calc(100% - 190px);
+        }
+        .tuydEventLine {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
@@ -3071,7 +3086,8 @@ function addCommunityLaddersStyles() {
             color: #1b1b1b !important;
         }
         @container tuydEventCard (max-width: 599.98px) {
-            .tuydEventStanding {
+            .tuydEventStanding,
+            .tuydEventMore {
                 display: none;
             }
         }
@@ -3305,9 +3321,13 @@ function setupCommunityEventsStanding() {
             if (!box.length || box.children(".tuydEventStanding").length) {
                 return;
             }
-            var line = communityEventLine($(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim(), community);
-            if (line) {
-                box.css("container", "tuydEventCard / inline-size").append('<div class="tuydEventStanding">' + line + '</div>');
+            var html = communityEventHtml($(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim(), community);
+            if (html) {
+                box.css("container", "tuydEventCard / inline-size").append(html);
+                // The lines don't wrap, so war.app's own text keeps its room; a cut line shows in full on hover.
+                box.find(".tuydEventLine").each(function () {
+                    this.title = this.textContent;
+                });
             }
         });
     };
@@ -3315,21 +3335,59 @@ function setupCommunityEventsStanding() {
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
 }
 
-function communityEventLine(title, community) {
-    if (/^AWP World Tour/i.test(title)) {
-        var mine = awpStanding(community.rankings, community.playerId);
-        return mine ? "You: #" + htmlEscape(mine.rank) + " in the " + htmlEscape(community.rankings.year) + " race · " + formatCount(mine.points) + " points" : "";
+// Each card gets the event's standings beside war.app's title and player count, and your place,
+// or a link to the full standings, beside "You can join!".
+function communityEventHtml(title, community) {
+    var lines = /^AWP World Tour/i.test(title) ? awpEventLines(community) : seriesEventLines(title, community);
+    if (!lines) {
+        return "";
     }
+    var line = function (html) {
+        return html ? '<div class="tuydEventLine">' + html + '</div>' : "";
+    };
+    return '<div class="tuydEventStanding">' + line(lines.status) + line(lines.detail) + '</div>' +
+        (lines.bottom ? '<div class="tuydEventMore">' + line(lines.bottom) + '</div>' : "");
+}
+
+function siteLink(url, text) {
+    return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(url)) + '">' + htmlEscape(text) + ' ›</a>';
+}
+
+function awpEventLines(community) {
+    var rankings = community.rankings;
+    if (!rankings) {
+        return null;
+    }
+    var leader = rankings.rankings[0];
+    var mine = awpStanding(rankings, community.playerId);
+    return {
+        status: htmlEscape(rankings.year) + " race · " + formatCount(rankings.rankings.length) + " players",
+        detail: leader ? "Leader: " + seriesLink({ name: leader.player_name, url: AWP_SITE + "/players/" + encodeURIComponent(leader.player_id) }) + " · " + formatCount(leader.points) + " points" : "",
+        bottom: mine ? "You: #" + htmlEscape(mine.rank) + " · " + formatCount(mine.points) + " points"
+            : siteLink(AWP_SITE + "/rankings", "Full rankings on awp.wl-stats.com")
+    };
+}
+
+function seriesEventLines(title, community) {
     var series = community.series.filter(function (entry) {
         return entry.warapp_event && entry.current && title.toLowerCase().indexOf(String(entry.warapp_event).toLowerCase()) === 0;
     })[0];
     if (!series) {
-        return "";
+        return null;
     }
-    if (series.you) {
-        return seriesYouHtml(series);
+    var current = series.current;
+    var status = seriesStatusHtml(series);
+    // war.app's title often is the edition's name already ("Clan League 19").
+    if (current.name && title.toLowerCase() === String(current.name).toLowerCase()) {
+        status = status.slice(htmlEscape(current.name).length + " · ".length);
+        status = status.charAt(0).toUpperCase() + status.slice(1);
     }
-    return series.current.status === "signups" ? signupsHtml(series.current) : "";
+    return {
+        status: status,
+        detail: seriesDetailHtml(series, Date.now()),
+        bottom: series.you ? seriesYouHtml(series)
+            : siteLink(current.url, current.status === "signups" ? "Sign up on custom.wl-stats.com" : "Full standings on custom.wl-stats.com")
+    };
 }
 
 function displayTrophies() {

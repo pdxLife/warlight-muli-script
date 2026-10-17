@@ -133,6 +133,8 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
 - [ ] **Clan League on the Ladders page between seasons** (server): `/api/v1/series` drops Clan League once its last season finished over 30 days ago (Clan League 19 ended 5 July 2026), so the clan list goes without its biggest event until the next season starts. Ask custom.wl-stats.com to always list Clan League, with its latest season when none is on.
 - [x] **Signups highlight** *(3.17.0)*: "Signups open until …" in gold with a link to sign up, or "signed up".
 - [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px, which only happens in a narrow desktop window.
+- [x] **Standings on every matching card, joined or not** *(3.23.0)*: two lines beside war.app's title and player count (the edition's state; leader or winner, Titled Tuesday's next start; the AWP race and its leader), and beside "You can join!" your line or a link to the full standings (`communityEventHtml()`). Lines don't wrap, so they never run into war.app's description.
+- [ ] **Real standings for non-leader formats** (server): Nations Cup groups and Clan Cup knockouts have no single leader, so their cards show only the edition's state. A `current.top` in `/api/v1/series` (the first three, or each group's leader, with name, url and points or record) would give them a standings line.
 - [ ] **MTL row**, once MTL runs on custom.wl-stats.com (on its roadmap, no date yet). It then comes from the same endpoint as one more series.
 
 ### Server side (custom.wl-stats.com)
