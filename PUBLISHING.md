@@ -63,6 +63,30 @@ What to check: the PNG shows, the GIF shows, and whether the GIF moves. A GIF th
 
 **Tell me what you saw**, and I'll make the real images to match.
 
+### Which GIFs the app shows
+
+The first test GIF (`test.gif`) was written by a small hand-made encoder, and the app didn't show it, though browsers did. These four tell apart "the app shows no GIFs" from "the app doesn't show that one":
+
+```
+A, animated GIF from gifski:
+[img]https://pdxlife.github.io/warlight-muli-script/media/test/test-gifski.gif[/img]
+B, animated GIF from ffmpeg:
+[img]https://pdxlife.github.io/warlight-muli-script/media/test/test-ffmpeg.gif[/img]
+C, GIF with a single frame:
+[img]https://pdxlife.github.io/warlight-muli-script/media/test/test-still.gif[/img]
+D, JPG:
+[img]https://pdxlife.github.io/warlight-muli-script/media/test/test.jpg[/img]
+```
+
+A and B show the Ladders panel, where a blue box and then a gold box appear. C and D show it without the boxes.
+
+| Result in the app | What it means |
+|---|---|
+| A or B show and move | The app plays GIFs; the real GIFs will be made with that tool. |
+| A or B show only the panel, without the boxes appearing | The app shows a GIF's first frame only; each GIF's first frame must make sense alone. |
+| Only C shows | The app shows still GIFs only; animations go to PNG step strips in the post, with the GIFs on the site. |
+| None of A–C show | The app shows no GIFs; the post uses PNG (and JPG if D shows), with the GIFs linked on the site. |
+
 ## Adding images later
 
 1. Put the file in `docs/media/` (not `test/`), with a lowercase name made of words and dashes, e.g. `ladders-panel.png` or `my-games-badges.gif`.
