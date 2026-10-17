@@ -42,6 +42,8 @@ Ordered by priority within each phase. Line numbers refer to `Tidy_up_your_Dashb
   5. Update the tests.
 
   If they decline, the fallback is the `@grant GM_xmlhttpRequest` migration (Phase 3) with `@connect www.warlight-mtl.com`, or a relay you run yourself.
+
+  A third path is planned: MTL running on custom.wl-stats.com itself (on that site's roadmap, no date yet), which would also give it a row on the Ladders page (Phase 9).
 - [x] **Working open-games counter.** Decode `#AllOpenGamesData` or count table rows instead of only guarding the missing globals; the counter currently shows nothing. *(Done differently: war.app now renders these counts itself. The script's refresh used to leave them stale; it now copies the fresh counts in, using a single dashboard fetch for both tables. The dead counter code is removed.)*
 - [x] **Turn notifications.** Show a desktop notification or a tab-title badge when it's your turn in a multi-day game, building on the existing refresh logic. *(Done. Rows are detected by their red "Your turn for …" line, checked against the logged-in dashboard. Includes a tab-title count, a 5-minute background check while the tab is unattended, and an opt-in desktop notification for newly waiting games.)*
 - [x] **Per-feature toggles** in the settings menu for every feature, not just the current 10 settings. *(Done: a Features section with a switch for each feature that has a `section`.)*
@@ -116,14 +118,57 @@ Ground rules for everything here:
 - [ ] **Time to afford.** Next to each upgrade cost, show how long until you can afford it at the current ₩/sec or ₳/sec (both are shown in the top-right counters, e.g. "￦131 (1/sec)").
 - [ ] **Ascend helper.** Show what ascending now would give compared with waiting, e.g. in an hour, if the Ascend screen exposes enough numbers to estimate it. Check the Ascend and Super Ascend screens first; drop this if the gain isn't shown or can't be derived.
 
+## Phase 9 — Community ladders & leagues on the Ladders page
+
+Most players reach community events through war.app's Ladders page, which only lists war.app's own four ladders (1v1, Seasonal, 2v2, 3v3). war.app's Community Events page lists Clan League, Nations Cup, AWP World Tour, MTL, Clan Cup, Clan Teams Cup, Titled Tuesdays and Mod Tourneys, but only as links, without seasons or standings, and P/R League is missing. custom.wl-stats.com already holds the live seasons: it runs P/R League and Clan Cup itself and refreshes Nations Cup, Clan League, Titled Tuesday and the Seasonal Ladder often. Small Earth P/R League and War Gaming Live are finished and not running now.
+
+Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per series: its current season, the season's state, and your line in it. Later, a "You: …" line on war.app's Community Events cards too.
+
+### Script side
+
+- [x] **The panel, with an AWP World Tour row** *(3.16.0)*: this year's race, its top three linked to their war.app profiles, and your place. It loads awp.wl-stats.com's `/api/v1/rankings` (about 17 KB, every ranked player) and finds you in it locally, so no player ID is sent. It hangs below the ladders dialog inside war.app's clipping viewport and scrolls on its own when the window is short. Switch: Features → Community.
+- [ ] **custom.wl-stats.com rows**, once the endpoint below exists: one row per series, e.g. "P/R League · Season 38 running, 77/161 games · You: Division A, 3rd of 7 (2–1)". One request per page load with your player ID, kept for 10 minutes. Signed out, the rows show without the "You" line.
+- [ ] **"You: …" on war.app's Community Events cards** (`/MultiPlayer?CommunityEvents=1`), from the same data: each card whose title starts with a series' `warapp_event` gets your line, and the AWP card gets your race rank. That page is drawn client-side too, so it follows the tournament-page rules.
+- [ ] **MTL row**, once MTL runs on custom.wl-stats.com (on its roadmap, no date yet). It then comes from the same endpoint as one more series.
+
+### Server side (custom.wl-stats.com)
+
+- [ ] **`GET /api/v1/series?player={war.app player ID}`** (`player` optional), with the same CORS and no-credentials setup as `/api/v1/warapp-tournaments`.
+  - **Which series:** those whose current season or edition is taking signups or running, or finished in the last 30 days. Finished-and-idle series (Small Earth P/R League, War Gaming Live) are left out, and private clan tournaments never appear. Order: running, then signups, then recently finished.
+  - **Each series:**
+    - `slug`, `name`, `kind` (league, clan_cup, clan_league, nations_cup, events, ladder) and `url`.
+    - `warapp_event`: the start of the title of war.app's Community Events card for this series ("Clan League", "Nations Cup", "Clan Cup", "Titled Tuesdays"), or null if there's no card.
+    - `current`: the season or edition now on, or null.
+      - `name`, `url` and `forum_url`.
+      - `status`: "signups", "running" or "finished".
+      - `signups_close_at`, `started_at` and `finished_at`.
+      - `next_event_at`: the next event, for events series.
+      - `players`: players, or teams/clans/countries for team series.
+      - `progress`: `{ played, total }` games, or null.
+      - `leader` while running, `winner` once finished, each `{ name, url }`.
+    - `you`: only when `player` is given and takes part, otherwise null.
+      - `as`: "player", "clan" or "nation"; `name`: the player, their clan or their country, as the series counts them.
+      - `division` and `group` (null where the series has none), `place`, `of`.
+      - `wins`, `losses` and `points` (null where not used).
+      - `status`: "signed_up", "playing", "promoted", "relegated", "eliminated" or "champion".
+      - `url`: the player's, clan's or country's page in that season.
+  - **Cache:** `Cache-Control: public, max-age=600`.
+  - **Tests:**
+    - the CORS headers;
+    - an unknown or absent player gives every `you` as null;
+    - private clan tournaments never show;
+    - a series finished more than 30 days ago is left out;
+    - one case per `kind` that has a `you`.
+
 ## What's left
 
 In suggested order:
 
-1. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
-2. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
-3. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
-4. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-5. **Split into modules** (Phase 3), once the feature work settles.
+1. **Community ladders & leagues** (Phase 9): the `/api/v1/series` endpoint on custom.wl-stats.com, then its rows on the Ladders page and the "You: …" lines on Community Events.
+2. **Read MTL data directly** (Phase 4). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
+3. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+4. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
+5. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+6. **Split into modules** (Phase 3), once the feature work settles.
 
-Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` and `/api/v1/warapp-tournaments/{id}` on the wl-stats sites.
+Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene` and `ujs_DialogBackgroundForDropShadow_img` elements, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` and `/api/v1/warapp-tournaments/{id}` on the wl-stats sites.

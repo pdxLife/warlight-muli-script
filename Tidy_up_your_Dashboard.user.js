@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.15.0
+// @version 3.16.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.15.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.16.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1974,6 +1974,10 @@ function pageIsCommunity() {
     return location.href.match(/^https?:\/\/[^\/]+\/Community/i);
 }
 
+function pageIsLadders() {
+    return location.href.match(/^https?:\/\/[^\/]+\/Ladders\/?(?:[?#]|$)/i);
+}
+
 function pageIsMapOfTheWeek() {
     return location.href.match(/^https?:\/\/[^\/]+\/MapOfTheWeek.*/i);
 }
@@ -2428,6 +2432,131 @@ function renderAwpStats(player) {
         '</tbody></table><a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(player.page_url)) + '">More on awp.wl-stats.com</a></div>';
 }
 
+function signedInPlayerId() {
+    var result = $.Deferred();
+    playerDataReady.done(function (player) {
+        result.resolve(player && player.PlayerId ? String(player.PlayerId) : null);
+    }).fail(function () {
+        result.resolve(null);
+    });
+    return result.promise();
+}
+
+// war.app draws the Ladders page client-side, in a viewport that clips what overflows it, so the
+// panel hangs below the ladders dialog and scrolls on its own when the window is short.
+function setupCommunityLadders() {
+    var rows = null;
+    var show = function () {
+        var scene = pageIsLadders() && ujsElement("LaddersScene");
+        if (!scene || !rows || !rows.length || $("#communityLadders").length) {
+            return;
+        }
+        var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
+        if (!dialog.length) {
+            return;
+        }
+        if (!setupCommunityLadders.styled) {
+            setupCommunityLadders.styled = true;
+            addCSS(`
+                #communityLadders {
+                    position: absolute;
+                    top: 15px;
+                    left: 0;
+                    box-sizing: border-box;
+                    overflow-y: auto;
+                    pointer-events: auto;
+                    padding: 8px 12px;
+                    background: rgba(0, 0, 0, 0.55);
+                    border: 1px solid #444;
+                    border-radius: 6px;
+                    color: #ddd;
+                    font-size: 14px;
+                }
+                #communityLadders h3 {
+                    font-size: 17px;
+                    margin: 0 0 6px;
+                }
+                .communityLadder {
+                    padding: 6px 0;
+                    border-top: 1px solid #333;
+                }
+                .communityLadderName {
+                    font-weight: bold;
+                }
+            `);
+        }
+        var panel = $(renderCommunityLadders(rows)).css("width", dialog.outerWidth() + "px");
+        dialog.parent().parent().append(panel);
+        var viewport = panel.closest("[id^='ujs_Viewport']");
+        if (viewport.length) {
+            panel.css("max-height", Math.max(0, viewport[0].getBoundingClientRect().bottom - panel[0].getBoundingClientRect().top - 8) + "px");
+        }
+    };
+    var load = function () {
+        if (rows || !pageIsLadders()) {
+            return;
+        }
+        rows = [];
+        signedInPlayerId().done(function (playerId) {
+            fetchWlStats(AWP_SITE + "/api/v1/rankings").done(function (rankings) {
+                if (rankings && rankings.rankings) {
+                    rows.push(renderAwpLadderRow(rankings, playerId));
+                    show();
+                }
+            }).fail(function (xhr) {
+                log("Error loading the AWP World Tour rankings: " + (xhr && xhr.statusText));
+            });
+        });
+    };
+    var check = function () {
+        load();
+        show();
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+    $(window).on("resize", function () {
+        $("#communityLadders").remove();
+        show();
+    });
+}
+
+function renderCommunityLadders(rows) {
+    return '<div id="communityLadders"><h3>Community ladders &amp; leagues</h3>' + rows.join("") +
+        '<div class="text-muted small">Added by Muli\'s Userscript</div></div>';
+}
+
+// statusHtml, detailHtml and youHtml must already be escaped.
+function communityLadderRow(row) {
+    return '<div class="communityLadder"><a class="communityLadderName" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
+        (row.statusHtml ? ' <span class="text-muted">· ' + row.statusHtml + '</span>' : "") +
+        (row.detailHtml ? '<div>' + row.detailHtml + '</div>' : "") +
+        (row.youHtml ? '<div>' + row.youHtml + '</div>' : "") + '</div>';
+}
+
+function renderAwpLadderRow(rankings, playerId) {
+    var list = rankings.rankings;
+    var points = function (value) {
+        return htmlEscape(typeof value === "number" ? value.toLocaleString("en-US") : value);
+    };
+    var leaders = list.slice(0, 3).map(function (entry) {
+        var id = String(entry.player_id);
+        return htmlEscape(entry.rank) + '. <a href="' + (/^\d+$/.test(id) ? "/Profile?p=" + id : "#") + '">' + htmlEscape(entry.player_name) + '</a> <span class="text-muted">' + points(entry.points) + '</span>';
+    }).join(" · ");
+    var mine = playerId && list.filter(function (entry) {
+        return String(entry.player_id) === playerId;
+    })[0];
+    var you = !playerId ? "" : mine
+        ? "You: #" + htmlEscape(mine.rank) + " · " + points(mine.points) + " points"
+        : "You: not in the " + htmlEscape(rankings.year) + " race yet";
+    return communityLadderRow({
+        name: "AWP World Tour",
+        url: AWP_SITE + "/rankings",
+        statusHtml: htmlEscape(rankings.year) + " race · " + htmlEscape(list.length) + " players",
+        detailHtml: leaders,
+        youHtml: you
+    });
+}
+
 function displayTrophies() {
     var trophies = {
         5286630035: ["Get on the immediate roadmap"]
@@ -2533,6 +2662,7 @@ function pageFeatures() {
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
+        { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },

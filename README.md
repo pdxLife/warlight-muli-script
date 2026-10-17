@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.15.0  
+> **Version:** 3.16.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -45,6 +45,10 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 - **custom.wl-stats.com link** — on a tournament that [custom.wl-stats.com](https://custom.wl-stats.com) has read (Titled Tuesday, War Gaming Live and P/R League groups played as war.app tournaments), links its page there and its series, next to "Created by".
+
+### Ladders
+
+- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page. It starts with the [AWP World Tour](https://awp.wl-stats.com): this year's race, its top three, and your place in it when you're signed in. P/R League, Nations Cup, Clan League and the other series run on custom.wl-stats.com will join it.
 
 ### Clans
 
@@ -122,10 +126,10 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 ## Other sites the script contacts
 
-- **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID.
+- **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
 - **custom.wl-stats.com**: when you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID.
 
-Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Both switches are in Features (Profile and Tournaments). maak.ch is contacted only if you turn on its setting.
+Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Profile, Tournaments and Community). maak.ch is contacted only if you turn on its setting.
 
 
 ## If war.app changes its domain
