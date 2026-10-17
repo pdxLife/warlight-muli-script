@@ -17,9 +17,14 @@ const rankings = {
     ]
 };
 
-// Mirrors war.app's Ladders scene: the ladders dialog's background box inside a clipping viewport.
+const art = (path) => `border-image-source: url(&quot;https://warappcdn.com/ujs/${path}?v=6&quot;)`;
+
+// Mirrors war.app's Ladders scene: the ladders dialog's background box inside a clipping viewport,
+// with war.app's dialog, row and green button art.
 const laddersScene = `<div id="ujs_LaddersScene"><div id="ujs_Viewport"><div id="ujs_Content"><div id="ujs_Section">`
-    + `<div id="ujs_DialogBackgroundForDropShadow"><div id="ujs_DialogBackgroundForDropShadow_img"></div></div>`
+    + `<div id="ujs_DialogBackgroundForDropShadow"><div id="ujs_DialogBackgroundForDropShadow_img" style="${art("Resources/DialogBacking.png")}"></div></div>`
+    + `<div id="ujs_LadderContainer"><div id="ujs_LadderContainer_img" style="${art("Resources/DialogForeground.png")}"></div>`
+    + `<div id="ujs_OneVersusOneLadder"><div id="ujs_OneVersusOneLadder_img" style="${art("WarLight/Shared/UI/Images/UIButton-198225.png")}"></div></div></div>`
     + `</div></div></div></div>`;
 
 function laddersPage({ response = rankings, fail = false, playerId = "2921525624", url = "https://war.app/Ladders", html = laddersScene } = {}) {
@@ -31,7 +36,7 @@ function laddersPage({ response = rankings, fail = false, playerId = "2921525624
         return (fail ? result.reject({ status: 0, statusText: "error" }) : result.resolve(response)).promise();
     };
     const logs = [];
-    const ctx = load(["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "ujsElement", "htmlEscape", "safeUrl"], {
+    const ctx = load(["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "laddersArt", "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "ujsElement", "htmlEscape", "safeUrl"], {
         ...domGlobals(dom, $),
         location: dom.window.location,
         log: (entry) => logs.push(entry),
@@ -51,8 +56,8 @@ test("the Ladders page gets an AWP World Tour row with the top three and your pl
     assert.equal($("#ujs_Section > #communityLadders").length, 1, "hangs below the ladders dialog");
     const row = $("#communityLadders .communityLadder");
     assert.equal(row.length, 1);
-    assert.equal(row.find(".communityLadderName").text(), "AWP World Tour");
-    assert.equal(row.find(".communityLadderName").attr("href"), "https://awp.wl-stats.com/rankings");
+    assert.equal(row.find(".communityLadderButton").text(), "AWP World Tour");
+    assert.equal(row.find(".communityLadderButton").attr("href"), "https://awp.wl-stats.com/rankings");
     assert.match(row.text(), /2026 race · 5 players/);
     assert.match(row.text(), /1\. tornado 5,765 · 2\. Arsene Wenger 3,720 · 3\. CONSEQUENCER 3,265/);
     assert.ok(!row.text().includes("Fourth"));
@@ -112,4 +117,23 @@ test("a failed rankings request leaves the page as it was and logs", async () =>
     await flush();
     assert.equal($("#communityLadders").length, 0);
     assert.ok(logs.some((entry) => entry.includes("Error loading the AWP World Tour rankings")));
+});
+
+test("the panel wears war.app's own dialog and row art, with war.app's blue button instead of the ladders' green", async () => {
+    const { ctx, $ } = laddersPage();
+    ctx.setupCommunityLadders();
+    await flush();
+    const style = $("#communityLadders")[0].style;
+    assert.match(style.getPropertyValue("--tuyd-dialog"), /Resources\/DialogBacking\.png/);
+    assert.match(style.getPropertyValue("--tuyd-row"), /Resources\/DialogForeground\.png/);
+    assert.match(style.getPropertyValue("--tuyd-button"), /UIButton-242D9A\.png\?v=6/);
+});
+
+test("without war.app's art on the page the panel still shows, on its plain fallback look", async () => {
+    const bare = `<div id="ujs_LaddersScene"><div id="ujs_Section"><div id="ujs_DialogBackgroundForDropShadow"><div id="ujs_DialogBackgroundForDropShadow_img"></div></div></div></div>`;
+    const { ctx, $ } = laddersPage({ html: bare });
+    ctx.setupCommunityLadders();
+    await flush();
+    assert.equal($("#communityLadders .communityLadder").length, 1);
+    assert.equal($("#communityLadders")[0].style.getPropertyValue("--tuyd-button"), "");
 });

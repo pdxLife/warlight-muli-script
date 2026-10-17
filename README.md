@@ -48,7 +48,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 
 ### Ladders
 
-- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page. It starts with the [AWP World Tour](https://awp.wl-stats.com): this year's race, its top three, and your place in it when you're signed in. P/R League, Nations Cup, Clan League and the other series run on custom.wl-stats.com will join it.
+- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green. It starts with the [AWP World Tour](https://awp.wl-stats.com): this year's race, its top three, and your place in it when you're signed in. P/R League, Nations Cup, Clan League and the other series run on custom.wl-stats.com will join it.
 
 ### Clans
 

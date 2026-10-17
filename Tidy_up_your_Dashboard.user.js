@@ -2443,7 +2443,7 @@ function signedInPlayerId() {
 }
 
 // war.app draws the Ladders page client-side, in a viewport that clips what overflows it, so the
-// panel hangs below the ladders dialog and scrolls on its own when the window is short.
+// panel hangs below the ladders dialog and its rows scroll on their own when the window is short.
 function setupCommunityLadders() {
     var rows = null;
     var show = function () {
@@ -2455,41 +2455,21 @@ function setupCommunityLadders() {
         if (!dialog.length) {
             return;
         }
-        if (!setupCommunityLadders.styled) {
-            setupCommunityLadders.styled = true;
-            addCSS(`
-                #communityLadders {
-                    position: absolute;
-                    top: 15px;
-                    left: 0;
-                    box-sizing: border-box;
-                    overflow-y: auto;
-                    pointer-events: auto;
-                    padding: 8px 12px;
-                    background: rgba(0, 0, 0, 0.55);
-                    border: 1px solid #444;
-                    border-radius: 6px;
-                    color: #ddd;
-                    font-size: 14px;
-                }
-                #communityLadders h3 {
-                    font-size: 17px;
-                    margin: 0 0 6px;
-                }
-                .communityLadder {
-                    padding: 6px 0;
-                    border-top: 1px solid #333;
-                }
-                .communityLadderName {
-                    font-weight: bold;
-                }
-            `);
-        }
-        var panel = $(renderCommunityLadders(rows)).css("width", dialog.outerWidth() + "px");
+        addCommunityLaddersStyles();
+        var panel = $(renderCommunityLadders(rows));
+        var art = laddersArt(scene);
+        Object.keys(art).forEach(function (name) {
+            if (art[name]) {
+                panel[0].style.setProperty(name, art[name]);
+            }
+        });
         dialog.parent().parent().append(panel);
-        var viewport = panel.closest("[id^='ujs_Viewport']");
-        if (viewport.length) {
-            panel.css("max-height", Math.max(0, viewport[0].getBoundingClientRect().bottom - panel[0].getBoundingClientRect().top - 8) + "px");
+        fitCommunityLadders(panel, dialog);
+        // war.app re-lays out the dialog shortly after a resize, so follow the dialog itself.
+        if (window.ResizeObserver) {
+            new ResizeObserver(function () {
+                fitCommunityLadders(panel, dialog);
+            }).observe(dialog[0]);
         }
     };
     var load = function () {
@@ -2514,23 +2494,150 @@ function setupCommunityLadders() {
     };
     check();
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
-    $(window).on("resize", function () {
-        $("#communityLadders").remove();
-        show();
-    });
+}
+
+function fitCommunityLadders(panel, dialog) {
+    panel.css("width", dialog.outerWidth() + "px");
+    var viewport = panel.closest("[id^='ujs_Viewport']");
+    if (viewport.length) {
+        var list = panel.find(".communityLaddersRows");
+        var room = viewport[0].getBoundingClientRect().bottom - list[0].getBoundingClientRect().top - panel.find(".communityLaddersCredit").outerHeight() - 20;
+        list.css("max-height", Math.max(66, room) + "px");
+    }
+}
+
+// The panel wears war.app's own dialog, row and button art, read from the ladders on the page so it
+// follows war.app's updates. Its buttons use war.app's blue tint instead of the ladders' green, so
+// the panel reads as an addition; war.app's CDN serves only the tints the game itself uses.
+function laddersArt(scene) {
+    var source = function (name) {
+        var value = $(scene).find("[id^='ujs_" + name + "'][id$='_img']").first().css("border-image-source") || "";
+        return /^url\(/.test(value) ? value : "";
+    };
+    var button = source("OneVersusOneLadder");
+    return {
+        "--tuyd-dialog": source("DialogBackgroundForDropShadow"),
+        "--tuyd-row": source("LadderContainer"),
+        "--tuyd-button": /UIButton-[0-9A-Fa-f]{6}/.test(button) ? button.replace(/UIButton-[0-9A-Fa-f]{6}/, "UIButton-242D9A") : ""
+    };
+}
+
+function addCommunityLaddersStyles() {
+    if (addCommunityLaddersStyles.done) {
+        return;
+    }
+    addCommunityLaddersStyles.done = true;
+    addCSS(`
+        #communityLadders {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            box-sizing: border-box;
+            pointer-events: auto;
+            color: #babbbb;
+            font-size: 14px;
+            line-height: 18px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.6);
+            border-width: 54px 18px 12px 17px;
+            border-image: var(--tuyd-dialog, none) 82 27 19 26 fill / 54px 18px 12px 17px stretch;
+        }
+        #communityLadders h3 {
+            position: absolute;
+            top: -46px;
+            left: 0;
+            right: 0;
+            height: 38px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        #communityLadders .communityLaddersRows {
+            overflow-y: auto;
+        }
+        #communityLadders .communityLadder {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 66px;
+            box-sizing: border-box;
+            margin-bottom: 6px;
+            border-style: solid;
+            border-color: rgba(255, 255, 255, 0.08);
+            border-width: 12px 10px 10px;
+            border-image: var(--tuyd-row, none) 19 15 15 16 fill / 12px 10px 10px stretch;
+        }
+        #communityLadders .communityLadderButton {
+            flex: 0 0 160px;
+            max-width: 35%;
+            min-height: 50px;
+            margin: -4px 0 -2px -2px;
+            padding: 0 4px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 16px;
+            text-decoration: none;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            border-style: solid;
+            border-color: #242d9a;
+            border-width: 5px 5px 4px;
+            background: #242d9a padding-box;
+            border-image: var(--tuyd-button, none) 15 15 13 fill / 5px 5px 4px stretch;
+        }
+        #communityLadders .communityLadderButton:hover {
+            filter: brightness(1.15);
+        }
+        #communityLadders .communityLadderText {
+            flex: 1;
+            min-width: 0;
+        }
+        #communityLadders .tuydMuted {
+            color: #8d8d8d;
+        }
+        #communityLadders .communityLadderYou {
+            color: #fff;
+        }
+        #communityLadders .communityLaddersCredit {
+            text-align: right;
+            font-size: 11px;
+            color: #777;
+        }
+        @media (max-width: 600px) {
+            #communityLadders h3 {
+                font-size: 14px;
+                white-space: nowrap;
+            }
+            #communityLadders .communityLadderText {
+                font-size: 13px;
+                line-height: 16px;
+            }
+        }
+    `);
 }
 
 function renderCommunityLadders(rows) {
-    return '<div id="communityLadders"><h3>Community ladders &amp; leagues</h3>' + rows.join("") +
-        '<div class="text-muted small">Added by Muli\'s Userscript</div></div>';
+    return '<div id="communityLadders"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' + rows.join("") +
+        '</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
 }
 
 // statusHtml, detailHtml and youHtml must already be escaped.
 function communityLadderRow(row) {
-    return '<div class="communityLadder"><a class="communityLadderName" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
-        (row.statusHtml ? ' <span class="text-muted">· ' + row.statusHtml + '</span>' : "") +
+    return '<div class="communityLadder"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
+        '<div class="communityLadderText">' +
+        (row.statusHtml ? '<div class="tuydMuted">' + row.statusHtml + '</div>' : "") +
         (row.detailHtml ? '<div>' + row.detailHtml + '</div>' : "") +
-        (row.youHtml ? '<div>' + row.youHtml + '</div>' : "") + '</div>';
+        (row.youHtml ? '<div class="communityLadderYou">' + row.youHtml + '</div>' : "") + '</div></div>';
 }
 
 function renderAwpLadderRow(rankings, playerId) {
@@ -2540,7 +2647,7 @@ function renderAwpLadderRow(rankings, playerId) {
     };
     var leaders = list.slice(0, 3).map(function (entry) {
         var id = String(entry.player_id);
-        return htmlEscape(entry.rank) + '. <a href="' + (/^\d+$/.test(id) ? "/Profile?p=" + id : "#") + '">' + htmlEscape(entry.player_name) + '</a> <span class="text-muted">' + points(entry.points) + '</span>';
+        return htmlEscape(entry.rank) + '. <a href="' + (/^\d+$/.test(id) ? "/Profile?p=" + id : "#") + '">' + htmlEscape(entry.player_name) + '</a> <span class="tuydMuted">' + points(entry.points) + '</span>';
     }).join(" · ");
     var mine = playerId && list.filter(function (entry) {
         return String(entry.player_id) === playerId;
