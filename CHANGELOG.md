@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.20.0
+
+- **New version notice.** Once a day the script checks GitHub for a newer version. When one is out, the small version label in the bottom-right corner becomes a gold **Update to …** link; clicking it opens Tampermonkey's update screen. Nothing else on the page changes. If GitHub can't be reached it tries again an hour later. Turn it off under Features → Other.
+
 ## 3.19.0
 
 - **Community event badges on My Games.** Games that belong to a community event get a small blue badge after their name, such as "Nations Cup 2026 · Group C" or "P/R League · Season 38 · Group A2", linking to the event on custom.wl-stats.com. They follow every refresh and war.app's own Filter. Turn them off under Features → Dashboard.

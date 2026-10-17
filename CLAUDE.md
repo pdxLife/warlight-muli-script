@@ -39,4 +39,5 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 - `@downloadURL` and `@updateURL` must point at this repo's raw file, not Greasy Fork. Otherwise upstream releases overwrite this fork.
 - Escape third-party and user-supplied strings with `htmlEscape()` before putting them into HTML. URLs from outside (API data, bookmarks) go through `htmlEscape(safeUrl(url))`; `safeUrl` allows only `http(s)://` and same-site `/` paths. `test/security.test.js` covers each renderer with an injection payload, so add a case there when adding a new one.
 - Every `@require` must carry a `#sha256-` hash. A test enforces this.
+- `SCRIPT_URL` must stay equal to `@downloadURL` (a test checks it): the update notice reads the version from it, and the corner label's update link opens it.
 - `ROADMAP.md` tracks planned work. Tick items off there when they land.

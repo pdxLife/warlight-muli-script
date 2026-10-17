@@ -176,3 +176,10 @@ test("My Games badges and clan standings escape API data", () => {
     assert.ok(row.textContent.includes(PAYLOAD));
     assert.ok([...row.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"));
 });
+
+test("the update notice escapes the version read from GitHub", () => {
+    const ctx = load(["renderUpdateLabel", "htmlEscape"], { version: "3.19.0", SCRIPT_URL: "https://raw.githubusercontent.com/x.user.js" });
+    const container = render(ctx.renderUpdateLabel(PAYLOAD));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});

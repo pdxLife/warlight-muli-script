@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.19.0
+// @version 3.20.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.19.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.20.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -27,6 +27,10 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
+var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
+var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
+var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
+var UPDATE_RETRY_MS = 60 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -3299,7 +3303,8 @@ function mainFeatures() {
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
-        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } }
+        { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
+        { name: "New version notice", section: "Other", run: setupUpdateNotice }
     ];
 }
 
@@ -4687,6 +4692,70 @@ function addVersionLabel() {
         createSelector(".versionLabel", "z-index:101;position:fixed; right:0; bottom: 0; padding: 5px; color: bisque; font-size: 10px; cursor:pointer")
     }
 }
+function parseScriptVersion(source) {
+    var match = /^\/\/\s*@version\s+(\S+)/m.exec(String(source || ""));
+    return match ? match[1] : null;
+}
+
+function compareVersions(a, b) {
+    var left = String(a).split(".");
+    var right = String(b).split(".");
+    for (var i = 0; i < Math.max(left.length, right.length); i++) {
+        var diff = (parseInt(left[i], 10) || 0) - (parseInt(right[i], 10) || 0);
+        if (diff) {
+            return diff > 0 ? 1 : -1;
+        }
+    }
+    return 0;
+}
+
+// Resolves with the version on GitHub, read at most once a day; GitHub serves the file to any site.
+function latestScriptVersion() {
+    var cached = null;
+    try {
+        cached = JSON.parse(localStorage.getItem(UPDATE_CHECK_KEY));
+    } catch (e) {
+    }
+    if (cached && Date.now() - cached.at < (cached.failed ? UPDATE_RETRY_MS : UPDATE_CHECK_MS)) {
+        return $.Deferred().resolve(cached.latest || null).promise();
+    }
+    var remember = function (entry) {
+        try {
+            localStorage.setItem(UPDATE_CHECK_KEY, JSON.stringify(entry));
+        } catch (e) {
+        }
+    };
+    var result = $.Deferred();
+    $.ajax({ url: SCRIPT_URL, dataType: "text" }).done(function (source) {
+        var latest = parseScriptVersion(source);
+        remember({ at: Date.now(), latest: latest });
+        result.resolve(latest);
+    }).fail(function (xhr) {
+        log("Error checking for a new version: " + (xhr && xhr.statusText));
+        remember({ at: Date.now(), latest: cached && cached.latest, failed: true });
+        result.resolve(cached && cached.latest || null);
+    });
+    return result.promise();
+}
+
+// Only the corner version label changes: it turns into a gold link that updates the script.
+function setupUpdateNotice() {
+    latestScriptVersion().done(function (latest) {
+        var label = $(".versionLabel").not(".updateAvailable");
+        if (!latest || compareVersions(latest, version) <= 0 || !label.length) {
+            return;
+        }
+        label.replaceWith(renderUpdateLabel(latest));
+        createSelector(".versionLabel.updateAvailable", "color: #e0c060 !important; font-weight: bold; text-decoration: none !important");
+    });
+}
+
+// Opening the .user.js file is what makes Tampermonkey show its update screen.
+function renderUpdateLabel(latest) {
+    return '<a class="versionLabel updateAvailable" target="_blank" rel="noopener" href="' + htmlEscape(SCRIPT_URL) + '" title="Version ' + htmlEscape(latest) +
+        ' is available (you have ' + htmlEscape(version) + '). Click to update.">Update to ' + htmlEscape(latest) + '</a>';
+}
+
 function setupCommunityLevels() {
     $("h1").after(`
         <div class="alert alert-success" role="alert">
