@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.16.0
+
+- **Community ladders & leagues on the Ladders page.** A panel below war.app's four ladders, drawn with war.app's own dialog, row and button art, shows the AWP World Tour race: how many players are in it, and your rank and points when you're signed in. The script loads the whole ranking and finds you in it itself, so your player ID isn't sent anywhere. Its buttons are war.app's blue instead of the ladders' green, so it's clear which part the script adds. The panel follows war.app's layout when the window is resized and scrolls on its own when the window is short. Turn it off under Features → Community. P/R League, Nations Cup, Clan League and the other series on custom.wl-stats.com will join it once that site offers the data.
+
 ## 3.15.0
 
 - **AWP World Tour stats on profiles.** A player who has played on the AWP World Tour gets a box on their profile with their place in this year's race and in the 12-month ranking, games, wins and losses, tournaments, titles and best placement, and a link to their page on awp.wl-stats.com. This brings back the AWP integration from Muli's original script. Turn it off under Features → Profile.

@@ -123,3 +123,11 @@ test("custom.wl-stats.com tournament links escape API data", () => {
     assert.deepEqual([...container.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["#", "#"]);
     assert.equal(container.querySelector("a").getAttribute("title"), PAYLOAD);
 });
+
+test("the AWP World Tour row on the Ladders page escapes API data", () => {
+    const ctx = load(["renderAwpLadderRow", "communityLadderRow", "htmlEscape", "safeUrl"], { AWP_SITE: "https://awp.wl-stats.com" });
+    const evil = { rank: PAYLOAD, player_id: PAYLOAD, player_name: PAYLOAD, points: PAYLOAD };
+    const container = render(ctx.renderAwpLadderRow({ year: PAYLOAD, rankings: [evil, { ...evil, player_id: "5" }] }, "5"));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});
