@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.21.0  
+> **Version:** 3.22.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -25,7 +25,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Redesigned layout** with fixed header, scrollable game area, and tabbed My / Open / Past games.
 - **Quick refresh** — press **R** or click the refresh button to reload all game tables (throttled to prevent spam). One request refreshes both tables, and the My Games and open-games counts stay current.
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
-- **Community event badges** — My Games rows that belong to a community event get a small badge on a line under the game's name, linking to that event: blue for [custom.wl-stats.com](https://custom.wl-stats.com) events (e.g. "Nations Cup 2026 · Group C", "P/R League · Season 38 · Group A2"), gold for the [AWP World Tour](https://awp.wl-stats.com) (e.g. "AWP World Tour · Grand Slam - Timid Land · Round of 64").
+- **Community event badges** — My Games rows that belong to a community event get a small badge in their top-right corner with the series' name, linking to that event: blue for [custom.wl-stats.com](https://custom.wl-stats.com) events ("Nations Cup", "P/R League", "Titled Tuesday"), gold for the [AWP World Tour](https://awp.wl-stats.com) ("AWP Tour"). Hover a badge for the details, e.g. "Nations Cup 2026 · Group C".
 - **Your-turn alerts** — the tab title shows how many games are waiting for you, e.g. `(2) Multi-Player Dashboard`. While the dashboard tab is open but not in focus, it re-checks your games every 5 minutes, and can show a desktop notification when a game becomes your turn (opt-in setting).
 - **Open Games filter** — a **Filter** link in the Open Games header (dashboard and View All page) hides Auto Games, coin games, games with a boot time under a number of hours you set, and games whose name contains any of your keywords (whole words, comma-separated). The header shows how many games are hidden.
 - **Boot-time sorting** — games where it's your turn are ordered by time left before you're booted (boot time plus bank, minus how long it's been your turn), most urgent first. Other games keep their place.
@@ -51,7 +51,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 
 ### Ladders
 
-- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, Nations Cup, Clan Cup, Clan League, the Seasonal Ladder, Titled Tuesday): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
+- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green, in two lists: **Players** and **Clans & nations**. On a wide window it's wider than war.app's ladders and the two lists sit side by side. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, Nations Cup, Clan Cup, Clan League, the Seasonal Ladder, Titled Tuesday): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
 - **Your standing on Community Events** — on war.app's Community Events page, the cards for events you take part in (AWP World Tour, Nations Cup, Clan Cup, Clan League, Titled Tuesdays) get your line at the top right, and events taking signups say so. Hidden when the cards are too narrow for it.
 
 ### Clans

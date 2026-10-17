@@ -53,17 +53,19 @@ test("community games on My Games get a badge after their name, linking to the e
     ctx.setupEventBadges();
     await flush();
     assert.deepEqual(requests, [gamesUrl("2921525624"), awpGamesUrl("2921525624")]);
-    assert.deepEqual(badges($), ["Nations Cup 2026 · Group C", "-", "P/R League · Season 38 · Group A2", "92nd Titled Tuesday - MME"],
-        "the series name is added only where the label lacks it");
+    assert.deepEqual(badges($), ["Nations Cup", "-", "P/R League", "Titled Tuesday"], "the series' short name");
+    assert.deepEqual($(".tuydEventBadge").map((i, a) => $(a).attr("title")).get(),
+        ["Nations Cup 2026 · Group C", "P/R League · Season 38 · Group A2", "92nd Titled Tuesday - MME"], "the full label is the tooltip");
     const badge = $("tr[gameid='45419715'] .tuydEventBadge");
     assert.equal(badge.attr("href"), "https://custom.wl-stats.com/series/fixtures/3122");
     assert.equal($("tr[gameid='45419715'] td:first-child .tuydEventBadge").length, 0, "not on the thumbnail");
-    const line = badge.parent();
-    assert.ok(line.hasClass("tuydEventBadgeLine"), "on a line of its own");
-    assert.equal(line.prev().prop("tagName"), "BR", "right under the game's name");
-    assert.equal(line.prev().prev().text(), "NC Group C");
+    const corner = badge.parent();
+    assert.ok(corner.hasClass("tuydEventBadgeCorner"), "in the corner element");
+    assert.ok(corner.parent().is("tr[gameid='45419715'] td:nth-of-type(2)") && corner.parent().hasClass("tuydHasEventBadge"), "in the game's cell, which it's placed against");
     assert.equal($("tr[gameid='45419715'] td:nth-of-type(2) > a.tuydEventBadge").length, 0,
         "not a direct link of the cell, which the dashboard's clickable rows stretch over the whole cell");
+    assert.ok($("tr[gameid='45419715'] td:nth-of-type(2) > a").first().hasClass("tuydNameBesideBadge"), "the name leaves room for the badge");
+    assert.ok(!$("tr[gameid='1'] td:nth-of-type(2) > a").first().hasClass("tuydNameBesideBadge"), "casual games' names are untouched");
 });
 
 test("badges come back when war.app or a refresh redraws My Games, once each", async () => {
@@ -72,11 +74,11 @@ test("badges come back when war.app or a refresh redraws My Games, once each", a
     await flush();
     $("#MyGamesTable tbody").html(row(45419715, "NC Group C") + row(45000001, "PR S38 A2"));
     await flush();
-    assert.deepEqual(badges($), ["Nations Cup 2026 · Group C", "P/R League · Season 38 · Group A2"]);
+    assert.deepEqual(badges($), ["Nations Cup", "P/R League"]);
     $("#MyGamesTable tbody").append("<tr><td>footer</td></tr>");
     await flush();
     assert.equal($(".tuydEventBadge").length, 2);
-    assert.equal($(".tuydEventBadgeLine").length, 2);
+    assert.equal($(".tuydEventBadgeCorner").length, 2);
 });
 
 test("a refreshed game list adds new games' badges and drops finished ones", async () => {
@@ -87,7 +89,8 @@ test("a refreshed game list adds new games' badges and drops finished ones", asy
     dom.window.sessionStorage.clear();
     $(dom.window.document).trigger("tuyd:gamesRefreshed", ["#MyGamesTable"]);
     await flush();
-    assert.deepEqual(badges($), ["-", "P/R League · Season 38 · Group A2"]);
+    assert.deepEqual(badges($), ["-", "P/R League"]);
+    assert.ok(!$("tr[gameid='45419715'] td:nth-of-type(2)").hasClass("tuydHasEventBadge"), "a finished game's cell is put back");
 });
 
 test("signed out, or with the site down, My Games is left as it was", async () => {
@@ -112,7 +115,8 @@ test("AWP World Tour games get a gold badge, next to custom.wl-stats.com's blue 
     });
     ctx.setupEventBadges();
     await flush();
-    assert.deepEqual(badges($), ["Nations Cup 2026 · Group C", "AWP World Tour · Grand Slam - Timid Land · Round of 64"]);
+    assert.deepEqual(badges($), ["Nations Cup", "AWP Tour"]);
+    assert.equal($("tr[gameid='45474791'] .tuydEventBadge").attr("title"), "AWP World Tour · Grand Slam - Timid Land · Round of 64");
     assert.ok($("tr[gameid='45474791'] .tuydEventBadge").hasClass("tuydEventBadgeAwp"));
     assert.ok(!$("tr[gameid='45419715'] .tuydEventBadge").hasClass("tuydEventBadgeAwp"));
     assert.equal($("tr[gameid='45474791'] .tuydEventBadge").attr("href"), "https://awp.wl-stats.com/tournaments/521");
@@ -122,5 +126,5 @@ test("with one site down, the other site's badges still show", async () => {
     const { ctx, $ } = dashboard({ rows: [row(45419715, "NC"), row(45474791, "AWP")], responses: { [awpGamesUrl("2921525624")]: awpGames } });
     ctx.setupEventBadges();
     await flush();
-    assert.deepEqual(badges($), ["-", "AWP World Tour · Grand Slam - Timid Land · Round of 64"]);
+    assert.deepEqual(badges($), ["-", "AWP Tour"]);
 });

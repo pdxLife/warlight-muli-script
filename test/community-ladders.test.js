@@ -84,7 +84,8 @@ function laddersPage({ response = rankings, fail = false, seriesResponse = serie
         AWP_SITE,
         CUSTOM_SITE,
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
-        SERIES_CACHE_MS: 10 * 60 * 1000
+        SERIES_CACHE_MS: 10 * 60 * 1000,
+        CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -160,7 +161,7 @@ test("one site down still shows the other's rows", async () => {
     const awpDown = laddersPage({ fail: true });
     awpDown.ctx.setupCommunityLadders();
     await flush();
-    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
+    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["P/R League", "Seasonal Ladder", "Titled Tuesday", "Clan Cup", "Nations Cup"]);
 
     const customDown = laddersPage({ seriesFail: true });
     customDown.ctx.setupCommunityLadders();
@@ -193,16 +194,20 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     const { ctx, $ } = laddersPage();
     ctx.setupCommunityLadders();
     await flush();
+    const sections = $("#communityLadders .communityLaddersSection");
+    assert.deepEqual(sections.find("h4").map((i, h) => $(h).text()).get(), ["Players", "Clans & nations"]);
+    const names = (section) => $(section).find(".communityLadderButton").map((i, a) => $(a).text()).get();
+    assert.deepEqual(names(sections[0]), ["AWP World Tour", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
+    assert.deepEqual(names(sections[1]), ["Clan Cup", "Nations Cup"], "Nations Cup is a team event, so it goes with the clans");
     const rows = $("#communityLadders .communityLadder");
-    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["AWP World Tour", "Clan Cup", "Nations Cup", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
-    assert.deepEqual(textOf($, rows[4]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    assert.deepEqual(textOf($, rows[2]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
     assert.equal($(".tuydSeasonalLine").length, 0, "war.app's own Seasonal row is left alone: signed in, its Unlocked line fills it");
-    assert.deepEqual(textOf($, rows[1]), ["Clan Cup II · running · 23 clans · 11/15 matches"]);
-    assert.deepEqual(textOf($, rows[2]), ["Nations Cup 2026 · running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"]);
-    assert.deepEqual(textOf($, rows[3]), ["Season 38 · running · 51 players · 77/161 games", "Leader: Stales78"]);
-    assert.equal($(rows[2]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
-    assert.equal($(rows[3]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
-    const titled = textOf($, rows[5]);
+    assert.deepEqual(textOf($, rows[4]), ["Clan Cup II · running · 23 clans · 11/15 matches"]);
+    assert.deepEqual(textOf($, rows[5]), ["Nations Cup 2026 · running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"]);
+    assert.deepEqual(textOf($, rows[1]), ["Season 38 · running · 51 players · 77/161 games", "Leader: Stales78"]);
+    assert.equal($(rows[5]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
+    assert.equal($(rows[1]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
+    const titled = textOf($, rows[3]);
     assert.equal(titled[0], "91st Titled Tuesday - AUL · finished · 20 players · 19/19 games");
     assert.match(titled[1], /^Winner: CONSEQUENCER · Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
 });
@@ -309,7 +314,7 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
     };
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
     });
     return { ctx, dom, $, requests };
 }
@@ -383,7 +388,7 @@ test("in war.app's one-column layout the clan box goes below Clan Members, not o
     $.ajax = () => $.Deferred().resolve(clanSeries).promise();
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
     });
     ctx.setupClanStandings();
     await flush();
@@ -406,4 +411,31 @@ test("a clan page shows the clan's last Clan League, even long finished, and how
     assert.deepEqual($(rows[1]).find(".tuydClanTitles a").map((i, a) => $(a).attr("href")).get(),
         ["https://custom.wl-stats.com/series/clan-league/seasons/19", "https://custom.wl-stats.com/series/clan-league/seasons/18"]);
     assert.equal($(rows[0]).find(".tuydClanTitles").length, 0, "no title line for a clan that never won");
+});
+
+test("on a wide page the panel leaves war.app's 600px viewport and centers under the ladders, wider than the dialog", async () => {
+    const html = `<div id="UjsCanvasHolder">${laddersScene}</div>`;
+    const { ctx, dom, $ } = laddersPage({ html });
+    const rect = (x, y, w, h) => () => ({ x, y, left: x, top: y, width: w, height: h, right: x + w, bottom: y + h });
+    dom.window.document.getElementById("UjsCanvasHolder").getBoundingClientRect = rect(0, 72, 1400, 826);
+    dom.window.document.getElementById("ujs_DialogBackgroundForDropShadow_img").getBoundingClientRect = rect(400, 122, 583, 374);
+    ctx.setupCommunityLadders();
+    await flush();
+    const panel = $("#communityLadders");
+    assert.equal(panel.parent().attr("id"), "UjsCanvasHolder");
+    assert.equal(panel[0].style.width, "1040px", "two columns' worth, capped");
+    assert.equal(panel[0].style.left, `${Math.round(400 + (583 - 1040) / 2)}px`, "centered on the ladders dialog");
+    assert.equal(panel[0].style.top, `${496 - 72 + 10}px`, "10px below the dialog");
+});
+
+test("on a narrower page the panel keeps the dialog's width and its lists stack", async () => {
+    const html = `<div id="UjsCanvasHolder">${laddersScene}</div>`;
+    const { ctx, dom, $ } = laddersPage({ html });
+    const rect = (x, y, w, h) => () => ({ x, y, left: x, top: y, width: w, height: h, right: x + w, bottom: y + h });
+    dom.window.document.getElementById("UjsCanvasHolder").getBoundingClientRect = rect(0, 72, 739, 700);
+    dom.window.document.getElementById("ujs_DialogBackgroundForDropShadow_img").getBoundingClientRect = rect(78, 122, 583, 374);
+    ctx.setupCommunityLadders();
+    await flush();
+    assert.equal($("#communityLadders")[0].style.width, "583px");
+    assert.equal($("#communityLadders")[0].style.left, "78px");
 });
