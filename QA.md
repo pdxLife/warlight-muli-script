@@ -42,7 +42,7 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 
 ## 4. Narrow window
 
-Repeat the dashboard, a tournament page and the Ladders page in a desktop browser window narrowed until war.app switches to its compact layout (about 400px wide), then widen it again. Overlapping or wrapped controls usually only show up there. Phones aren't covered: the script targets desktop browsers, and war.app sends phone browsers to its app page.
+Repeat the dashboard, a tournament page and the Ladders page in a desktop browser window narrowed until war.app switches to its compact layout (it still uses the full layout at 700px), then widen it again. Overlapping or wrapped controls usually only show up there. Phones aren't covered: the script targets desktop browsers, and war.app sends phone browsers to its app page.
 
 ## 5. Reporting a problem
 
