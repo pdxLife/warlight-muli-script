@@ -134,12 +134,13 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
 
 test("custom.wl-stats.com series rows and Community Events lines escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeriesLadderRow", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "signupsHtml",
+    const ctx = load(["renderSeriesLadderRow", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "seriesLink", "signupsHtml",
         "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $, AWP_SITE: "https://awp.wl-stats.com" });
     const link = { name: PAYLOAD, url: "javascript:alert(1)" };
     const evil = {
         name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
-        current: { name: PAYLOAD, url: "data:text/html,x", status: "signups", signups_close_at: PAYLOAD, next_event_at: PAYLOAD, players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, leader: link, winner: link },
+        current: { name: PAYLOAD, url: "data:text/html,x", status: "signups", signups_close_at: PAYLOAD, next_event_at: PAYLOAD, players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, leader: link, winner: link,
+            standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", group: PAYLOAD, place: PAYLOAD, points: PAYLOAD }, { name: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD }] } },
         you: { as: "nation", name: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" }
     };
     const running = { ...evil, current: { ...evil.current, status: "running" } };
@@ -165,7 +166,7 @@ test("custom.wl-stats.com profile stats escape API data", () => {
 });
 
 test("My Games badges and clan standings escape API data", () => {
-    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
+    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
         "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl"]);
     const badge = render(ctx.renderEventBadge({ game_id: PAYLOAD, series: PAYLOAD, label: PAYLOAD, url: "javascript:alert(1)" }));
     assertInert(badge);

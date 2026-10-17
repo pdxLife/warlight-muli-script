@@ -17,7 +17,7 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
+    "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -229,6 +229,20 @@ test("Clan League leads the clans list, ahead of the cups the server lists first
     ]);
     assert.deepEqual($("#communityLadders .communityLaddersSection").eq(0).find(".communityLadderButton").map((i, a) => $(a).text()).get(),
         ["AWP World Tour", "P/R League", "Seasonal Ladder", "Titled Tuesday"], "the players list keeps its order");
+});
+
+test("a series' standings take the leader's place: a division's top three, group leaders, or the clans still in", () => {
+    const { ctx, dom } = laddersPage();
+    const text = (html) => { const div = dom.window.document.createElement("div"); div.innerHTML = html; return div.textContent; };
+    const league = { kind: "clan_league", current: { status: "finished", winner: { name: "Optimum", url: "/o" }, next_event_at: null,
+        standings: { label: "Division A", entries: [{ place: 1, name: "Optimum", url: "/o", points: 141 }, { place: 2, name: "MASTER Clan", url: "/m", points: 116 }, { place: 3, name: "Harmony", url: null, points: 116 }] } } };
+    assert.equal(text(ctx.seriesDetailHtml(league, 0)), "Division A: 1. Optimum 141 · 2. MASTER Clan 116 · 3. Harmony 116", "no Winner: line next to them");
+    const groups = { kind: "nations_cup", current: { status: "running", leader: null, standings: { label: "Group leaders", entries: [{ group: "A", name: "Spain", url: "/s", points: 21 }, { group: "B", name: "Poland B", url: "/p", points: 15 }] } } };
+    assert.equal(text(ctx.seriesDetailHtml(groups, 0)), "Group leaders: A Spain 21 · B Poland B 15");
+    const cup = { kind: "clan_cup", current: { status: "running", leader: null, standings: { label: "Still in", entries: [{ name: "X", url: "/x", wins: 2, losses: 0 }, { name: "Kugel", url: "/k" }] } } };
+    assert.equal(text(ctx.seriesDetailHtml(cup, 0)), "Still in: X 2–0 · Kugel");
+    const empty = { kind: "clan_league", current: { status: "running", leader: { name: "Optimum", url: "/o" }, standings: { label: "Division A", entries: [] } } };
+    assert.equal(text(ctx.seriesDetailHtml(empty, 0)), "Leader: Optimum", "no entries, so the leader stays");
 });
 
 test("series times without a zone are UTC, and the countdown reads them that way", () => {
