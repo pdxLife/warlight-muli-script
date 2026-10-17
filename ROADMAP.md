@@ -185,7 +185,8 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
 - [ ] **A site on GitHub Pages** (`docs/` on `main`, plain HTML, no build), mainly to host the images for a forum post about the script: war.app's forum holds no media, and most of the images in Muli's original thread no longer load (deleted from imgur and postimg, or blocked as plain `http`).
   - Images as PNG (stills) and GIF (animations); war.app's forum can't play video and its phone app doesn't show SVG. About 700px wide, GIFs under about 3 MB.
   - A home page with the Install button, the images with short captions and a link to the forum thread; interactive demos running the script's own functions on sample markup can come later.
-  - Test one PNG and one GIF in a forum preview and in war.app's phone app before writing the post.
+  - [x] Skeleton: `docs/index.html` (Install button, feature cards, a screenshot, credit and the fan-project note), `docs/.nojekyll`, and test images in `docs/media/test/`. `PUBLISHING.md` is the step-by-step guide: turning on Pages, checking the site, testing images in a forum preview and the phone app, adding images later, and how it all works.
+  - [ ] Turn on Pages (Settings → Pages → `main` / `/docs`) and test `media/test/test.png` and `test.gif` in a forum preview and in war.app's phone app, following `PUBLISHING.md`.
   - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
 - [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
 
