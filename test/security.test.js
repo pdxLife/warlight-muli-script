@@ -130,5 +130,4 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
     const container = render(ctx.renderAwpLadderRow({ year: PAYLOAD, rankings: [evil, { ...evil, player_id: "5" }] }, "5"));
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
-    assert.deepEqual([...container.querySelectorAll("a[href^='/'], a[href='#']")].map((a) => a.getAttribute("href")), ["#", "/Profile?p=5"]);
 });

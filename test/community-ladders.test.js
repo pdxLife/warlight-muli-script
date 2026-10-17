@@ -48,7 +48,7 @@ function laddersPage({ response = rankings, fail = false, playerId = "2921525624
     return { ctx, dom, $, requests, logs };
 }
 
-test("the Ladders page gets an AWP World Tour row with the top three and your place", async () => {
+test("the Ladders page gets an AWP World Tour row with the race, its size and your place", async () => {
     const { ctx, $, requests } = laddersPage();
     ctx.setupCommunityLadders();
     await flush();
@@ -59,11 +59,8 @@ test("the Ladders page gets an AWP World Tour row with the top three and your pl
     assert.equal(row.find(".communityLadderButton").text(), "AWP World Tour");
     assert.equal(row.find(".communityLadderButton").attr("href"), "https://awp.wl-stats.com/rankings");
     assert.match(row.text(), /2026 race · 5 players/);
-    assert.match(row.text(), /1\. tornado 5,765 · 2\. Arsene Wenger 3,720 · 3\. CONSEQUENCER 3,265/);
-    assert.ok(!row.text().includes("Fourth"));
-    assert.deepEqual(row.find("a[href^='/Profile']").map((i, a) => $(a).attr("href")).get(),
-        ["/Profile?p=3678797622", "/Profile?p=58117225775", "/Profile?p=7733320768"]);
-    assert.match(row.text(), /You: #144 · 55 points/);
+    assert.equal(row.find(".communityLadderText").children().map((i, line) => $(line).text()).get().join(" | "), "2026 race · 5 players | You: #144 · 55 points");
+    assert.ok(!row.text().includes("tornado"), "no top three");
 });
 
 test("a signed-in player outside the race is told so, and a signed-out visitor gets no you line", async () => {

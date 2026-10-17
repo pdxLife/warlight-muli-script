@@ -2645,10 +2645,6 @@ function renderAwpLadderRow(rankings, playerId) {
     var points = function (value) {
         return htmlEscape(typeof value === "number" ? value.toLocaleString("en-US") : value);
     };
-    var leaders = list.slice(0, 3).map(function (entry) {
-        var id = String(entry.player_id);
-        return htmlEscape(entry.rank) + '. <a href="' + (/^\d+$/.test(id) ? "/Profile?p=" + id : "#") + '">' + htmlEscape(entry.player_name) + '</a> <span class="tuydMuted">' + points(entry.points) + '</span>';
-    }).join(" · ");
     var mine = playerId && list.filter(function (entry) {
         return String(entry.player_id) === playerId;
     })[0];
@@ -2659,7 +2655,6 @@ function renderAwpLadderRow(rankings, playerId) {
         name: "AWP World Tour",
         url: AWP_SITE + "/rankings",
         statusHtml: htmlEscape(rankings.year) + " race · " + htmlEscape(list.length) + " players",
-        detailHtml: leaders,
         youHtml: you
     });
 }
