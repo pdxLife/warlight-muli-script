@@ -94,6 +94,25 @@ A and B show the Ladders panel, where a blue box and then a gold box appear. C a
 | Only C shows | The app shows still GIFs only; animations go to PNG step strips in the post, with the GIFs on the site. |
 | None of A–C show | The app shows no GIFs; the post uses PNG (and JPG if D shows), with the GIFs linked on the site. |
 
+### Animated PNG (APNG)
+
+An APNG is a PNG file with extra frames inside. Browsers play it; image viewers that don't know
+APNG show its first frame as a plain PNG. If war.app's app does the latter, posts can use APNGs:
+moving in browsers, a still in the app.
+
+```
+E, animated PNG:
+[img]https://pdxlife.github.io/warlight-muli-script/media/test/test-apng.png[/img]
+```
+
+It's the Ladders panel where a blue box, then a gold box, appear (1.2 seconds per step), then it
+starts over. Check two things:
+
+| Where | Expected |
+|---|---|
+| Forum **Preview** in the browser | It moves. |
+| war.app's phone app (a real post) | It shows, at least as the panel without the boxes. |
+
 ## Adding images later
 
 1. Put the file in `docs/media/` (not `test/`), with a lowercase name made of words and dashes, e.g. `ladders-panel.png` or `open-games-filter-strip.png`. Videos for the site go in `docs/media/video/` as `.mp4`.

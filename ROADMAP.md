@@ -188,6 +188,7 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
   - [x] Skeleton: `docs/index.html` (Install button, feature cards, a screenshot, credit and the fan-project note), `docs/.nojekyll`, and test images in `docs/media/test/`. `PUBLISHING.md` is the step-by-step guide: turning on Pages, checking the site, testing images in a forum preview and the phone app, adding images later, and how it all works.
   - [x] Pages is on (`main` / `/docs`). In a forum preview in the browser, the PNG and GIF both show and the GIF animates. In war.app's phone app the PNG shows but the hand-encoded `test.gif` doesn't.
   - [x] Tested GIFs from gifski and ffmpeg, a single-frame GIF and a JPG in the phone app: only the JPG showed. The app shows no GIFs at all, so posts use PNG and JPG; motion is a PNG step strip in the post with a "See it in motion" link to an MP4 on the site.
+  - [ ] Test an animated PNG (`media/test/test-apng.png`): browsers play APNG, and decoders that don't know it show the first frame, so if the app shows it, motion in posts can be APNG instead of step strips.
   - [ ] Capture the stills and step strips on the maintainer's account, with other players' names blurred where they aren't public standings; MP4s for the site.
   - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
 - [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
