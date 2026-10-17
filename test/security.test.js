@@ -102,3 +102,24 @@ test("profile text such as a player's bio stays text when stat sections are made
     assertInert(dom.window.document.body);
     assert.equal(dom.window.document.body.textContent.split(PAYLOAD).length - 1, 2);
 });
+
+test("AWP World Tour stats escape API data", () => {
+    const ctx = load(["renderAwpStats", "htmlEscape", "safeUrl", "getRankText"]);
+    const html = ctx.renderAwpStats({
+        player_name: PAYLOAD, clan: PAYLOAD, page_url: "javascript:alert(1)", rank: PAYLOAD, rank_year: PAYLOAD, rank_12_months: PAYLOAD,
+        stats: { games: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, win_pct: PAYLOAD, tournaments: PAYLOAD, titles: PAYLOAD, finals: PAYLOAD, world_titles: PAYLOAD, best_placement: PAYLOAD }
+    });
+    const container = render(html);
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.equal(container.querySelector("a").getAttribute("href"), "#");
+});
+
+test("custom.wl-stats.com tournament links escape API data", () => {
+    const ctx = load(["renderCustomTournamentLink", "htmlEscape", "safeUrl"]);
+    const container = render(ctx.renderCustomTournamentLink({ name: PAYLOAD, url: "javascript:alert(1)", series: { name: PAYLOAD, url: "data:text/html,x" } }));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.deepEqual([...container.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["#", "#"]);
+    assert.equal(container.querySelector("a").getAttribute("title"), PAYLOAD);
+});

@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @match https://*.warzone.com/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.14.5
+// @version 3.15.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -18,11 +18,14 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.14.5';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.15.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
 var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
+var AWP_SITE = "https://awp.wl-stats.com";
+var CUSTOM_SITE = "https://custom.wl-stats.com";
+var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -2360,6 +2363,72 @@ function loadPrivateNotes() {
     });
 }
 
+// Resolves with null for a player or tournament wl-stats doesn't know (404), so nothing is shown for it.
+function fetchWlStats(url) {
+    var key = "tidyUpYourDashboard.wlStats:" + url;
+    try {
+        var cached = JSON.parse(sessionStorage.getItem(key));
+        if (cached && Date.now() - cached.at < WL_STATS_CACHE_MS) {
+            return $.Deferred().resolve(cached.data).promise();
+        }
+    } catch (e) {
+    }
+    var remember = function (data) {
+        try {
+            sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), data: data }));
+        } catch (e) {
+        }
+        return data;
+    };
+    // jQuery 1.x's then() keeps a failure failed unless the filter returns a resolved promise.
+    return $.ajax({ url: url, dataType: "json" }).then(remember, function (xhr) {
+        return xhr && xhr.status === 404 ? $.Deferred().resolve(remember(null)) : $.Deferred().reject(xhr);
+    });
+}
+
+function setupAwpProfileStats() {
+    var match = location.href.match(/[?&]p=(\d+)/i);
+    if (!match) {
+        return;
+    }
+    fetchWlStats(AWP_SITE + "/api/v1/players/" + match[1] + "/stats").done(function (player) {
+        if (!player || !player.stats || $("#awpStats").length) {
+            return;
+        }
+        var notes = $("#privateNotes");
+        (notes.length ? notes : $("#FeedbackMsg")).first().after(renderAwpStats(player));
+    }).fail(function (xhr) {
+        log("Error loading AWP World Tour stats: " + (xhr && xhr.statusText));
+    });
+}
+
+function renderAwpStats(player) {
+    var stats = player.stats;
+    var rank = function (value) {
+        return value ? "#" + htmlEscape(value) : "Unranked";
+    };
+    var rows = [
+        [htmlEscape(player.rank_year || "") + " race", rank(player.rank)],
+        ["Last 12 months", rank(player.rank_12_months)],
+        ["Games", stats.games
+            ? htmlEscape(stats.games) + " (" + htmlEscape(stats.wins) + " W, " + htmlEscape(stats.losses) + " L, " + htmlEscape(stats.win_pct) + "%)"
+            : "None yet"],
+        ["Tournaments", htmlEscape(stats.tournaments || 0)],
+        ["Titles", htmlEscape(stats.titles || 0) + (stats.finals ? " (" + htmlEscape(stats.finals) + " final" + (stats.finals == 1 ? "" : "s") + ")" : "")]
+    ];
+    if (stats.world_titles) {
+        rows.push(["World titles", htmlEscape(stats.world_titles)]);
+    }
+    if (stats.best_placement) {
+        rows.push(["Best placement", htmlEscape(getRankText(stats.best_placement))]);
+    }
+    return '<div class="profileBox" id="awpStats"><h3>AWP World Tour</h3><table class="table table-sm" style="width: auto"><tbody>' +
+        rows.map(function (row) {
+            return '<tr><td class="text-muted">' + row[0] + '</td><td>' + row[1] + '</td></tr>';
+        }).join("") +
+        '</tbody></table><a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(player.page_url)) + '">More on awp.wl-stats.com</a></div>';
+}
+
 function displayTrophies() {
     var trophies = {
         5286630035: ["Get on the immediate roadmap"]
@@ -2464,6 +2533,7 @@ function pageFeatures() {
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
+        { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
@@ -2471,6 +2541,7 @@ function pageFeatures() {
         { name: "Collapse blank lines", section: "Profile", match: pageIsProfile, run: hideExtraBlanks },
         { name: "Trophies", section: "Profile", match: pageIsProfile, run: displayTrophies },
         { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
+        { name: "AWP World Tour stats", section: "Profile", match: pageIsProfile, run: setupAwpProfileStats },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];
@@ -2775,6 +2846,39 @@ function setupTournamentPage() {
         }
         addTournamentPlayerControls(tournamentId);
     });
+}
+
+function setupCustomTournamentLink() {
+    var tournaments = {};
+    var show = function (tournamentId) {
+        var tournament = tournaments[tournamentId];
+        var slot = tournament && tournamentInfoSlot(tournamentId);
+        if (slot && slot.children(".customTournamentLink").length === 0) {
+            slot.append(renderCustomTournamentLink(tournament));
+        }
+    };
+    whileOnTournament(function (tournamentId) {
+        if (!(tournamentId in tournaments)) {
+            tournaments[tournamentId] = null;
+            fetchWlStats(CUSTOM_SITE + "/api/v1/warapp-tournaments/" + tournamentId).done(function (tournament) {
+                tournaments[tournamentId] = tournament;
+                if (currentTournamentId() === tournamentId) {
+                    show(tournamentId);
+                }
+            }).fail(function (xhr) {
+                log("Error loading the custom.wl-stats.com tournament: " + (xhr && xhr.statusText));
+            });
+        }
+        show(tournamentId);
+    });
+}
+
+function renderCustomTournamentLink(tournament) {
+    var link = '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.url)) + '" title="' + htmlEscape(tournament.name) + '">custom.wl-stats.com</a>';
+    var series = tournament.series && tournament.series.name
+        ? ' (<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.series.url)) + '">' + htmlEscape(tournament.series.name) + '</a>)'
+        : "";
+    return '<span class="customTournamentLink"> | ' + link + series + '</span>';
 }
 
 function addTournamentPlayerControls(tournamentId) {
