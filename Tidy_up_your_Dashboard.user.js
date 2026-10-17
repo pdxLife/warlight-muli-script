@@ -3264,7 +3264,9 @@ function seriesDetailHtml(series, now) {
     var details = [];
     var finished = current.status === "finished";
     var lead = finished ? current.winner : current.leader;
-    var standings = standingsHtml(current.standings);
+    // A knockout's squads are too many names; its round, linking to the bracket, says where it stands.
+    var standings = series.kind === "clan_cup" ? (current.status === "running" && current.standings && current.standings.label ? siteLink(current.url, current.standings.label) : "")
+        : standingsHtml(current.standings);
     if (standings) {
         details.push(standings);
     } else if (lead && lead.name) {
@@ -3277,8 +3279,7 @@ function seriesDetailHtml(series, now) {
 }
 
 // custom.wl-stats.com's short standings for formats with no single leader: a division's top
-// three, each group's leader, or the squads still in a knockout. A Clan Cup entry is a squad,
-// named as in the bracket, linking to its clan.
+// three or each group's leader.
 function standingsHtml(standings) {
     var entries = standings && Array.isArray(standings.entries) ? standings.entries.filter(function (entry) {
         return entry && entry.name;
@@ -3290,10 +3291,7 @@ function standingsHtml(standings) {
         var prefix = entry.group ? '<span class="tuydMuted">' + htmlEscape(entry.group) + '</span> ' : entry.place ? htmlEscape(entry.place) + ". " : "";
         var score = entry.points != null ? " " + formatCount(entry.points)
             : entry.wins != null && entry.losses != null ? " " + htmlEscape(entry.wins) + "–" + htmlEscape(entry.losses) : "";
-        var clan = entry.clan && entry.clan !== entry.name ? ' title="' + htmlEscape(entry.clan) + '"' : "";
-        var name = entry.url ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(entry.url)) + '"' + clan + '>' + htmlEscape(entry.name) + '</a>'
-            : '<span' + clan + '>' + htmlEscape(entry.name) + '</span>';
-        return prefix + name + score;
+        return prefix + (entry.url ? seriesLink(entry) : htmlEscape(entry.name)) + score;
     }).join(" · ");
 }
 

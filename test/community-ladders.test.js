@@ -239,14 +239,12 @@ test("a series' standings take the leader's place: a division's top three, group
     assert.equal(text(ctx.seriesDetailHtml(league, 0)), "Division A: 1. Optimum 141 · 2. MASTER Clan 116 · 3. Harmony 116", "no Winner: line next to them");
     const groups = { kind: "nations_cup", current: { status: "running", leader: null, standings: { label: "Group leaders", entries: [{ group: "A", name: "Spain", url: "/s", points: 21 }, { group: "B", name: "Poland B", url: "/p", points: 15 }] } } };
     assert.equal(text(ctx.seriesDetailHtml(groups, 0)), "Group leaders: A Spain 21 · B Poland B 15");
-    const cup = { kind: "clan_cup", current: { status: "running", leader: null, standings: { label: "Quarterfinals", entries: [
-        { name: "X", clan: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum", wins: 2, losses: 0 }, { name: "1celandic Turtles", clan: "Icelandic Turtles", url: "/t" }, { name: "Kugel", clan: "Kugel", url: "/k" }] } } };
+    const cup = { kind: "clan_cup", current: { status: "running", url: "https://custom.wl-stats.com/series/cups/3", leader: null, standings: { label: "Quarterfinals", entries: [{ name: "X", url: "/x" }] } } };
     const cupHtml = ctx.seriesDetailHtml(cup, 0);
-    assert.equal(text(cupHtml), "Quarterfinals: X 2–0 · 1celandic Turtles · Kugel", "squads are named as in the bracket");
-    const links = dom.window.document.createElement("div");
-    links.innerHTML = cupHtml;
-    assert.deepEqual([...links.querySelectorAll("a")].map((a) => [a.getAttribute("href"), a.getAttribute("title")]),
-        [["https://custom.wl-stats.com/clans/Optimum", "Optimum"], ["/t", "Icelandic Turtles"], ["/k", null]], "each links to its clan, named on hover when it differs");
+    assert.equal(text(cupHtml), "Quarterfinals ›", "a knockout shows its round, not its squads");
+    assert.match(cupHtml, /href="https:\/\/custom\.wl-stats\.com\/series\/cups\/3"/);
+    const finishedCup = { kind: "clan_cup", current: { status: "finished", url: "/c", winner: { name: "Optimum", url: "/o" }, standings: { label: "Final", entries: [] } } };
+    assert.equal(text(ctx.seriesDetailHtml(finishedCup, 0)), "Winner: Optimum");
     const empty = { kind: "clan_league", current: { status: "running", leader: { name: "Optimum", url: "/o" }, standings: { label: "Division A", entries: [] } } };
     assert.equal(text(ctx.seriesDetailHtml(empty, 0)), "Leader: Optimum", "no entries, so the leader stays");
 });

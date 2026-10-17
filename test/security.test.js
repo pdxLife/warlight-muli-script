@@ -140,11 +140,12 @@ test("custom.wl-stats.com series rows and Community Events lines escape API data
     const evil = {
         name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
         current: { name: PAYLOAD, url: "data:text/html,x", status: "signups", signups_close_at: PAYLOAD, next_event_at: PAYLOAD, players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, leader: link, winner: link,
-            standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", group: PAYLOAD, place: PAYLOAD, points: PAYLOAD }, { name: PAYLOAD, clan: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD }, { name: PAYLOAD, clan: PAYLOAD + "2" }] } },
+            standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", group: PAYLOAD, place: PAYLOAD, points: PAYLOAD }, { name: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD }] } },
         you: { as: "nation", name: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" }
     };
     const running = { ...evil, current: { ...evil.current, status: "running" } };
-    const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0)
+    const cup = { ...running, kind: "clan_cup" };
+    const html = ctx.renderSeriesLadderRow(evil, 0) + ctx.renderSeriesLadderRow(running, 0) + ctx.renderSeriesLadderRow(cup, 0)
         + ctx.communityEventHtml("Evil event", { series: [evil], rankings: null, playerId: null })
         + ctx.communityEventHtml("Evil event", { series: [{ ...running, you: null }], rankings: null, playerId: null })
         + ctx.communityEventHtml("AWP World Tour", { series: [], rankings: { year: PAYLOAD, rankings: [{ rank: PAYLOAD, player_id: PAYLOAD, player_name: PAYLOAD, points: PAYLOAD }] }, playerId: null });
