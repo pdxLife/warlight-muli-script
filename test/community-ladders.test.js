@@ -17,7 +17,7 @@ const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?play
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
+    "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventLine"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -85,7 +85,7 @@ function laddersPage({ response = rankings, fail = false, seriesResponse = serie
         CUSTOM_SITE,
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
         SERIES_CACHE_MS: 10 * 60 * 1000,
-        CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
+        CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -212,6 +212,25 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     assert.match(titled[1], /^Winner: CONSEQUENCER · Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
 });
 
+test("Clan League leads the clans list, ahead of the cups the server lists first", async () => {
+    const clanLeague = { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "https://custom.wl-stats.com/series/clan-league", warapp_event: "Clan League",
+        current: { name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19", status: "finished", players: 18, progress: { played: 495, total: 495 },
+            leader: null, winner: { name: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum" }, next_event_at: null },
+        you: { as: "clan", name: "Optimum", division: "A", group: null, place: 1, of: 6, wins: 39, losses: 16, points: 141, status: "champion", squad: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum" } };
+    const { ctx, $ } = laddersPage({ seriesResponse: { series: [...series.series, clanLeague] } });
+    ctx.setupCommunityLadders();
+    await flush();
+    const clans = $("#communityLadders .communityLaddersSection").eq(1);
+    assert.deepEqual(clans.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan League", "Clan Cup", "Nations Cup"]);
+    assert.deepEqual(textOf($, clans.find(".communityLadder")[0]), [
+        "Clan League 19 · finished · 18 clans · 495/495 games",
+        "Winner: Optimum",
+        "Your clan Optimum: Division A · 1st of 6 · 39–16 · 141 points · champion"
+    ]);
+    assert.deepEqual($("#communityLadders .communityLaddersSection").eq(0).find(".communityLadderButton").map((i, a) => $(a).text()).get(),
+        ["AWP World Tour", "P/R League", "Seasonal Ladder", "Titled Tuesday"], "the players list keeps its order");
+});
+
 test("series times without a zone are UTC, and the countdown reads them that way", () => {
     const ctx = load(["parseUtcTime", "timeUntil"]);
     assert.equal(ctx.parseUtcTime("2026-10-20T19:00:33").toISOString(), "2026-10-20T19:00:33.000Z");
@@ -314,7 +333,7 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
     };
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
     });
     return { ctx, dom, $, requests };
 }
@@ -347,11 +366,11 @@ test("a clan page shows the clan's squads in each current series, below the Clan
     assert.equal($("#ujs_DialogBackgroundForDropShadow_8 > #clanStandings").length, 1);
     assert.equal($("#clanStandings h3").text(), "Community events");
     const rows = $("#clanStandings .communityLadder");
-    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"], "series the clan isn't in are left out");
-    assert.equal(textOf($, rows[0])[0], "Clan Cup II · running · 23 clans · 11/15 matches");
-    assert.equal($(rows[0]).find(".communityLadderYou").text(), "1celandic Turtles: 1–0", "Clan Cup shows only the clan's best squad");
-    assert.match(textOf($, rows[1])[0], /^Clan League 20 · Signups open until .+ · 14 clans$/);
-    assert.equal(textOf($, rows[1])[1], "Icelandic Turtles: Division A · signed up");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan League", "Clan Cup"], "Clan League leads; series the clan isn't in are left out");
+    assert.equal(textOf($, rows[1])[0], "Clan Cup II · running · 23 clans · 11/15 matches");
+    assert.equal($(rows[1]).find(".communityLadderYou").text(), "1celandic Turtles: 1–0", "Clan Cup shows only the clan's best squad");
+    assert.match(textOf($, rows[0])[0], /^Clan League 20 · Signups open until .+ · 14 clans$/);
+    assert.equal(textOf($, rows[0])[1], "Icelandic Turtles: Division A · signed up");
     assert.match($("#clanStandings")[0].style.getPropertyValue("--tuyd-dialog"), /DialogBacking\.png/);
 });
 
@@ -388,7 +407,7 @@ test("in war.app's one-column layout the clan box goes below Clan Members, not o
     $.ajax = () => $.Deferred().resolve(clanSeries).promise();
     const ctx = load([...COMMUNITY_FUNCTIONS, "setupClanStandings", "renderClanStandings", "renderClanSeriesRow", "placeBelowColumn", "pageIsClanPage"], {
         ...domGlobals(dom, $), location: dom.window.location, log: () => {}, addCSS: () => {},
-        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_cup", "clan_league", "nations_cup"]
+        playerDataReady: $.Deferred().reject().promise(), AWP_SITE, CUSTOM_SITE, WL_STATS_CACHE_MS: 3600000, SERIES_CACHE_MS: 600000, CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"]
     });
     ctx.setupClanStandings();
     await flush();
@@ -402,15 +421,15 @@ test("a clan page shows the clan's last Clan League, even long finished, and how
     await flush();
     await flush();
     const rows = $("#clanStandings .communityLadder");
-    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"]);
-    assert.deepEqual(textOf($, rows[1]), [
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan League", "Clan Cup"]);
+    assert.deepEqual(textOf($, rows[0]), [
         "Clan League 19 · finished · 18 clans",
         "Winner: Optimum",
         "Optimum: Division A · 1st of 6 · 39–16 · 141 points · champion🏆 Champion ×2: Clan League 19, Clan League 18"
     ]);
-    assert.deepEqual($(rows[1]).find(".tuydClanTitles a").map((i, a) => $(a).attr("href")).get(),
+    assert.deepEqual($(rows[0]).find(".tuydClanTitles a").map((i, a) => $(a).attr("href")).get(),
         ["https://custom.wl-stats.com/series/clan-league/seasons/19", "https://custom.wl-stats.com/series/clan-league/seasons/18"]);
-    assert.equal($(rows[0]).find(".tuydClanTitles").length, 0, "no title line for a clan that never won");
+    assert.equal($(rows[1]).find(".tuydClanTitles").length, 0, "no title line for a clan that never won");
 });
 
 test("on a wide page the panel leaves war.app's 600px viewport and centers under the ladders, wider than the dialog", async () => {

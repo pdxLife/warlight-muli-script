@@ -29,7 +29,7 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
-var CLAN_SERIES_KINDS = ["clan_cup", "clan_league", "nations_cup"];
+var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
@@ -2149,7 +2149,7 @@ function setupClanStandings() {
             });
             return;
         }
-        var rows = (clans[name] || []).filter(function (series) {
+        var rows = inClanSeriesOrder(clans[name] || []).filter(function (series) {
             return series.current && Array.isArray(series.squads) && series.squads.length;
         }).map(renderClanSeriesRow);
         var dialog = $(ujsElement("ClanWarsSection")).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
@@ -2187,6 +2187,17 @@ function placeBelowColumn(panel, dialog, scene) {
         }
     });
     panel.css({ width: dialog.outerWidth() + "px", top: Math.round(lowest - box.bottom) + 10 + "px" });
+}
+
+// Clan League is the biggest clan event, so it leads; other series keep the server's order.
+function inClanSeriesOrder(list) {
+    var rank = function (series) {
+        var i = CLAN_SERIES_KINDS.indexOf(series.kind);
+        return i === -1 ? CLAN_SERIES_KINDS.length : i;
+    };
+    return list.slice().sort(function (a, b) {
+        return rank(a) - rank(b);
+    });
 }
 
 function renderClanStandings(rows) {
@@ -2834,7 +2845,7 @@ function setupCommunityLadders() {
             if (data.rankings) {
                 rows.players.push(renderAwpLadderRow(data.rankings, data.playerId));
             }
-            data.series.forEach(function (series) {
+            inClanSeriesOrder(data.series).forEach(function (series) {
                 if (series.current) {
                     rows[CLAN_SERIES_KINDS.indexOf(series.kind) !== -1 ? "clans" : "players"].push(renderSeriesLadderRow(series, Date.now()));
                 }
