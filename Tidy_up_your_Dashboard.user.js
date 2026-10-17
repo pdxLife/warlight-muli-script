@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.23.2
+// @version 3.23.3
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -30,6 +30,7 @@ var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
 var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
+var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
@@ -3253,6 +3254,9 @@ function standingParts(kind, you) {
 
 function seriesStatusHtml(series) {
     var current = series.current;
+    if (series.kind === "events") {
+        return weeklyEventStatusHtml(current);
+    }
     var units = { nations_cup: "teams", clan_cup: "clans", clan_league: "clans" }[series.kind] || "players";
     var status = [htmlEscape(current.name), current.status === "signups" ? signupsHtml(current) : current.status === "running" ? "running" : "finished"];
     if (current.players) {
@@ -3268,9 +3272,9 @@ function seriesDetailHtml(series, now) {
     var current = series.current;
     var details = [];
     var finished = current.status === "finished";
-    var lead = finished ? current.winner : current.leader;
-    // A knockout's squads are too many names; its round, linking to the bracket, says where it stands.
-    var standings = series.kind === "clan_cup" ? (current.status === "running" && current.standings && current.standings.label ? siteLink(current.url, current.standings.label) : "")
+    var lead = series.kind === "events" ? null : finished ? current.winner : current.leader;
+    // Cups played in rounds or stages have too many names to list; the stage, linking to the bracket, says where they stand.
+    var standings = STAGED_SERIES_KINDS.indexOf(series.kind) !== -1 ? (current.status === "running" && current.stage ? siteLink(current.url, current.stage) : "")
         : standingsHtml(current.standings);
     if (standings) {
         details.push(standings);
@@ -3281,6 +3285,19 @@ function seriesDetailHtml(series, now) {
         details.push("Next: " + htmlEscape(formatEventTime(current.next_event_at)) + " (" + htmlEscape(timeUntil(current.next_event_at, now)) + ")");
     }
     return details.join(" · ");
+}
+
+// A weekly series is about its last (or current) event and the next one, not a winner.
+function weeklyEventStatusHtml(current) {
+    var running = current.status === "running";
+    var status = [(running ? "Now: " : "Last: ") + seriesLink({ name: current.name, url: current.url })];
+    if (current.players) {
+        status.push(formatCount(current.players) + " players");
+    }
+    if (running && current.progress) {
+        status.push(formatCount(current.progress.played) + "/" + formatCount(current.progress.total) + " games");
+    }
+    return status.join(" · ");
 }
 
 // custom.wl-stats.com's short standings for formats with no single leader: a division's top
@@ -3415,9 +3432,20 @@ function seriesEventLines(title, community) {
     return {
         status: status,
         detail: seriesDetailHtml(series, Date.now()),
-        bottom: series.you ? seriesYouHtml(series)
-            : siteLink(current.url, current.status === "signups" ? "Sign up on custom.wl-stats.com" : "Full standings on custom.wl-stats.com")
+        bottom: series.you ? seriesYouHtml(series) : moreLinkHtml(series)
     };
+}
+
+// The card's link beside "You can join!", unless a line above already opens the same page.
+function moreLinkHtml(series) {
+    var current = series.current;
+    if (series.kind === "events") {
+        return siteLink(series.url, "All events on custom.wl-stats.com");
+    }
+    if (STAGED_SERIES_KINDS.indexOf(series.kind) !== -1 && current.status === "running" && current.stage) {
+        return "";
+    }
+    return siteLink(current.url, current.status === "signups" ? "Sign up on custom.wl-stats.com" : "Full standings on custom.wl-stats.com");
 }
 
 function displayTrophies() {

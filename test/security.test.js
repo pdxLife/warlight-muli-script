@@ -134,8 +134,8 @@ test("the AWP World Tour row on the Ladders page escapes API data", () => {
 
 test("custom.wl-stats.com series rows and Community Events lines escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["renderSeriesLadderRow", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "seriesLink", "signupsHtml",
-        "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $, AWP_SITE: "https://awp.wl-stats.com" });
+    const ctx = load(["renderSeriesLadderRow", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "seriesLink", "signupsHtml",
+        "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "awpStanding", "getRankText", "htmlEscape", "safeUrl"], { $, AWP_SITE: "https://awp.wl-stats.com", STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"] });
     const link = { name: PAYLOAD, url: "javascript:alert(1)" };
     const evil = {
         name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
@@ -167,8 +167,8 @@ test("custom.wl-stats.com profile stats escape API data", () => {
 });
 
 test("My Games badges and clan standings escape API data", () => {
-    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
-        "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl"]);
+    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
+        "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl", "siteLink"], { STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"] });
     const badge = render(ctx.renderEventBadge({ game_id: PAYLOAD, series: PAYLOAD, label: PAYLOAD, url: "javascript:alert(1)" }));
     assertInert(badge);
     assert.ok(badge.textContent.includes(PAYLOAD));
