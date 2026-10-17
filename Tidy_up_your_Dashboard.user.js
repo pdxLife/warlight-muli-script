@@ -2130,34 +2130,35 @@ function setupEventBadges() {
     });
 }
 
-// The dashboard stretches a game's name link over its whole cell (clickable rows), so the badge
-// gets a line of its own under the name instead of sitting next to it as another link would.
+// The badge sits in the top-right corner of the game's cell, in its own element: the dashboard
+// stretches every link directly in that cell over the whole cell (clickable rows). The name link
+// gets room on the right so a long name wraps before running under the badge.
 function markEventGames(games) {
     $("#MyGamesTable tr.GameRow").each(function () {
         var link = $(this).find("a[href*='GameID=']").last();
         var match = /[?&]GameID=(\d+)/i.exec(link.attr("href") || "");
         var game = match && games[match[1]];
-        var line = $(this).find(".tuydEventBadgeLine");
+        var cell = link.closest("td");
+        var corner = cell.children(".tuydEventBadgeCorner");
         if (!game) {
-            line.remove();
-        } else if (line.attr("data-game-id") !== match[1]) {
-            line.remove();
-            var html = '<div class="tuydEventBadgeLine" data-game-id="' + htmlEscape(match[1]) + '">' + renderEventBadge(game) + '</div>';
-            var lineBreak = link.nextAll("br").first();
-            if (lineBreak.length) {
-                lineBreak.after(html);
-            } else {
-                link.after(html);
-            }
+            corner.remove();
+            cell.removeClass("tuydHasEventBadge");
+            link.removeClass("tuydNameBesideBadge");
+        } else if (corner.attr("data-game-id") !== match[1]) {
+            corner.remove();
+            cell.addClass("tuydHasEventBadge").append('<span class="tuydEventBadgeCorner" data-game-id="' + htmlEscape(match[1]) + '">' + renderEventBadge(game) + '</span>');
+            link.addClass("tuydNameBesideBadge");
         }
     });
 }
 
+// The badge shows the series' short name; the full label is its tooltip.
 function renderEventBadge(game) {
     var label = String(game.label || "");
     var series = String(game.series || "");
-    var text = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
-    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(text) + '">' + htmlEscape(text) + '</a>';
+    var full = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
+    var text = { "AWP World Tour": "AWP Tour" }[series] || series || label;
+    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(full) + '">' + htmlEscape(text) + '</a>';
 }
 
 function addCSS(css) {
@@ -2899,14 +2900,23 @@ function addCommunityLaddersStyles() {
         .tuydEventStanding .communityLadderSignups {
             color: #e0c060;
         }
-        .tuydEventBadgeLine {
+        .tuydHasEventBadge {
             position: relative;
-            z-index: 1;
-            line-height: 18px;
+        }
+        .tuydEventBadgeCorner {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 2;
+            line-height: 16px;
+        }
+        .tuydNameBesideBadge {
+            box-sizing: border-box;
+            padding-right: 120px !important;
         }
         .tuydEventBadge {
             display: inline-block;
-            max-width: 100%;
+            max-width: 110px;
             padding: 1px 6px;
             overflow: hidden;
             text-overflow: ellipsis;

@@ -2,6 +2,7 @@
 
 ## 3.22.0
 
+- **Event badges on My Games moved to the game's top-right corner and say just the series:** "Nations Cup", "AWP Tour", "P/R League", "Titled Tuesday". The full label ("Nations Cup 2026 · Group C") shows when you hover the badge, and the game's name wraps before running under it.
 - **The Community ladders & leagues panel has two lists:** Players (AWP World Tour, P/R League, Seasonal Ladder, Titled Tuesday) and Clans & nations (Clan Cup, Clan League, Nations Cup). On a wide window the panel is wider than war.app's ladders, up to about 1,040px, and the lists sit side by side, so all the series fit without scrolling; on a narrower one they stack at the ladders' width.
 
 ## 3.21.1
