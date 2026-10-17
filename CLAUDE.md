@@ -12,7 +12,7 @@ npm run check      # syntax check of the userscript
 
 To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
 
-`docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. Images there are PNG or GIF (war.app's forum can't play video and its phone app doesn't show SVG), and a file a forum post uses must never be renamed or deleted.
+`docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. Images used in forum posts are PNG or JPG only: war.app's phone app shows neither SVG nor GIF (tested), and the forum can't play video. Motion goes in a post as a PNG step strip linking to an MP4 on the site. A file a forum post uses must never be renamed or deleted.
 
 ## How the script is put together
 

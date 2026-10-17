@@ -183,11 +183,13 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
 - [x] **New version notice** *(3.20.0)*: a daily check of the script's version on GitHub (raw.githubusercontent.com serves it to any site), the corner version label becomes a gold "Update to …" link to the `.user.js`, so Tampermonkey shows its update screen; nothing else on the page changes. Retries after an hour if GitHub can't be reached. Switch: Features → Other.
 - [x] **AWP badges on My Games** *(3.21.0)*: from awp.wl-stats.com's `GET /api/v1/players/{id}/games` (same shape as custom's), in gold next to custom's blue. Both sites are asked side by side (`settleRequest()`), so one being down doesn't hide the other's badges.
 - [ ] **A site on GitHub Pages** (`docs/` on `main`, plain HTML, no build), mainly to host the images for a forum post about the script: war.app's forum holds no media, and most of the images in Muli's original thread no longer load (deleted from imgur and postimg, or blocked as plain `http`).
-  - Images as PNG (stills) and GIF (animations); war.app's forum can't play video and its phone app doesn't show SVG. About 700px wide, GIFs under about 3 MB.
+  - Images in posts as PNG (or JPG): war.app's forum can't play video, and its phone app shows neither SVG nor GIF. About 700px wide, under about 1 MB each.
   - A home page with the Install button, the images with short captions and a link to the forum thread; interactive demos running the script's own functions on sample markup can come later.
   - [x] Skeleton: `docs/index.html` (Install button, feature cards, a screenshot, credit and the fan-project note), `docs/.nojekyll`, and test images in `docs/media/test/`. `PUBLISHING.md` is the step-by-step guide: turning on Pages, checking the site, testing images in a forum preview and the phone app, adding images later, and how it all works.
   - [x] Pages is on (`main` / `/docs`). In a forum preview in the browser, the PNG and GIF both show and the GIF animates. In war.app's phone app the PNG shows but the hand-encoded `test.gif` doesn't.
-  - [ ] Test GIFs made by gifski and ffmpeg, a single-frame GIF and a JPG in the phone app (`PUBLISHING.md`, "Which GIFs the app shows"), then make the real images to match.
+  - [x] Tested GIFs from gifski and ffmpeg, a single-frame GIF and a JPG in the phone app: only the JPG showed. The app shows no GIFs at all, so posts use PNG and JPG; motion is a PNG step strip in the post with a "See it in motion" link to an MP4 on the site.
+  - [ ] Test an animated PNG (`media/test/test-apng.png`): browsers play APNG, and decoders that don't know it show the first frame, so if the app shows it, motion in posts can be APNG instead of step strips.
+  - [ ] Capture the stills and step strips on the maintainer's account, with other players' names blurred where they aren't public standings; MP4s for the site.
   - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
 - [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
 
