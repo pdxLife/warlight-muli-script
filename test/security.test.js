@@ -150,3 +150,14 @@ test("custom.wl-stats.com series rows, the Seasonal line and Community Events li
     assert.ok(container.textContent.includes(PAYLOAD));
     assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"), container.innerHTML);
 });
+
+test("custom.wl-stats.com profile stats escape API data", () => {
+    const ctx = load(["renderCustomStats", "htmlEscape", "safeUrl", "getRankText"]);
+    const container = render(ctx.renderCustomStats({
+        stats: { games: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, win_pct: PAYLOAD, tournaments: PAYLOAD, titles: PAYLOAD, finals: PAYLOAD, best_placement: PAYLOAD, organized: PAYLOAD,
+            by_format: [{ label: PAYLOAD, played: 3, won: PAYLOAD, win_pct: PAYLOAD }] }
+    }, "javascript:alert(1)"));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.equal(container.querySelector("a").getAttribute("href"), "#");
+});

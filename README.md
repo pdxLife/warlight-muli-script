@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.17.0  
+> **Version:** 3.18.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -15,6 +15,8 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 1. Install [Tampermonkey](https://www.tampermonkey.net/) (Chrome/Edge/Firefox) or a compatible userscript manager.
 2. Open [`Tidy_up_your_Dashboard.user.js`](Tidy_up_your_Dashboard.user.js) and click **Raw** — your userscript manager will prompt to install.
 3. Navigate to [war.app](https://war.app) and the script loads automatically.
+
+The script is for war.app in a desktop browser. It doesn't run in war.app's phone app, and war.app sends phone browsers on most multiplayer pages to its app page. A narrow desktop window works: additions follow war.app's compact layout or step aside where there's no room.
 
 ## Features
 
@@ -60,6 +62,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 
 - **Collapsible stat sections** — click any section header to expand/collapse.
 - **AWP World Tour stats** — for a player who has played on the [AWP World Tour](https://awp.wl-stats.com), a box with their place in this year's race and in the 12-month ranking, games and win rate, tournaments, titles and best placement, with a link to their page on awp.wl-stats.com.
+- **Community tournament stats** — for a player [custom.wl-stats.com](https://custom.wl-stats.com) knows, a "Community tournaments" box below the AWP one: games and win rate, tournaments, titles, best placement, tournaments organized, and their record in their three most played formats (e.g. Clan league, Single elimination, Nations Cup), with a link to their page there.
 - **MTL ladder stats** *(opt-in, via maak.ch)* — shows your best/current rank and rating from the community [Multi-Template Ladder](https://www.warlight-mtl.com/) (MTL).
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — on another player's profile, shows the private note you keep about them on war.app (the profile's "Private Notes" link). The notes are stored by war.app on your account; the script only displays them.
@@ -129,7 +132,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 ## Other sites the script contacts
 
 - **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
-- **custom.wl-stats.com**: when you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
+- **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 
 Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Profile, Tournaments and Community). maak.ch is contacted only if you turn on its setting.
 

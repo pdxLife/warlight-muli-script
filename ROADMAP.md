@@ -130,7 +130,7 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
 - [x] **custom.wl-stats.com rows** *(3.17.0)*: one row per series with its season, progress, leader or winner, Titled Tuesday's next start (local time, with a countdown) and your line. One request with your player ID, kept for 10 minutes; AWP and custom load side by side, so one being down doesn't hide the other. The endpoint's times have no zone and are read as UTC.
 - [x] **Seasonal Ladder in war.app's own row** *(3.17.0)*: the season, its leader and your place along the row's bottom edge (your record is left out so it fits). A CSS container query hides it where the row is under 540px and shows a Seasonal Ladder row in the panel instead.
 - [x] **Signups highlight** *(3.17.0)*: "Signups open until …" in gold with a link to sign up, or "signed up".
-- [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px. Phones never see this page: war.app sends phone browsers on Multi-Player pages to its app page (`/Mobile`).
+- [x] **"You: …" on war.app's Community Events cards** *(3.17.0)*: each card whose title starts with a series' `warapp_event` gets your line at its top right (or open signups), and the AWP card gets your race rank. Hidden by a container query where a card is under 600px, which only happens in a narrow desktop window.
 - [ ] **MTL row**, once MTL runs on custom.wl-stats.com (on its roadmap, no date yet). It then comes from the same endpoint as one more series.
 
 ### Server side (custom.wl-stats.com)
@@ -162,14 +162,32 @@ Plan: a "Community ladders & leagues" panel below war.app's ladders, one row per
     - a series finished more than 30 days ago is left out;
     - one case per `kind` that has a `you`.
 
+## Phase 10 — More from custom.wl-stats.com
+
+Three more places where custom.wl-stats.com's data helps on war.app. All follow Phase 7 and 9's rules: plain JSON with CORS, no war.app cookies, every value escaped, a 404 shows nothing.
+
+- [x] **Community tournament stats on profiles** *(3.18.0)*: a "Community tournaments" box below the AWP one, from `/api/v1/players/{id}/stats` (already served with CORS): games and win %, tournaments, titles and finals, best placement, tournaments organized, and the three most played formats as rows of their own ("Clan league 33–31 (52%)"). Kept for an hour. The boxes keep the order Private Notes, AWP, Community whichever answers first (`placeProfileBox()`). Switch: Features → Profile.
+  - Server, optional: `/api/v1/players/{id}/stats` sends no `Cache-Control`; `public, max-age=3600` as on AWP would let browsers and Cloudflare keep it too.
+- [ ] **Event badges on My Games.** A small blue badge after a game's name on the dashboard, e.g. "P/R League S38", "Nations Cup · Group C" or "Titled Tuesday", linking to that event on custom, so it's clear which games count for what. Re-applied after every refresh, like boot-time sorting. My Games is plain HTML and each row links to its game, so matching by war.app game ID is sturdy.
+  - **Server side:** `GET /api/v1/players/{war.app player ID}/games` on custom.wl-stats.com, same CORS and no-credentials setup:
+    - the player's community games still in play, from the war.app game IDs custom already stores (matches, league games, fixtures);
+    - each: `game_id` (war.app's), `series` (name), `label` ("Season 38 · Group A2", "Round 2", …) and `url` (the event's page);
+    - `Cache-Control: public, max-age=300`; the script keeps it 5 minutes too.
+    - Tests: CORS; an unknown player gives an empty list; finished games and private clan tournaments never appear.
+- [ ] **Clan standings on clan pages** (`/Clans/?ID=…`, drawn client-side as `ujs_ClanScene`): the clan's line in each current series, e.g. "Clan Cup II: still in, 3–1" or "Clan League 19: Division A, 4th of 6, 112 points", in a panel next to war.app's Core Info box. The clan's name comes from the page title ("Clan: Icelandic Turtles").
+  - **Server side:** a `clan` option on `/api/v1/series` (`?clan=Icelandic%20Turtles`), returning the same list with `you` as the clan's line (`as: "clan"`). The existing `/api/v1/clans/{name}/rankings` ranks players inside a clan and doesn't cover this.
+  - The most fragile of the three: the clan page holds many hidden war.app panels (invites, manage, recovery), so the panel needs to anchor on the visible Core Info box.
+
 ## What's left
 
 In suggested order:
 
-1. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
-2. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
-3. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
-4. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
-5. **Split into modules** (Phase 3), once the feature work settles.
+1. **Event badges on My Games** (Phase 10): `/api/v1/players/{id}/games` on custom.wl-stats.com, then the badges.
+2. **Clan standings on clan pages** (Phase 10): `?clan=` on `/api/v1/series`, then the panel.
+3. **Read MTL data directly** (Phase 4), or the MTL row through custom.wl-stats.com (Phase 9). Waiting on the MTL organizers to send CORS headers; the fallback is relaying it through wl-stats (Phase 7).
+4. **Move off `@grant none`** (Phase 3). No longer needed to reach wl-stats, and possibly not for MTL either; still the way to domain-independent storage and cross-browser sync, and to the jQuery / DataTables upgrades. The biggest change, and it needs a full QA pass.
+5. **Idle helpers** (Phase 8): attention alerts first, then time to afford, best next upgrade and the Ascend helper. Each starts by checking what the Idle screen shows.
+6. **Optional cross-browser sync** (Phase 4), after the `@grant` move.
+7. **Split into modules** (Phase 3), once the feature work settles.
 
-Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_SeasonalLadder` (its own row), `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), the Community Events lines rely on `ujs_CommunityEventsScene`, `ujs_EventRow` and the card title being the first text in `ujs_vert`, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats`, `/api/v1/warapp-tournaments/{id}` and `/api/v1/series` on the wl-stats sites.
+Fragile spots to watch when war.app changes its layout (the QA checklist covers each): the tournament toolbar relies on the Players panel's 54px top border and its `pointer-events: none`, tournament features rely on war.app's `ujs_` element names, the "Show more" fix relies on `WL_MPDashInit` staying exported, boot-time sorting relies on the "Your turn for …" text, the Ladders panel relies on the `ujs_LaddersScene`, `ujs_SeasonalLadder` (its own row), `ujs_DialogBackgroundForDropShadow_img`, `ujs_LadderContainer_img` and `ujs_OneVersusOneLadder_img` elements and on war.app's CDN serving the blue `UIButton-242D9A.png` (without them it falls back to a plain frame and a flat blue button), the Community Events lines rely on `ujs_CommunityEventsScene`, `ujs_EventRow` and the card title being the first text in `ujs_vert`, and the wl-stats features rely on the response fields of `/api/v1/players/{id}/stats` (on both sites), `/api/v1/warapp-tournaments/{id}` and `/api/v1/series` on the wl-stats sites.
