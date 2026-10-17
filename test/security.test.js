@@ -140,7 +140,7 @@ test("custom.wl-stats.com series rows and Community Events lines escape API data
     const evil = {
         name: PAYLOAD, kind: PAYLOAD, url: "javascript:alert(1)", warapp_event: "Evil",
         current: { name: PAYLOAD, url: "data:text/html,x", status: "signups", signups_close_at: PAYLOAD, next_event_at: PAYLOAD, players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, leader: link, winner: link,
-            standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", group: PAYLOAD, place: PAYLOAD, points: PAYLOAD }, { name: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD }] } },
+            standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", group: PAYLOAD, place: PAYLOAD, points: PAYLOAD }, { name: PAYLOAD, clan: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD }, { name: PAYLOAD, clan: PAYLOAD + "2" }] } },
         you: { as: "nation", name: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" }
     };
     const running = { ...evil, current: { ...evil.current, status: "running" } };
