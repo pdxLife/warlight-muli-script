@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.16.0  
+> **Version:** 3.17.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -48,7 +48,9 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 
 ### Ladders
 
-- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green. It starts with the [AWP World Tour](https://awp.wl-stats.com): this year's race, how many players are in it, and your rank and points when you're signed in. P/R League, Nations Cup, Clan League and the other series run on custom.wl-stats.com will join it.
+- **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, Nations Cup, Clan Cup, Clan League, Titled Tuesday): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
+- **Seasonal Ladder season** — war.app's own Seasonal Ladder row gets the current season, its leader and your place along its bottom edge. Where that row is too narrow, the season shows as a row in the panel instead.
+- **Your standing on Community Events** — on war.app's Community Events page, the cards for events you take part in (AWP World Tour, Nations Cup, Clan Cup, Clan League, Titled Tuesdays) get your line at the top right, and events taking signups say so. Hidden when the cards are too narrow for it.
 
 ### Clans
 
@@ -127,7 +129,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 ## Other sites the script contacts
 
 - **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
-- **custom.wl-stats.com**: when you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID.
+- **custom.wl-stats.com**: when you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 
 Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Profile, Tournaments and Community). maak.ch is contacted only if you turn on its setting.
 

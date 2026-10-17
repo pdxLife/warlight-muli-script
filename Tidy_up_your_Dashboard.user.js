@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.16.0
+// @version 3.17.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @require https://code.jquery.com/jquery-1.11.2.min.js#sha256-Ls0pXSlb7AYs7evhd+VLnWsZ/AqEHcXBeMZUycz/CcA=
@@ -17,7 +17,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.16.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.17.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -25,6 +25,7 @@ var TURN_CHECK_INTERVAL = 5 * 60 * 1000;
 var AWP_SITE = "https://awp.wl-stats.com";
 var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
+var SERIES_CACHE_MS = 10 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -1974,6 +1975,10 @@ function pageIsCommunity() {
     return location.href.match(/^https?:\/\/[^\/]+\/Community/i);
 }
 
+function pageIsCommunityEvents() {
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/?\?(?:[^#]*&)?CommunityEvents=1(?:[&#]|$)/i);
+}
+
 function pageIsLadders() {
     return location.href.match(/^https?:\/\/[^\/]+\/Ladders\/?(?:[?#]|$)/i);
 }
@@ -2367,11 +2372,11 @@ function loadPrivateNotes() {
 }
 
 // Resolves with null for a player or tournament wl-stats doesn't know (404), so nothing is shown for it.
-function fetchWlStats(url) {
+function fetchWlStats(url, maxAgeMs) {
     var key = "tidyUpYourDashboard.wlStats:" + url;
     try {
         var cached = JSON.parse(sessionStorage.getItem(key));
-        if (cached && Date.now() - cached.at < WL_STATS_CACHE_MS) {
+        if (cached && Date.now() - cached.at < (maxAgeMs || WL_STATS_CACHE_MS)) {
             return $.Deferred().resolve(cached.data).promise();
         }
     } catch (e) {
@@ -2446,16 +2451,18 @@ function signedInPlayerId() {
 // panel hangs below the ladders dialog and its rows scroll on their own when the window is short.
 function setupCommunityLadders() {
     var rows = null;
+    var community = null;
     var show = function () {
         var scene = pageIsLadders() && ujsElement("LaddersScene");
-        if (!scene || !rows || !rows.length || $("#communityLadders").length) {
-            return;
-        }
-        var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
-        if (!dialog.length) {
+        if (!scene || !community) {
             return;
         }
         addCommunityLaddersStyles();
+        addSeasonalLadderLine(scene, community.series);
+        var dialog = $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").last();
+        if (!dialog.length || !rows.length || $("#communityLadders").length) {
+            return;
+        }
         var panel = $(renderCommunityLadders(rows));
         var art = laddersArt(scene);
         Object.keys(art).forEach(function (name) {
@@ -2477,15 +2484,17 @@ function setupCommunityLadders() {
             return;
         }
         rows = [];
-        signedInPlayerId().done(function (playerId) {
-            fetchWlStats(AWP_SITE + "/api/v1/rankings").done(function (rankings) {
-                if (rankings && rankings.rankings) {
-                    rows.push(renderAwpLadderRow(rankings, playerId));
-                    show();
+        loadCommunityData().done(function (data) {
+            if (data.rankings) {
+                rows.push(renderAwpLadderRow(data.rankings, data.playerId));
+            }
+            data.series.forEach(function (series) {
+                if (series.current) {
+                    rows.push(renderSeriesLadderRow(series, Date.now(), series.kind === "ladder" ? "communityLadderNarrowOnly" : ""));
                 }
-            }).fail(function (xhr) {
-                log("Error loading the AWP World Tour rankings: " + (xhr && xhr.statusText));
             });
+            community = data;
+            show();
         });
     };
     var check = function () {
@@ -2529,6 +2538,7 @@ function addCommunityLaddersStyles() {
     addCommunityLaddersStyles.done = true;
     addCSS(`
         #communityLadders {
+            container: tuydLadders / inline-size;
             position: absolute;
             top: 10px;
             left: 0;
@@ -2559,6 +2569,8 @@ function addCommunityLaddersStyles() {
         }
         #communityLadders .communityLaddersRows {
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #555 transparent;
         }
         #communityLadders .communityLadder {
             display: flex;
@@ -2613,6 +2625,54 @@ function addCommunityLaddersStyles() {
             font-size: 11px;
             color: #777;
         }
+        #communityLadders .communityLadderSignups {
+            color: #e0c060;
+        }
+        .tuydSeasonalLine {
+            position: absolute;
+            left: 165px;
+            right: 4px;
+            bottom: -8px;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            pointer-events: auto;
+            color: #9a9a9a;
+            font-size: 11.5px;
+            line-height: 13px;
+            text-shadow: 0 0 2px #000;
+        }
+        .tuydEventStanding {
+            position: absolute;
+            top: 0;
+            right: 0;
+            max-width: 50%;
+            text-align: right;
+            pointer-events: auto;
+            color: #fff;
+            font-size: 13px;
+            line-height: 16px;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        .tuydEventStanding .communityLadderSignups {
+            color: #e0c060;
+        }
+        @container tuydLadders (min-width: 554px) {
+            .communityLadderNarrowOnly {
+                display: none !important;
+            }
+        }
+        @container tuydLadderRow (max-width: 539.98px) {
+            .tuydSeasonalLine {
+                display: none;
+            }
+        }
+        @container tuydEventCard (max-width: 599.98px) {
+            .tuydEventStanding {
+                display: none;
+            }
+        }
         @media (max-width: 600px) {
             #communityLadders h3 {
                 font-size: 14px;
@@ -2633,30 +2693,251 @@ function renderCommunityLadders(rows) {
 
 // statusHtml, detailHtml and youHtml must already be escaped.
 function communityLadderRow(row) {
-    return '<div class="communityLadder"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
+    return '<div class="communityLadder' + (row.className ? " " + row.className : "") + '"><a class="communityLadderButton" target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(row.url)) + '">' + htmlEscape(row.name) + '</a>' +
         '<div class="communityLadderText">' +
         (row.statusHtml ? '<div class="tuydMuted">' + row.statusHtml + '</div>' : "") +
         (row.detailHtml ? '<div>' + row.detailHtml + '</div>' : "") +
         (row.youHtml ? '<div class="communityLadderYou">' + row.youHtml + '</div>' : "") + '</div></div>';
 }
 
-function renderAwpLadderRow(rankings, playerId) {
-    var list = rankings.rankings;
-    var points = function (value) {
-        return htmlEscape(typeof value === "number" ? value.toLocaleString("en-US") : value);
+// Resolves with the AWP ranking and the custom.wl-stats.com series, each left empty when its site
+// can't be reached, so one being down doesn't hide the other.
+function loadCommunityData() {
+    var result = $.Deferred();
+    var settle = function (request, what) {
+        var settled = $.Deferred();
+        request.done(function (data) {
+            settled.resolve(data);
+        }).fail(function (xhr) {
+            log("Error loading " + what + ": " + (xhr && xhr.statusText));
+            settled.resolve(null);
+        });
+        return settled.promise();
     };
-    var mine = playerId && list.filter(function (entry) {
+    signedInPlayerId().done(function (playerId) {
+        $.when(
+            settle(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
+            settle(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
+        ).done(function (rankings, series) {
+            result.resolve({
+                playerId: playerId,
+                rankings: rankings && rankings.rankings ? rankings : null,
+                series: series && Array.isArray(series.series) ? series.series : []
+            });
+        });
+    });
+    return result.promise();
+}
+
+function formatCount(value) {
+    return htmlEscape(typeof value === "number" ? value.toLocaleString("en-US") : value);
+}
+
+// custom.wl-stats.com sends UTC times without a zone; read them as UTC, not local time.
+function parseUtcTime(iso) {
+    var text = String(iso || "");
+    var date = new Date(/(?:Z|[+-]\d\d:?\d\d)$/i.test(text) ? text : text + "Z");
+    return isNaN(date.getTime()) ? null : date;
+}
+
+function formatEventTime(iso) {
+    var date = parseUtcTime(iso);
+    return date ? date.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+}
+
+function timeUntil(iso, now) {
+    var date = parseUtcTime(iso);
+    if (!date) {
+        return "";
+    }
+    var minutes = Math.round((date.getTime() - now) / 60000);
+    if (minutes <= 0) {
+        return "now";
+    }
+    if (minutes < 60) {
+        return "in " + minutes + " min";
+    }
+    var hours = Math.round(minutes / 60);
+    if (hours < 36) {
+        return "in " + hours + " hour" + (hours === 1 ? "" : "s");
+    }
+    var days = Math.round(hours / 24);
+    return "in " + days + " day" + (days === 1 ? "" : "s");
+}
+
+function seriesLink(link) {
+    return link && link.name ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(link.url)) + '">' + htmlEscape(link.name) + '</a>' : "";
+}
+
+function awpStanding(rankings, playerId) {
+    return playerId && rankings ? rankings.rankings.filter(function (entry) {
         return String(entry.player_id) === playerId;
+    })[0] : null;
+}
+
+function signupsHtml(current) {
+    return '<span class="communityLadderSignups">Signups open' + (current.signups_close_at ? " until " + htmlEscape(formatEventTime(current.signups_close_at)) : "") + '</span>';
+}
+
+function seriesYouHtml(series) {
+    var you = series.you;
+    var who = { nation: "Your country ", clan: "Your clan " }[you.as];
+    var link = function (text) {
+        return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(you.url)) + '">' + htmlEscape(text) + '</a>';
+    };
+    var label = who ? who + link(you.name) : link("You");
+    if (you.status === "signed_up") {
+        return label + ": signed up";
+    }
+    var parts = [];
+    if (you.division) {
+        parts.push(htmlEscape(you.division));
+    }
+    if (you.group && you.group !== you.division) {
+        parts.push(htmlEscape(you.group));
+    }
+    if (you.place) {
+        parts.push(htmlEscape(getRankText(you.place)) + (you.of ? " of " + htmlEscape(you.of) : ""));
+    }
+    if (you.wins != null && you.losses != null) {
+        parts.push(htmlEscape(you.wins) + "–" + htmlEscape(you.losses));
+    }
+    if (you.points != null) {
+        parts.push(series.kind === "ladder" ? "rating " + formatCount(you.points) : formatCount(you.points) + " points");
+    }
+    if (["promoted", "relegated", "eliminated", "champion"].indexOf(you.status) !== -1) {
+        parts.push(htmlEscape(you.status));
+    }
+    return parts.length ? label + ": " + parts.join(" · ") : label;
+}
+
+function renderSeriesLadderRow(series, now, className) {
+    var current = series.current;
+    var units = { nations_cup: "teams", clan_cup: "clans", clan_league: "clans" }[series.kind] || "players";
+    var status = [htmlEscape(current.name), current.status === "signups" ? signupsHtml(current) : current.status === "running" ? "running" : "finished"];
+    if (current.players) {
+        status.push(formatCount(current.players) + " " + units);
+    }
+    if (current.progress) {
+        status.push(formatCount(current.progress.played) + "/" + formatCount(current.progress.total) + (series.kind === "clan_cup" ? " matches" : " games"));
+    }
+    var details = [];
+    var finished = current.status === "finished";
+    var lead = finished ? current.winner : current.leader;
+    if (lead && lead.name) {
+        details.push((finished ? "Winner: " : "Leader: ") + seriesLink(lead));
+    }
+    if (current.next_event_at && parseUtcTime(current.next_event_at)) {
+        details.push("Next: " + htmlEscape(formatEventTime(current.next_event_at)) + " (" + htmlEscape(timeUntil(current.next_event_at, now)) + ")");
+    }
+    var you = series.you ? seriesYouHtml(series)
+        : current.status === "signups" ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">Sign up on custom.wl-stats.com</a>' : "";
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: status.join(" · "), detailHtml: details.join(" · "), youHtml: you, className: className });
+}
+
+// war.app's own Seasonal Ladder row gets the current season from custom.wl-stats.com along its
+// bottom edge: the row is a fixed-size box whose description already fills it. Where the row is too
+// narrow for that line, the panel shows the season as a row of its own instead (container queries).
+function addSeasonalLadderLine(scene, seriesList) {
+    var ladder = seriesList.filter(function (series) {
+        return series.kind === "ladder" && series.current;
     })[0];
+    var button = $(scene).find("[id^='ujs_SeasonalLadder']").filter(function () {
+        return /^ujs_SeasonalLadder(?:_\d+)?$/.test(this.id);
+    }).first();
+    var box = button.closest("[id^='ujs_LadderContainer']").children("[id$='_img']").first();
+    if (!ladder || !box.length || box.children(".tuydSeasonalLine").length) {
+        return;
+    }
+    box.css("container", "tuydLadderRow / inline-size").append(renderSeasonalLadderLine(ladder));
+}
+
+function renderSeasonalLadderLine(series) {
+    var current = series.current;
+    var finished = current.status === "finished";
+    var lead = finished ? current.winner : current.leader;
+    var parts = ['<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(current.url)) + '">' + htmlEscape(current.name) + '</a>'];
+    if (current.players && !series.you) {
+        parts.push(formatCount(current.players) + " players");
+    }
+    if (lead && lead.name) {
+        parts.push((finished ? "winner " : "leader ") + seriesLink(lead));
+    }
+    if (series.you) {
+        parts.push(seriesYouHtml({ kind: series.kind, you: $.extend({}, series.you, { wins: null, losses: null }) }));
+    }
+    return '<div class="tuydSeasonalLine">' + parts.join(" · ") + '</div>';
+}
+
+function renderAwpLadderRow(rankings, playerId) {
+    var mine = awpStanding(rankings, playerId);
     var you = !playerId ? "" : mine
-        ? "You: #" + htmlEscape(mine.rank) + " · " + points(mine.points) + " points"
+        ? "You: #" + htmlEscape(mine.rank) + " · " + formatCount(mine.points) + " points"
         : "You: not in the " + htmlEscape(rankings.year) + " race yet";
     return communityLadderRow({
         name: "AWP World Tour",
         url: AWP_SITE + "/rankings",
-        statusHtml: htmlEscape(rankings.year) + " race · " + htmlEscape(list.length) + " players",
+        statusHtml: htmlEscape(rankings.year) + " race · " + htmlEscape(rankings.rankings.length) + " players",
         youHtml: you
     });
+}
+
+// war.app's Community Events page lists the events as client-drawn cards; each card that matches a
+// series gets your line in it, at the top right next to war.app's title.
+function setupCommunityEventsStanding() {
+    var community = null;
+    var loading = false;
+    var check = function () {
+        if (!pageIsCommunityEvents()) {
+            return;
+        }
+        if (!community) {
+            if (!loading) {
+                loading = true;
+                loadCommunityData().done(function (data) {
+                    community = data;
+                    check();
+                });
+            }
+            return;
+        }
+        var scene = ujsElement("CommunityEventsScene");
+        if (!scene) {
+            return;
+        }
+        addCommunityLaddersStyles();
+        $(scene).find("[id^='ujs_EventRow']").filter(function () {
+            return /^ujs_EventRow(?:_\d+)?$/.test(this.id);
+        }).each(function () {
+            var box = $(this).children("[id$='_img']").first();
+            if (!box.length || box.children(".tuydEventStanding").length) {
+                return;
+            }
+            var line = communityEventLine($(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim(), community);
+            if (line) {
+                box.css("container", "tuydEventCard / inline-size").append('<div class="tuydEventStanding">' + line + '</div>');
+            }
+        });
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+function communityEventLine(title, community) {
+    if (/^AWP World Tour/i.test(title)) {
+        var mine = awpStanding(community.rankings, community.playerId);
+        return mine ? "You: #" + htmlEscape(mine.rank) + " in the " + htmlEscape(community.rankings.year) + " race · " + formatCount(mine.points) + " points" : "";
+    }
+    var series = community.series.filter(function (entry) {
+        return entry.warapp_event && entry.current && title.toLowerCase().indexOf(String(entry.warapp_event).toLowerCase()) === 0;
+    })[0];
+    if (!series) {
+        return "";
+    }
+    if (series.you) {
+        return seriesYouHtml(series);
+    }
+    return series.current.status === "signups" ? signupsHtml(series.current) : "";
 }
 
 function displayTrophies() {
@@ -2765,6 +3046,7 @@ function pageFeatures() {
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
+        { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
         { name: "Map search", section: "Maps & levels", match: pageIsMapsPage, run: setupMapSearch },
