@@ -163,7 +163,7 @@ test("custom.wl-stats.com profile stats escape API data", () => {
 });
 
 test("My Games badges and clan standings escape API data", () => {
-    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "standingParts", "signupsHtml", "formatCount",
+    const ctx = load(["renderEventBadge", "renderClanSeriesRow", "communityLadderRow", "seriesStatusHtml", "seriesDetailHtml", "seriesLink", "timeUntil", "standingParts", "signupsHtml", "formatCount",
         "parseUtcTime", "formatEventTime", "getRankText", "htmlEscape", "safeUrl"]);
     const badge = render(ctx.renderEventBadge({ game_id: PAYLOAD, series: PAYLOAD, label: PAYLOAD, url: "javascript:alert(1)" }));
     assertInert(badge);
@@ -171,7 +171,8 @@ test("My Games badges and clan standings escape API data", () => {
     assert.equal(badge.querySelector("a").getAttribute("href"), "#");
 
     const squad = { as: "clan", name: PAYLOAD, squad: PAYLOAD, division: PAYLOAD, group: PAYLOAD, place: PAYLOAD, of: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, points: PAYLOAD, status: PAYLOAD, url: "javascript:alert(1)" };
-    const row = render(ctx.renderClanSeriesRow({ name: PAYLOAD, kind: PAYLOAD, url: "data:text/html,x", current: { name: PAYLOAD, status: "running", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD } }, squads: [squad] }));
+    const row = render(ctx.renderClanSeriesRow({ name: PAYLOAD, kind: PAYLOAD, url: "data:text/html,x", current: { name: PAYLOAD, status: "running", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD } }, squads: [squad],
+        titles: { count: PAYLOAD, editions: [{ name: PAYLOAD, url: "javascript:alert(1)" }] } }));
     assertInert(row);
     assert.ok(row.textContent.includes(PAYLOAD));
     assert.ok([...row.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"));

@@ -314,6 +314,25 @@ function clanPage({ name = "Icelandic Turtles", response = clanSeries } = {}) {
     return { ctx, dom, $, requests };
 }
 
+// Shaped like custom.wl-stats.com /api/v1/series?clan=Optimum: a finished Clan League the clan won,
+// with its titles, next to a Clan Cup it's still in.
+const optimum = {
+    series: [
+        { ...series.series[0], you: null, titles: { count: 0, editions: [] },
+            squads: [{ as: "clan", name: "Optimum", place: null, of: 23, wins: 2, losses: 0, status: "playing", squad: "X", url: "/c" }] },
+        { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "https://custom.wl-stats.com/series/clan-league", warapp_event: "Clan League",
+            current: { name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19", status: "finished", players: 18, progress: null, leader: null,
+                winner: { name: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum" }, next_event_at: null },
+            you: null,
+            squads: [{ as: "clan", name: "Optimum", division: "A", group: null, place: 1, of: 6, wins: 39, losses: 16, points: 141, status: "champion", squad: "Optimum", url: "/o" }],
+            titles: { count: 2, editions: [{ name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19" }, { name: "Clan League 18", url: "https://custom.wl-stats.com/series/clan-league/seasons/18" }] } }
+    ]
+};
+
+function clanPageWith(response) {
+    return clanPage({ name: "Optimum", response });
+}
+
 test("a clan page shows the clan's squads in each current series, below the Clan Wars dialog", async () => {
     const { ctx, $, requests } = clanPage();
     ctx.setupClanStandings();
@@ -370,4 +389,21 @@ test("in war.app's one-column layout the clan box goes below Clan Members, not o
     await flush();
     await flush();
     assert.equal($("#clanStandings").css("top"), `${2200 - 360 + 10}px`, "10px below the lowest dialog under Clan Wars");
+});
+
+test("a clan page shows the clan's last Clan League, even long finished, and how many times it won", async () => {
+    const { ctx, $ } = clanPageWith(optimum);
+    ctx.setupClanStandings();
+    await flush();
+    await flush();
+    const rows = $("#clanStandings .communityLadder");
+    assert.deepEqual(rows.find(".communityLadderButton").map((i, a) => $(a).text()).get(), ["Clan Cup", "Clan League"]);
+    assert.deepEqual(textOf($, rows[1]), [
+        "Clan League 19 · finished · 18 clans",
+        "Winner: Optimum",
+        "Optimum: Division A · 1st of 6 · 39–16 · 141 points · champion🏆 Champion ×2: Clan League 19, Clan League 18"
+    ]);
+    assert.deepEqual($(rows[1]).find(".tuydClanTitles a").map((i, a) => $(a).attr("href")).get(),
+        ["https://custom.wl-stats.com/series/clan-league/seasons/19", "https://custom.wl-stats.com/series/clan-league/seasons/18"]);
+    assert.equal($(rows[0]).find(".tuydClanTitles").length, 0, "no title line for a clan that never won");
 });

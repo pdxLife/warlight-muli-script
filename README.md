@@ -57,7 +57,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 ### Clans
 
 - **Clan list search** — live text filter on the `/Clans/List` page with match count.
-- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan Cup, Clan League, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad.
+- **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan Cup, Clan League, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad. The clan's last Clan League shows even when it finished long ago, and a clan that won Clan League or Clan Cup gets a gold "🏆 Champion ×N" line listing those editions.
 
 ### Profile
 

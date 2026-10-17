@@ -2077,7 +2077,13 @@ function renderClanSeriesRow(series) {
         var parts = standingParts(series.kind, squad);
         return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(squad.url)) + '">' + htmlEscape(name) + '</a>' + (parts.length ? ": " + parts.join(" · ") : "");
     });
-    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), youHtml: squads.join("<br>") });
+    var titles = series.titles && series.titles.count > 0 && Array.isArray(series.titles.editions) ? series.titles : null;
+    if (titles) {
+        squads.push('<span class="tuydClanTitles">🏆 Champion ×' + htmlEscape(titles.count) + ': ' + titles.editions.map(function (edition) {
+            return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(edition.url)) + '">' + htmlEscape(edition.name) + '</a>';
+        }).join(", ") + '</span>');
+    }
+    return communityLadderRow({ name: series.name, url: series.url, statusHtml: seriesStatusHtml(series), detailHtml: seriesDetailHtml(series, Date.now()), youHtml: squads.join("<br>") });
 }
 
 // war.app's My Games rows each link to their game, so community games are found by war.app game ID.
@@ -2841,8 +2847,13 @@ function addCommunityLaddersStyles() {
             font-size: 11px;
             color: #777;
         }
-        .tuydCommunityPanel .communityLadderSignups {
+        .tuydCommunityPanel .communityLadderSignups,
+        .tuydCommunityPanel .tuydClanTitles,
+        .tuydCommunityPanel .tuydClanTitles a {
             color: #e0c060;
+        }
+        .tuydCommunityPanel .tuydClanTitles a {
+            white-space: nowrap;
         }
         .tuydEventStanding {
             position: absolute;
@@ -3015,7 +3026,8 @@ function seriesYouHtml(series) {
 function standingParts(kind, you) {
     var parts = [];
     if (you.division) {
-        parts.push(htmlEscape(you.division));
+        // Clan League sends a bare division letter ("A"); leagues send "Division A".
+        parts.push(htmlEscape(/^[A-Z0-9]{1,2}$/i.test(String(you.division)) ? "Division " + you.division : you.division));
     }
     if (you.group && you.group !== you.division) {
         parts.push(htmlEscape(you.group));
