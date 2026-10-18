@@ -46,6 +46,7 @@
   .steps { width: fit-content; max-width: 100%; margin: 20px auto 0; padding-left: 24px; text-align: left; color: var(--muted); font-size: 15px; }
   .steps li { margin: 6px 0; padding-left: 4px; }
   .steps li::marker { color: #fff; font-weight: 700; }
+  .steps .note { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
   h2 { margin: 48px 0 12px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
@@ -65,7 +66,8 @@
     <p class="tagline">A userscript for <a href="https://war.app">war.app</a> in a desktop browser: a tidier dashboard, tournament tools, community ladders and leagues, and more.</p>
     <a class="install" href="https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js">Install</a>
     <ol class="steps">
-      <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> in Chrome, Edge or Firefox.</li>
+      <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> in Chrome, Edge or Firefox.
+        <span class="note">In Chrome or Edge, also turn on <strong>Allow User Scripts</strong> in Tampermonkey's <strong>Details</strong> on the extensions page (in older versions: <strong>Developer mode</strong>), or the script won't run.</span></li>
       <li>Click <strong>Install</strong> above and confirm in Tampermonkey.</li>
       <li>Open <a href="https://war.app">war.app</a>. Updates arrive by themselves.</li>
     </ol>
