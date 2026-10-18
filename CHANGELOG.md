@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.36.1
+
+- **Dashboard:** Chat and Refresh (R) stay lined up above the games when you switch to Open Games or Past Games. They lined up with the My Games table, which the dashboard moves aside but keeps "visible", so on the other tabs they sat about 20px too far right.
+- **Past Games:** the "18 of 25 shown" count no longer touches or runs past the table's right edge.
+- **Community Events:** a card's lines no longer run over war.app's own text. Each line gets only the room left beside war.app's text at its height, shortened with "…" (the full text shows on hover) or left out when there's almost none: on a narrow window, Titled Tuesday's "Next: …" line steps aside for its long description.
+
 ## 3.36.0
 
 - **Idle: the "View only" switch is gone.** It stopped clicks on the map so you couldn't conquer by accident, but it also stopped you looking at anything, and Idle has no way to show a tile's contents without taking it. The Log button moves next to the zoom buttons in its place. If View only was on, the map simply takes clicks again.
