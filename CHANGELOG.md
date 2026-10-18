@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.35.1
+
+- **Dashboard:** Chat and Refresh (R) moved from the top of the right column to the My / Open / Past Games row, their right edge lined up with Filter: Default below. They used to stay where war.app first puts its Refresh button, because the dashboard's layout ran before the script's Refresh button existed.
+- **Chat rooms:** the Search chat / Hide events / Muted bar sits a little higher, in line with the tabs' labels.
+
 ## 3.35.0
 
 - **Chat button on the dashboard** (Feature Requests: "Add Button to Open Chat from MP Dashboard"). A **Chat** button next to Refresh opens the chat rooms directly.

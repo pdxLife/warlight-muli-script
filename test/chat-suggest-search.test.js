@@ -72,18 +72,37 @@ test("Escape closes the list, and other boxes get no suggestions", () => {
     assert.equal($("#tuydMentionList").length, 0);
 });
 
-test("the dashboard's Chat button sits next to Refresh, with its style", () => {
-    const make = (html) => {
-        const { dom, $ } = createDom(html, "https://war.app/MultiPlayer/");
-        load(["setupDashboardChatLink"], domGlobals(dom, $)).setupDashboardChatLink();
-        return $;
-    };
-    let $ = make(`<div><a id="refreshAll" class="btn btn-primary">Refresh (R)</a></div>`);
-    assert.equal($("#tuydChatLink").next().attr("id"), "refreshAll");
-    assert.equal($("#tuydChatLink").attr("href"), "/MultiPlayer?ChatRoom=1");
+function dashboard(html, scrollGames) {
+    const { dom, $ } = createDom(html, "https://war.app/MultiPlayer/");
+    const later = [];
+    load(["setupDashboardChatLink"], {
+        ...domGlobals(dom, $),
+        addCSS: () => { },
+        window: { addEventListener: () => { } },
+        setTimeout: (fn) => { later.push(fn); return 1; },
+        ifSettingIsEnabled: (name, yes, no) => (name === "scrollGames" && scrollGames ? yes : no)()
+    }).setupDashboardChatLink();
+    return { $, later };
+}
+
+test("with the scrollable dashboard, Chat and Refresh go together on the My / Open / Past Games row", () => {
+    const { $ } = dashboard(`<div class="gameButtonCol"><div id="switchGameRadio"></div></div><div class="SideColumn"><a id="refreshAll" class="btn btn-primary">Refresh (R)</a></div>`, true);
+    assert.deepEqual(Array.from($("#tuydDashButtons").children().map((i, e) => e.id).get()), ["tuydChatLink", "refreshAll"]);
+    assert.equal($("#tuydDashButtons").parent().hasClass("gameButtonCol"), true);
+    assert.equal($(".SideColumn #refreshAll").length, 0);
     assert.ok($("#tuydChatLink").hasClass("btn-primary"));
-    $ = make(`<a id="RefreshBtn2" class="btn btn-primary">Refresh (F5)</a>`);
-    assert.equal($("#tuydChatLink").next().attr("id"), "RefreshBtn2");
-    $ = make(`<table id="MyGamesTable"><thead><tr><td><h2>My Games</h2><span id="NumberOfMyGamesLabel">(6)</span></td></tr></thead></table>`);
+    assert.equal($("#tuydChatLink").attr("href"), "/MultiPlayer?ChatRoom=1");
+});
+
+test("without it, Chat sits next to Refresh; it waits for the script's Refresh button to appear", () => {
+    let { $, later } = dashboard(`<div><a id="refreshAll" class="btn btn-primary">Refresh (R)</a></div>`, false);
+    assert.equal($("#tuydChatLink").next().attr("id"), "refreshAll");
+    ({ $, later } = dashboard(`<div id="side"><a id="RefreshBtn2" class="btn btn-primary">Refresh (F5)</a></div>`, false));
+    assert.equal($("#tuydChatLink").length, 0, "waits while the script may still replace war.app's button");
+    $("#RefreshBtn2").attr("id", "refreshAll");
+    later.splice(0).forEach((fn) => fn());
+    assert.equal($("#tuydChatLink").next().attr("id"), "refreshAll");
+    ({ $, later } = dashboard(`<table id="MyGamesTable"><thead><tr><td><h2>My Games</h2><span id="NumberOfMyGamesLabel">(6)</span></td></tr></thead></table>`, false));
+    for (let i = 0; i < 60 && later.length; i++) later.splice(0).forEach((fn) => fn());
     assert.equal($("#tuydChatLink").prev().attr("id"), "NumberOfMyGamesLabel");
 });
