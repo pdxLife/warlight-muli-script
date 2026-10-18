@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.31.0
+// @version 3.32.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.31.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.32.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1820,6 +1820,251 @@ function showIdleUpgradeHints() {
         hint.toggleClass("idleBestValue", entry === best).text(text)
             .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
     });
+}
+
+function formatIdleMoney(amount) {
+    var suffixes = [["Z", 1e21], ["E", 1e18], ["P", 1e15], ["T", 1e12], ["B", 1e9], ["M", 1e6], ["K", 1e3]];
+    for (var i = 0; i < suffixes.length; i++) {
+        if (amount >= suffixes[i][1]) {
+            var value = amount / suffixes[i][1];
+            return "₩" + (value >= 100 ? Math.round(value) : value >= 10 ? Math.round(value * 10) / 10 : Math.round(value * 100) / 100) + suffixes[i][0];
+        }
+    }
+    return "₩" + Math.round(amount);
+}
+
+// From Idle's save: each market's price multiplier and, per item, how much buying one raises its price.
+function idleMarketRates(save) {
+    var markets = {};
+    String(save || "").replace(/<di\b[^>]*Type="WziAssetMarket"[^>]*>/g, function (tag) {
+        var attributes = {};
+        tag.replace(/(\w+)="([^"]*)"/g, function (all, name, value) {
+            attributes[name] = value;
+        });
+        var rates = {};
+        (attributes.Resources || "").split("|").forEach(function (pair) {
+            var parts = pair.split(";");
+            if (parts.length === 2 && Number.isFinite(Number(parts[1]))) {
+                rates[parts[0]] = Number(parts[1]);
+            }
+        });
+        if (attributes.ID) {
+            markets[attributes.ID] = {
+                multiplier: Number(attributes.Multiplier) || 1,
+                items: (attributes.ResourceTypesAvailable || "").split(",").filter(Boolean).map(function (id) {
+                    return { id: id, rate: rates[id] || 0 };
+                })
+            };
+        }
+        return tag;
+    });
+    return markets;
+}
+
+// The markets listed in Idle's Items tab, with each item's current price; war.app keeps the rows in the
+// page while another tab is open.
+function idleMarketPrices() {
+    return $("[id^='ujs_WziTabBodyMarketRow']").filter(function () {
+        return /^ujs_WziTabBodyMarketRow(?:_\d+)?$/.test(this.id);
+    }).map(function () {
+        var items = $(this).find("[id^='ujs_ResourceLabelContainer'] .ujsTextInner").map(function () {
+            var match = /^(.+?) for [￦₩]\s*([\d.,]+\s*[a-z]?)$/i.exec($(this).text().trim());
+            return match ? { name: match[1], price: parseIdleNumber(match[2]) } : null;
+        }).get().filter(function (item) {
+            return item && item.price !== null;
+        });
+        return { market: $(this).find("[id^='ujs_NameLabel'] .ujsTextInner").first().text().trim(), items: items };
+    }).get();
+}
+
+// Idle raises an item's price by the same step for each one bought, so n of them cost
+// n × price + base price × rate × n² / 2, where the base price is the price over the market's multiplier.
+function idleMarketCost(price, rate, multiplier, count) {
+    return count * price + (multiplier > 0 ? price / multiplier : price) * (rate || 0) * count * count / 2;
+}
+
+function idleCheapestPurchase(name, count, prices, rates) {
+    var best = null;
+    prices.forEach(function (market) {
+        market.items.forEach(function (item, index) {
+            if (item.name !== name) {
+                return;
+            }
+            var saved = rates[market.market];
+            var known = saved && saved.items[index];
+            var cost = idleMarketCost(item.price, known ? known.rate : 0, saved ? saved.multiplier : 1, count);
+            if (!best || cost < best.cost) {
+                best = { market: market.market, cost: cost, exact: !!known };
+            }
+        });
+    });
+    return best;
+}
+
+function idleTechCostRows(dialog) {
+    return $(dialog).find("[id^='ujs_CostContainer']").first().children().map(function () {
+        var labels = $(this).children(".ujsText").map(function () {
+            return { holder: this, text: $(this).children(".ujsTextInner").text().trim() };
+        }).get();
+        var counts = labels.length === 2 && /^([\d.,]+\s*[a-z]?)\s*\/\s*([\d.,]+\s*[a-z]?)$/i.exec(labels[0].text);
+        if (!counts) {
+            return null;
+        }
+        return { row: this, nameHolder: labels[1].holder, name: labels[1].text, have: parseIdleNumber(counts[1]), need: parseIdleNumber(counts[2]) };
+    }).get().filter(function (row) {
+        return row && row.have !== null && row.need !== null;
+    });
+}
+
+function readIdleSave() {
+    if (!window.indexedDB || typeof indexedDB.databases !== "function") {
+        return Promise.resolve(null);
+    }
+    return indexedDB.databases().then(function (databases) {
+        if (!databases.some(function (database) {
+            return database.name === "WZ";
+        })) {
+            return null;
+        }
+        return new Promise(function (resolve) {
+            var request = indexedDB.open("WZ");
+            // Never create or change Idle's own database.
+            request.onupgradeneeded = function () {
+                request.transaction.abort();
+            };
+            request.onerror = request.onblocked = function () {
+                resolve(null);
+            };
+            request.onsuccess = function () {
+                var db = request.result;
+                try {
+                    var store = db.transaction("WZB", "readonly").objectStore("WZB");
+                    var keys = store.getAllKeys();
+                    keys.onsuccess = function () {
+                        var key = keys.result.filter(function (k) {
+                            return /_WziMaster$/.test(String(k));
+                        })[0];
+                        if (!key) {
+                            db.close();
+                            resolve(null);
+                            return;
+                        }
+                        var get = store.get(key);
+                        get.onsuccess = function () {
+                            db.close();
+                            var content = get.result && get.result.content;
+                            var bytes = content && content.b;
+                            resolve(bytes && bytes.length ? new TextDecoder("latin1").decode(bytes.subarray(0, content.length || bytes.length)) : null);
+                        };
+                        get.onerror = function () {
+                            db.close();
+                            resolve(null);
+                        };
+                    };
+                    keys.onerror = function () {
+                        db.close();
+                        resolve(null);
+                    };
+                } catch (e) {
+                    db.close();
+                    resolve(null);
+                }
+            };
+        });
+    }, function () {
+        return null;
+    });
+}
+
+function setupIdleTechCost() {
+    addCSS(`
+        .idleTechCost {
+            position: absolute;
+            bottom: 1px;
+            white-space: nowrap;
+            color: #e0c060;
+            font-size: 12px;
+            line-height: 18px;
+            pointer-events: auto;
+        }
+        .idleTechCost.idleTechCostNone {
+            color: #999;
+        }
+        .idleTechCostTotal.idleTechCostShort {
+            color: #ff8a65;
+        }
+    `);
+    var rates = {};
+    var ratesRead = 0;
+    var timer = null;
+    var place = function (holder, label, className, text, title) {
+        var tag = $(holder).parent().children("." + className.split(" ")[0]);
+        if (!text) {
+            tag.remove();
+            return;
+        }
+        if (!tag.length) {
+            tag = $('<span></span>').appendTo($(holder).parent());
+        }
+        var range = document.createRange();
+        range.selectNodeContents(label);
+        tag.attr("class", className).text(text).attr("title", title).css({
+            left: range.getBoundingClientRect().right - $(holder).parent()[0].getBoundingClientRect().left + 8,
+            bottom: holder.style.bottom || "1px"
+        });
+    };
+    var check = function () {
+        timer = null;
+        var dialog = $("[id^='ujs_WziTabBodyTechDialog']").filter(function () {
+            return /^ujs_WziTabBodyTechDialog(?:_\d+)?$/.test(this.id) && shownUjsElement(this);
+        }).last();
+        if (!dialog.length) {
+            return;
+        }
+        if (Date.now() - ratesRead > 60 * 1000) {
+            ratesRead = Date.now();
+            readIdleSave().then(function (save) {
+                if (save) {
+                    rates = idleMarketRates(save);
+                }
+            });
+        }
+        var prices = idleMarketPrices();
+        var total = 0;
+        var priced = 0;
+        var missing = 0;
+        idleTechCostRows(dialog).forEach(function (row) {
+            var label = $(row.nameHolder).children(".ujsTextInner")[0];
+            var short = Math.ceil(row.need - row.have);
+            if (short <= 0) {
+                place(row.nameHolder, label, "idleTechCost", "", "");
+                return;
+            }
+            missing++;
+            var buy = idleCheapestPurchase(row.name, short, prices, rates);
+            if (!buy) {
+                place(row.nameHolder, label, "idleTechCost idleTechCostNone", "need " + short.toLocaleString("en-US") + " more · no market sells it", "None of this level's markets sells " + row.name + " (Muli's Userscript)");
+                return;
+            }
+            total += buy.cost;
+            priced++;
+            place(row.nameHolder, label, "idleTechCost", "need " + short.toLocaleString("en-US") + " more ≈ " + formatIdleMoney(buy.cost),
+                "Buying " + short.toLocaleString("en-US") + " " + row.name + " at " + buy.market + (buy.exact ? ", with the price rising as you buy" : " at today's price; it rises as you buy") + " (Muli's Userscript)");
+        });
+        var nameLabel = dialog.find("[id^='ujs_NameLabel'] .ujsTextInner").first();
+        if (nameLabel.length) {
+            var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
+            var text = missing > 1 && priced ? "all ≈ " + formatIdleMoney(total) + (priced < missing ? " + items no market sells" : "") : "";
+            place(nameLabel.parent()[0], nameLabel[0], "idleTechCostTotal idleTechCost" + (wallet && wallet.money < total ? " idleTechCostShort" : ""), text,
+                wallet ? "You have " + formatIdleMoney(wallet.money) + " (Muli's Userscript)" : "");
+        }
+    };
+    // Idle redraws its counters many times a second, so the check runs at most four times a second.
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 250);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
 }
 
 function setupIdleUpgradeHints() {
@@ -5919,6 +6164,7 @@ function pageFeatures() {
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
         { name: "Time to afford and best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
+        { name: "What a tech is missing and its market cost in Idle", section: "Idle", match: pageIsIdle, run: setupIdleTechCost },
         { name: "Count of things Idle needs you for in the tab title", section: "Idle", match: pageIsIdle, run: setupIdleAttention },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.32.0
+
+- **Idle: what a tech is missing, and what it would cost at the market** (Feature Requests: "Ability to click a tech and pay for it from market", 71 votes). Idle helpers never buy for you, so the script shows the numbers instead: in a tech's details box, beside each item you're short of, "need 5 more ≈ ₩221M", priced at the cheapest market on the level that sells it. The estimate follows Idle's own market rule (each one bought raises the price by the same step), read from Idle's save in this browser, and matches Idle's market box: 30M Copper Bar ≈ ₩1.57B where Idle says ₩1.56B. With two or more items short, the tech's name line shows the total ("all ≈ ₩248M"), in red when it's more than your money. Items no market sells say "no market sells it".
+
 ## 3.31.0
 
 - **Read chat aloud** (Feature Requests: "Dorex's quality of life updates: Text to speech", 33 votes). In a game's chat, a faint 🔊 at the left of each message reads it and every message after it aloud, with your browser's built-in voice: who wrote it, then the text, with links read as "a link" and smileys as words. ■ stops. A new setting, **Read New Chat Messages Aloud in Games** (off by default, settings → Games), reads new messages from other players as they arrive, so you can listen while entering orders. Messages hidden by your block list are never read. Chrome only speaks after you've clicked somewhere on the page.
