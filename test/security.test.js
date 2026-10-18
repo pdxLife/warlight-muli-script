@@ -204,3 +204,12 @@ test("Player Search tags and recent searches escape what they show", () => {
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
 });
+
+test("game notes escape the notes and the player names read from the page", () => {
+    const ctx = load(["gameNotesHtml", "htmlEscape"]);
+    const evil = "</textarea>" + PAYLOAD;
+    const container = render(ctx.gameNotesHtml({ text: evil, firstMove: "", players: { [evil]: evil } }, [PAYLOAD]));
+    assertInert(container);
+    assert.equal(container.querySelector("textarea[name=text]").value, evil);
+    assert.equal(container.querySelectorAll("textarea[data-player]").length, 2);
+});
