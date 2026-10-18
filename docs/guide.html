@@ -83,6 +83,10 @@
 
   <h2 id="settings">The settings menu</h2>
   <p class="where">Your account menu (your name, top right) → <strong>Muli's Userscript</strong>, or click the version number in the bottom-right corner.</p>
+  <figure>
+    <img src="media/guide-settings-menu.png" width="712" height="788" alt="The Muli's Userscript settings menu: a search box, then the Dashboard section with a switch for each feature and setting">
+    <figcaption>The Dashboard section open, with a switch per feature; the other sections are folded below.</figcaption>
+  </figure>
   <ul>
     <li>Sections by area (Dashboard, Games, Tournaments, Ladders &amp; community, Profile, Clans, Idle, Forum, Maps &amp; levels, Other, Third-party data, Backup) fold open and closed; each shows how many items it holds.</li>
     <li>Every feature has its own switch, next to the settings for that area. Turn off anything you don't want; nothing else changes.</li>
@@ -114,6 +118,10 @@
   <h3>Bookmarks</h3>
   <p>The Bookmarks box in the sidebar keeps links you choose. Click <strong>+</strong> to add one, or use the <strong>Bookmark</strong> link that appears on forum threads, tournaments and community levels. Bookmarks can be edited, reordered, deleted and set to open in a new window.</p>
 
+  <figure>
+    <img src="media/guide-bookmarks.png" width="329" height="96" alt="The Bookmarks box in the dashboard sidebar with a + button, one bookmark and a delete icon">
+    <figcaption>The Bookmarks box: + adds a link.</figcaption>
+  </figure>
   <h2 id="open-games">Open Games filter</h2>
   <p class="where">Dashboard → Open Games, or Multi-Player → Open Games → <strong>Filter</strong> in the header</p>
   <figure>
@@ -153,8 +161,16 @@
     <li><strong>Mentions</strong>: messages with your name are outlined in gold.</li>
     <li><strong>Private chat list</strong>: Chat → Private lists the players still in the game first, A to Z, then a gold line and the players who are out.</li>
   </ul>
+  <figure>
+    <img src="media/guide-game-chat-buttons.png" width="476" height="200" alt="Game chat messages with a faint speaker at the left of each; on the hovered message, a speaker and a mute button">
+    <figcaption>Hover a message: 🔊 reads it aloud, 🔇 mutes the player (not shown on your own messages).</figcaption>
+  </figure>
+  <figure>
+    <img src="media/guide-mention-suggest.png" width="420" height="130" alt="A chat box with "well played @Ro" typed and a list of names starting with Ro above it">
+    <figcaption>Type @ and the first letters of a name, then pick it (example names).</figcaption>
+  </figure>
   <h3>Ask before committing</h3>
-  <p><span class="setting">Ask Before Committing Orders</span> (off; settings → Games): Commit and Autopilot's Run+Commit ask "Commit your orders for this turn?" first, against accidental commits.</p>
+  <p><span class="setting">Ask Before Committing Orders</span> (off; settings → Games): Commit and Autopilot's Run+Commit ask "Commit your orders for this turn?" first, against accidental commits. The question is your browser's own dialog: OK commits, Cancel goes back to your orders.</p>
 
   <h2 id="past-games">Past Games</h2>
   <p class="where">war.app → Multi-Player → Past Games</p>
@@ -184,6 +200,10 @@
     <li><strong>@ tagging</strong> and <strong>read aloud</strong> work as in game chat; hover a message for its 🔊.</li>
   </ul>
 
+  <figure>
+    <img src="media/guide-chat-mute.png" width="380" height="132" alt="Chat room messages, with a speaker and a mute button beside the hovered one">
+    <figcaption>Hover a message for 🔊 and 🔇 (names blurred here).</figcaption>
+  </figure>
   <h2 id="ladders">Ladders, community events and leaderboards</h2>
   <h3>Community ladders &amp; leagues</h3>
   <p class="where">war.app → Multi-Player → Ladders, below war.app's four ladders</p>
@@ -222,6 +242,10 @@
 
   <h2 id="profiles">Profiles and clans</h2>
   <figure>
+    <img src="media/guide-profile.png" width="530" height="720" alt="A player's profile with the Private Notes box, then AWP World Tour and Community tournaments stats">
+    <figcaption>Your private notes about the player, then the stat boxes, on a profile.</figcaption>
+  </figure>
+  <figure>
     <img src="media/profile-stats.png" width="526" height="654" alt="Profile boxes: AWP World Tour stats and Community tournaments stats">
     <figcaption>AWP World Tour and community tournament stats on a profile.</figcaption>
   </figure>
@@ -237,6 +261,10 @@
     <li><strong>Community events on clan pages</strong>: below Clan Wars, the clan's place in Clan League, Clan Cup and the other community series, and its titles.</li>
   </ul>
   <figure>
+    <img src="media/guide-clan-search.png" width="420" height="220" alt="The Clans list with "turtle" typed in the search box, 2 found: Icelandic Turtles and Taco Turtles (inactive)">
+    <figcaption>Clan list search: the list narrows as you type.</figcaption>
+  </figure>
+  <figure>
     <img src="media/clan-events.png" width="334" height="592" alt="A clan page's Community events box with Clan Cup and Clan League standings and a Champion title">
     <figcaption>A clan's community events and titles.</figcaption>
   </figure>
@@ -249,8 +277,8 @@
   </figure>
   <ul>
     <li><strong>Tech costs</strong>: open a tech in the Techs tab. Beside each item you're short of: "need 504 more ≈ ₩33.4M", at the cheapest market on the level, with the price rising as you buy, as Idle's markets do. With two or more items short, the total is on the tech's name line, in red when it's more than your money.</li>
-    <li><strong>Market typos are caught</strong>: if you type more than you can afford (say "121p" instead of "1210"), the script asks before Idle spends all your money.</li>
-    <li><strong>Powers and artifacts ask first</strong>: Use and Activate name what you're about to use.</li>
+    <li><strong>Market typos are caught</strong>: if you type more than you can afford (say "121p" instead of "1210"), the script asks before Idle spends all your money. The question is your browser's own dialog; Cancel leaves the market untouched.</li>
+    <li><strong>Powers and artifacts ask first</strong>: Use and Activate name what you're about to use. These questions are your browser's own dialogs.</li>
     <li><strong>Artifacts</strong>: in the artifact window, an equipped artifact with a better unequipped copy gets a gold "Better: …" tag. <strong>List</strong> shows every artifact sorted by rarity or name; <strong>store</strong> marks one you never want used.</li>
     <li><strong>Time to afford</strong> next to upgrades you can't afford yet, and <strong>Best value</strong> on the best army camp for the money.</li>
     <li><strong>Log</strong> (next to the zoom buttons) lists the pop-ups Idle showed on the map, newest first.</li>
@@ -258,6 +286,10 @@
     <li><strong>Tab title</strong>: "(2) Idle" when something waits for you (powers, an artifact, a tank, a battle, the daily bonus, the coin wheel). <span class="setting">Idle: Desktop Notification When Idle Needs You</span> (off) notifies you while the tab is in the background.</li>
     <li><strong>Second-tab warning</strong> when Idle is open twice in the same browser.</li>
   </ul>
+  <figure>
+    <img src="media/guide-idle-volume.png" width="302" height="38" alt="Idle's header with the speaker icon and a volume slider at 100%">
+    <figcaption>The volume slider beside the speaker icon in Idle.</figcaption>
+  </figure>
   <div class="tip">Playing Idle in two places at once (two tabs, or a tab and the phone app) can lose progress. Close it everywhere else first.</div>
 
   <h2 id="more">Forum, mail and more</h2>
@@ -267,6 +299,14 @@
     <li><strong>Hide a thread</strong> with the eye icon on a forum list. <span class="setting">Automatically Hide Off-Topic Threads</span> and <span class="setting">Automatically Hide War.app Idle Threads</span> (off) hide whole categories. <strong>Reset Hidden Threads</strong> in the settings menu brings them back.</li>
     <li>Links to single-player levels in posts become small preview cards.</li>
   </ul>
+  <figure>
+    <img src="media/guide-forum-toolbar.png" width="376" height="118" alt="A formatting toolbar above the forum reply box: B, I, code, img, hr, quote, list and *">
+    <figcaption>The toolbar wraps the selected text in war.app's tags.</figcaption>
+  </figure>
+  <figure>
+    <img src="media/guide-forum-hide.png" width="638" height="304" alt="A forum thread list with a Hide column holding an eye icon on each thread">
+    <figcaption>The Hide column on a forum list.</figcaption>
+  </figure>
   <h3>Mail</h3>
   <p class="where">Your mail page</p>
   <ul>
@@ -274,6 +314,10 @@
     <li><strong>Filter by words</strong>: all the words you type, in the subject, or in the first 15 words of each thread. The first time you search the first words, the script reads your threads once (about half a minute for 400 threads); <span class="setting">Mail: Search the First 15 Words of Each Thread</span> turns this off.</li>
     <li><strong>Last post from … to …</strong>: a date range. The filters combine.</li>
   </ul>
+  <figure>
+    <img src="media/guide-mail-filters.png" width="492" height="118" alt="Mail filters: Filter by player, Filter by words in subject, and Last post from and to dates">
+    <figcaption>The mail filters above your threads.</figcaption>
+  </figure>
   <h3>Player Search</h3>
   <p class="where">Community → Player Search</p>
   <ul>
@@ -282,6 +326,10 @@
     <li>Tags: "You", AWP World Tour ranks, and "Blocked" for players on your block list.</li>
     <li>Paste a profile link or a player ID and press Search to open that profile. An empty search box offers your recent searches.</li>
   </ul>
+  <figure>
+    <img src="media/guide-player-search.png" width="676" height="232" alt="Player Search for "tornado": Sort Best match, Returned 64 players, Hide L1–2, In a clan, Min L, and results with an AWP #1 tag">
+    <figcaption>Best match first, with the filters and an AWP tag.</figcaption>
+  </figure>
   <h3>Other pages</h3>
   <ul>
     <li><strong>Block list</strong>: a player count and a search box.</li>
@@ -289,6 +337,22 @@
     <li><strong>Common Games</strong> with a player: a sortable table and your head-to-head record.</li>
     <li><strong>Points</strong>: your total points earned.</li>
   </ul>
+  <figure>
+    <img src="media/guide-block-list.png" width="306" height="68" alt="You have 188 players on your block list, and a Search players box">
+    <figcaption>The block list count and search.</figcaption>
+  </figure>
+  <figure>
+    <img src="media/guide-map-search.png" width="502" height="398" alt="The maps list searched for Europe: Showing maps 1 - 85 of 85, Searchresults for Europe">
+    <figcaption>Map search on the maps list.</figcaption>
+  </figure>
+  <figure>
+    <img src="media/guide-common-games.png" width="500" height="490" alt="Common Games with a player: a Head-To-Head box with 1v1 games, wins, losses and win rate, and a sortable table of games">
+    <figcaption>Common Games: your head-to-head record and a sortable table.</figcaption>
+  </figure>
+  <figure>
+    <img src="media/guide-points.png" width="540" height="160" alt="Current Status on the points page: In total, you've earned 14,146,096 points">
+    <figcaption>Your total points, on the points page.</figcaption>
+  </figure>
 
   <h2 id="help">Troubleshooting</h2>
   <ul>
