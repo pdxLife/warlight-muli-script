@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.35.0
+
+- **Chat button on the dashboard** (Feature Requests: "Add Button to Open Chat from MP Dashboard"). A **Chat** button next to Refresh opens the chat rooms directly.
+- **Search a chat.** A "Search chat" box on the chat rooms' bar keeps only the messages with that word or player name ("9 found"); clear it to see everything.
+- **@name suggestions** (Feature Requests: "Tagging Players in Public Chat"). Typing @ in a chat box, in the chat rooms or a game, lists the players in that chat; pick one with the mouse, the arrow keys and Enter or Tab, and "@Name " goes in. While the list is open Enter picks a name rather than sending your message. Players you tag see it outlined in gold if they use the script (3.33.0); notifying them otherwise is up to war.app.
+
 ## 3.34.0
 
 - **Read aloud in the chat rooms too.** Hover a message in Global, Clan or a group chat and click 🔊: it and the messages after it are read with your browser's voice, as in game chat (3.31.0). Hidden notices and muted players are skipped. The setting, now called **Read New Chat Messages Aloud**, also reads new messages in the chat room tab you're looking at.

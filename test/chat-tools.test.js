@@ -152,3 +152,19 @@ test("recognizes the chat room page", () => {
     assert.ok(at("https://war.app/MultiPlayer?ChatRoom=1").pageIsChatRoom());
     assert.ok(!at("https://war.app/MultiPlayer?GameID=1").pageIsChatRoom());
 });
+
+test("the search box narrows a chat to messages with the word or player, and counts them", async () => {
+    const { $, tick, shown } = setupRoom([{ id: "-346", name: "group", rows: GROUP_ROWS }]);
+    await tick();
+    $("#tuydChatTools [name=chatSearch]").val("ann").trigger("input");
+    await tick();
+    assert.deepEqual(shown("#ujs_ChatRoomTab"), ["hello@25px", "@kknd where are you@0px"]);
+    assert.equal($("#tuydChatTools .tuydSearchCount").text(), "2 found");
+    $("#tuydChatTools [name=chatSearch]").val("READY").trigger("input");
+    await tick();
+    assert.deepEqual(shown("#ujs_ChatRoomTab"), ["hi KKND, ready?@0px"]);
+    $("#tuydChatTools [name=chatSearch]").val("").trigger("input");
+    await tick();
+    assert.equal(shown("#ujs_ChatRoomTab").length, 4);
+    assert.equal($("#tuydChatTools .tuydSearchCount").text(), "");
+});
