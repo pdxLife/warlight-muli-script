@@ -188,3 +188,11 @@ test("the update notice escapes the version read from GitHub", () => {
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
 });
+
+test("the Idle artifact list escapes names read from the page", () => {
+    const ctx = load(["idleArtifactListHtml", "idleBetterCopies", "htmlEscape"]);
+    const card = (name, rarity, equipped) => ({ element: {}, name, rarity, rank: 1, equipped });
+    const container = render(ctx.idleArtifactListHtml([card(PAYLOAD, PAYLOAD, true), card(PAYLOAD, PAYLOAD, false)], "name"));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});

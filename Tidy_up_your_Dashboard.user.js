@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.24.1
+// @version 3.25.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.24.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.25.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -35,12 +35,13 @@ var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var MAIL_PREVIEWS_KEY = "tidyUpYourDashboard.mailPreviews";
 var MAIL_PREVIEW_WORDS = 15;
+var IDLE_VOLUME_KEY = "tidyUpYourDashboard.idleVolume";
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
 var REPO_URL = "https://github.com/pdxLife/warlight-muli-script";
 var MENU_SECTIONS_KEY = "tidyUpYourDashboard.menuSections";
 // The settings menu's sections, in order: the key a setting or feature names, and its heading.
 var MENU_SECTIONS = [["Dashboard", "Dashboard"], ["Tournaments", "Tournaments"], ["Community", "Ladders & community"], ["Profile", "Profile"], ["Clans", "Clans"],
-    ["Forum", "Forum"], ["Maps & levels", "Maps & levels"], ["Other", "Other"], ["Third-party data", "Third-party data"]];
+    ["Idle", "Idle"], ["Forum", "Forum"], ["Maps & levels", "Maps & levels"], ["Other", "Other"], ["Third-party data", "Third-party data"]];
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
 var UPDATE_RETRY_MS = 60 * 60 * 1000;
 this.$$$ = jQuery.noConflict(true);
@@ -1202,6 +1203,633 @@ function buildMailSearch(table, previewOn, asked) {
     $("#MailSearch").on("input change", "input, select", update);
 }
 
+function idleVolumeLevel() {
+    try {
+        var stored = parseFloat(localStorage.getItem(IDLE_VOLUME_KEY));
+        return isNaN(stored) ? 1 : Math.max(0, Math.min(1, stored));
+    } catch (e) {
+        return 1;
+    }
+}
+
+// Idle plays its sounds as HTML audio, often from elements outside the page, so the volume is
+// applied where every element's volume is set: each one keeps the volume Idle asked for, scaled.
+function setupIdleVolume() {
+    var native = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
+    if (!native || !native.set) {
+        return;
+    }
+    var level = idleVolumeLevel();
+    var asked = new WeakMap();
+    var known = [];
+    var apply = function (element) {
+        native.set.call(element, (asked.has(element) ? asked.get(element) : 1) * level);
+    };
+    Object.defineProperty(HTMLMediaElement.prototype, "volume", {
+        configurable: true,
+        enumerable: native.enumerable,
+        get: function () {
+            return this instanceof HTMLAudioElement && asked.has(this) ? asked.get(this) : native.get.call(this);
+        },
+        set: function (value) {
+            if (!(this instanceof HTMLAudioElement)) {
+                return native.set.call(this, value);
+            }
+            asked.set(this, value);
+            apply(this);
+        }
+    });
+    var play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () {
+        if (this instanceof HTMLAudioElement) {
+            if (known.indexOf(this) === -1) {
+                known.push(this);
+                if (known.length > 200) {
+                    known.shift();
+                }
+            }
+            apply(this);
+        }
+        return play.apply(this, arguments);
+    };
+    addCSS(`
+        #idleVolume {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            color: #ddd;
+            font-size: 12px;
+        }
+        #idleVolume input {
+            width: 80px;
+            accent-color: #e0c060;
+        }
+    `);
+    var show = function () {
+        if ($("#idleVolume").length) {
+            return;
+        }
+        var speaker = $("#SoundContainer");
+        var control = $('<span id="idleVolume" title="Idle volume (Muli\'s Userscript)"><input type="range" min="0" max="100" step="5" aria-label="Idle volume"><span class="idleVolumeValue"></span></span>');
+        control.find("input").val(Math.round(level * 100)).on("input", function () {
+            level = Number(this.value) / 100;
+            control.find(".idleVolumeValue").text(this.value + "%");
+            try {
+                localStorage.setItem(IDLE_VOLUME_KEY, String(level));
+            } catch (e) {
+            }
+            known.forEach(apply);
+        });
+        control.find(".idleVolumeValue").text(Math.round(level * 100) + "%");
+        if (speaker.length) {
+            speaker.after(control);
+        } else {
+            $("body").append(control.css({ position: "fixed", right: "12px", bottom: "12px", zIndex: 1000 }));
+        }
+    };
+    show();
+    $(show);
+}
+
+var IDLE_NUMBER_SUFFIXES = { k: [1e3, "thousand"], m: [1e6, "million"], b: [1e9, "billion"], t: [1e12, "trillion"], p: [1e15, "quadrillion"], e: [1e18, "quintillion"], z: [1e21, "sextillion"] };
+
+// Idle reads "121p" as 121 quadrillion; null when the text isn't a number it would read.
+function parseIdleNumber(text) {
+    var match = /^\s*([\d.,]+)\s*([a-z]?)\s*$/i.exec(String(text || ""));
+    if (!match) {
+        return null;
+    }
+    var number = parseFloat(match[1].replace(/,/g, ""));
+    var suffix = match[2].toLowerCase();
+    if (isNaN(number) || (suffix && !IDLE_NUMBER_SUFFIXES[suffix])) {
+        return null;
+    }
+    return suffix ? number * IDLE_NUMBER_SUFFIXES[suffix][0] : number;
+}
+
+function idleNumberWords(text) {
+    var match = /^\s*([\d.,]+)\s*([a-z])\s*$/i.exec(String(text || ""));
+    var suffix = match && IDLE_NUMBER_SUFFIXES[match[2].toLowerCase()];
+    return suffix ? match[1] + " " + suffix[1] : String(text || "").trim();
+}
+
+// The question to ask before a market purchase, or "" when the order is what was typed: Idle
+// quietly buys as many as the money allows when the typed number is more than that.
+function idleMarketQuestion(dialog) {
+    var box = $(dialog).find("[id^='ujs_NumToBuyBox'] textarea, [id^='ujs_NumToBuyBox'] input").first();
+    var label = $(dialog).find("a[id^='ujs_PurchaseBtn']").first().parent().text().replace(/\s+/g, " ").trim();
+    var order = /Purchase\s+([\d.,]+\s*[a-z]?)\s+for\s+(\S+)/i.exec(label);
+    var typed = box.val();
+    var wanted = parseIdleNumber(typed);
+    var buying = order && parseIdleNumber(order[1]);
+    if (wanted == null || buying == null || wanted <= buying * 1.001) {
+        return "";
+    }
+    var item = $(dialog).find("[id^='ujs_NameLabel']").filter(function () {
+        return !$(this).closest("[id^='ujs_WziMarketDialogRow']").length;
+    }).first().text().trim();
+    return "You typed " + String(typed).trim() + " (" + idleNumberWords(typed) + "), more than you can afford.\n\n" +
+        "This buys " + order[1].trim() + (item ? " " + item : "") + " for " + order[2] + ", as many as your money allows.\n\nBuy them?";
+}
+
+function setupIdleMarketCheck() {
+    document.addEventListener("click", function (event) {
+        var button = $(event.target).closest("a[id^='ujs_PurchaseBtn']");
+        var dialog = button.closest("[id^='ujs_WziMarketDialog']");
+        if (!button.length || !dialog.length) {
+            return;
+        }
+        var question = idleMarketQuestion(dialog);
+        if (question && !window.confirm(question)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+}
+
+// The question to ask before an artifact is activated or a power used, or "" for other buttons.
+function idleActionQuestion(link) {
+    var id = $(link).attr("id") || "";
+    if (/^ujs_ActivateBtn(?:_\d+)?_btn$/.test(id)) {
+        var card = $(link).closest("[id^='ujs_WziTabBodyAPArtifact']");
+        var name = card.find("[id^='ujs_Name']").first().text().trim();
+        var rarity = card.find("[id^='ujs_Rarity']").first().text().trim();
+        return "Activate " + (name || "this artifact") + (rarity ? " (" + rarity + ")" : "") + "?";
+    }
+    if (/^ujs_UseBtn(?:_\d+)?_btn$/.test(id)) {
+        var row = $(link).closest("[id^='ujs_WziTabBodyIAPRow']");
+        var power = row.find("*").filter(function () {
+            return !this.children.length && $(this).text().trim();
+        }).first().text().trim();
+        var have = /(\d[\d,]*)\s*\/\s*\d/.exec(row.text());
+        var count = have ? Number(have[1].replace(/,/g, "")) : null;
+        return "Use " + (power || "this power") + "?" +
+            (count === 0 ? " You have none left, so this costs coins." : count != null ? " You have " + count + "." : "");
+    }
+    return "";
+}
+
+function setupIdleActionConfirm() {
+    document.addEventListener("click", function (event) {
+        var link = $(event.target).closest("a.ujsBtnInner")[0];
+        var question = link && idleActionQuestion(link);
+        if (question && !window.confirm(question)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+}
+
+function idleRarityRank(rarity) {
+    return ["Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Insane"].indexOf(String(rarity || "").trim());
+}
+
+// The cards in Idle's artifact window: the equipped row and everything else, scrolled out of view or not.
+function idleArtifactCards(dialog) {
+    return $(dialog).find("[id^='ujs_WziArtifactCard']").filter(function () {
+        return /^ujs_WziArtifactCard(?:_\d+)?$/.test(this.id);
+    }).map(function () {
+        var card = $(this);
+        var rarity = card.find("[id^='ujs_Rarity']").first().text().trim();
+        return {
+            element: this,
+            name: card.find("[id^='ujs_Name']").first().text().trim(),
+            rarity: rarity,
+            rank: idleRarityRank(rarity),
+            equipped: card.closest("[id^='ujs_EquippedCard']").length > 0
+        };
+    }).get().filter(function (card) {
+        return card.name;
+    });
+}
+
+// Each equipped artifact that has a higher-rarity copy among the unequipped ones, with the best copy.
+function idleBetterCopies(cards) {
+    return cards.filter(function (card) {
+        return card.equipped;
+    }).map(function (card) {
+        var better = cards.filter(function (other) {
+            return !other.equipped && other.name === card.name && other.rank > card.rank;
+        }).sort(function (a, b) {
+            return b.rank - a.rank;
+        })[0];
+        return better ? { card: card, better: better } : null;
+    }).filter(Boolean);
+}
+
+function idleArtifactListHtml(cards, sortBy) {
+    var sorted = cards.slice().sort(function (a, b) {
+        return sortBy === "name" ? a.name.localeCompare(b.name) || b.rank - a.rank : b.rank - a.rank || a.name.localeCompare(b.name);
+    });
+    var lower = idleBetterCopies(cards).map(function (pair) {
+        return pair.card.element;
+    });
+    var counts = {};
+    cards.forEach(function (card) {
+        counts[card.name] = (counts[card.name] || 0) + 1;
+    });
+    return '<div class="idleArtifactListHead">All artifacts (' + cards.length + ')' +
+        '<span class="idleArtifactSort">Sort: <a href="#" data-sort="rarity"' + (sortBy === "name" ? "" : ' class="active"') + '>rarity</a> · ' +
+        '<a href="#" data-sort="name"' + (sortBy === "name" ? ' class="active"' : "") + '>name</a></span>' +
+        '<a href="#" class="idleArtifactListClose" title="Close">×</a></div><table>' + sorted.map(function (card) {
+            return '<tr' + (lower.indexOf(card.element) !== -1 ? ' class="idleArtifactLower" title="A higher-rarity copy isn\'t equipped"' : "") + '>' +
+                '<td>' + htmlEscape(card.name) + (counts[card.name] > 1 ? ' <span class="idleArtifactCount">×' + counts[card.name] + '</span>' : "") + '</td>' +
+                '<td class="idleRarity' + htmlEscape(card.rarity) + '">' + htmlEscape(card.rarity) + '</td>' +
+                '<td>' + (card.equipped ? "equipped" : "") + '</td></tr>';
+        }).join("") + '</table>';
+}
+
+function markIdleArtifacts(dialog) {
+    var cards = idleArtifactCards(dialog);
+    $(dialog).find(".tuydBetterTag").remove();
+    $(dialog).find(".tuydBetterCopy, .tuydLowerCopy").removeClass("tuydBetterCopy tuydLowerCopy");
+    idleBetterCopies(cards).forEach(function (pair) {
+        var image = $(pair.card.element).children("[id$='_img']").first();
+        image.addClass("tuydLowerCopy").append('<div class="tuydBetterTag" title="' + htmlEscape("You have " + pair.better.rarity + " " + pair.card.name + " that isn't equipped") + '">Better: ' + htmlEscape(pair.better.rarity) + '</div>');
+        $(pair.better.element).children("[id$='_img']").first().addClass("tuydBetterCopy");
+    });
+    return cards;
+}
+
+function setupIdleArtifactHelpers() {
+    addCSS(`
+        .tuydLowerCopy, .tuydBetterCopy {
+            outline: 2px solid #e0c060;
+            outline-offset: -2px;
+        }
+        .tuydBetterTag {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            top: 34px;
+            z-index: 3;
+            padding: 1px 0;
+            border-radius: 3px;
+            background: #e0c060;
+            color: #1b1b1b;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 13px;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #idleArtifactListBtn {
+            position: absolute;
+            left: 92px;
+            bottom: 3px;
+            z-index: 3;
+            padding: 3px 9px;
+            pointer-events: auto;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        #idleArtifactList {
+            position: fixed;
+            top: 80px;
+            right: 12px;
+            z-index: 2000;
+            width: 300px;
+            max-width: calc(100vw - 24px);
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            padding: 8px 10px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #1b1b1b;
+            color: #ccc;
+            font-size: 13px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #idleArtifactList .idleArtifactListHead {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: #fff;
+            font-weight: 700;
+        }
+        #idleArtifactList .idleArtifactSort {
+            font-weight: normal;
+            color: #999;
+            font-size: 12px;
+        }
+        #idleArtifactList .idleArtifactSort a.active {
+            color: #fff;
+            text-decoration: underline;
+        }
+        #idleArtifactList .idleArtifactListClose {
+            margin-left: auto;
+            color: #aaa;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        #idleArtifactList table {
+            width: 100%;
+        }
+        #idleArtifactList td {
+            padding: 2px 4px;
+            border-top: 1px solid #2c2c2c;
+        }
+        #idleArtifactList td:last-child {
+            color: #888;
+            font-size: 12px;
+        }
+        #idleArtifactList .idleArtifactCount {
+            color: #888;
+            font-size: 12px;
+        }
+        #idleArtifactList tr.idleArtifactLower td:first-child:before {
+            content: "⚠ ";
+            color: #e0c060;
+        }
+        .idleRarityPoor { color: #9d9d9d; }
+        .idleRarityCommon { color: #ffffff; }
+        .idleRarityUncommon { color: #4fbf4f; }
+        .idleRarityRare { color: #6f8fff; }
+        .idleRarityEpic { color: #e040e0; }
+        .idleRarityLegendary { color: #ff9a2e; }
+        .idleRarityInsane { color: #ff4040; }
+    `);
+    var sortBy = "rarity";
+    var signature = "";
+    var timer = null;
+    var render = function (cards) {
+        $("#idleArtifactList").html(idleArtifactListHtml(cards, sortBy));
+    };
+    var check = function () {
+        timer = null;
+        var dialog = $("[id^='ujs_WziArtifactsDialog']").filter(function () {
+            return /^ujs_WziArtifactsDialog(?:_\d+)?$/.test(this.id);
+        }).last();
+        if (!dialog.length) {
+            $("#idleArtifactList").remove();
+            signature = "";
+            return;
+        }
+        var cards = idleArtifactCards(dialog);
+        var now = cards.map(function (card) {
+            return card.name + "|" + card.rarity + "|" + card.equipped;
+        }).join(";");
+        // Marking changes the page too; only redo it when the cards themselves changed.
+        if (now !== signature || !dialog.find(".tuydBetterTag").length !== !idleBetterCopies(cards).length) {
+            signature = now;
+            markIdleArtifacts(dialog);
+            if ($("#idleArtifactList").length) {
+                render(cards);
+            }
+        }
+        var toggle = dialog.find("[id^='ujs_AutoSortToggle']").first();
+        if (toggle.length && !$("#idleArtifactListBtn").length) {
+            toggle.append('<a href="#" id="idleArtifactListBtn" class="btn btn-primary btn-sm" title="All artifacts as a sortable list (Muli\'s Userscript)">List</a>');
+        }
+    };
+    $(document).on("click", "#idleArtifactListBtn", function (event) {
+        event.preventDefault();
+        if ($("#idleArtifactList").length) {
+            $("#idleArtifactList").remove();
+            return;
+        }
+        $("body").append('<div id="idleArtifactList"></div>');
+        render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
+    }).on("click", "#idleArtifactList [data-sort]", function (event) {
+        event.preventDefault();
+        sortBy = $(this).attr("data-sort");
+        render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
+    }).on("click", "#idleArtifactList .idleArtifactListClose", function (event) {
+        event.preventDefault();
+        $("#idleArtifactList").remove();
+    });
+    // Idle redraws its counters many times a second, so the check runs at most four times a second.
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 250);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+    check();
+}
+
+// Idle open in two places can lose progress; war.app asks about other devices, but not about a
+// second tab in the same browser.
+function setupIdleTabWarning() {
+    if (typeof BroadcastChannel !== "function" || !/\/Idle\/Play/i.test(location.pathname)) {
+        return;
+    }
+    var channel = new BroadcastChannel("tidyUpYourDashboard.idle");
+    var me = String(Math.random()).slice(2);
+    channel.onmessage = function (event) {
+        var data = event.data || {};
+        if (data.from === me) {
+            return;
+        }
+        if (data.type === "hello") {
+            channel.postMessage({ type: "here", from: me });
+        }
+        if (data.type === "hello" || data.type === "here") {
+            showIdleTabWarning();
+        }
+    };
+    channel.postMessage({ type: "hello", from: me });
+}
+
+function showIdleTabWarning() {
+    if ($("#idleTabWarning").length) {
+        return;
+    }
+    addCSS(`
+        #idleTabWarning {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            z-index: 3000;
+            transform: translateX(-50%);
+            max-width: calc(100vw - 24px);
+            padding: 10px 14px;
+            border: 1px solid #a33;
+            border-radius: 6px;
+            background: #3a1212;
+            color: #fff;
+            font-size: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #idleTabWarning button {
+            margin-left: 10px;
+        }
+    `);
+    $("body").append('<div id="idleTabWarning" role="alert">War.app Idle is also open in another tab of this browser. Having Idle open in two places can lose progress: close one of them.' +
+        '<button type="button" class="btn btn-secondary btn-sm">Got it</button></div>');
+    $("#idleTabWarning button").on("click", function () {
+        $("#idleTabWarning").remove();
+    });
+}
+
+function formatIdleWait(seconds) {
+    var minutes = Math.ceil(seconds / 60);
+    if (seconds < 60) {
+        return "in " + Math.max(1, Math.ceil(seconds)) + "s";
+    }
+    if (minutes < 60) {
+        return "in " + minutes + "m";
+    }
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+        return "in " + hours + "h" + (minutes % 60 ? " " + minutes % 60 + "m" : "");
+    }
+    return "in " + Math.floor(hours / 24) + "d" + (hours % 24 ? " " + hours % 24 + "h" : "");
+}
+
+// "￦1.18B (171K/sec)" from Idle's money counter.
+function parseIdleMoney(text) {
+    var match = /[￦₩]\s*([\d.,]+\s*[a-z]?)\s*\(\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(String(text || ""));
+    return match ? { money: parseIdleNumber(match[1]), rate: parseIdleNumber(match[2]) } : null;
+}
+
+// The rows of Idle's camp, mine and hospital tabs that can be upgraded for money.
+function idleUpgradeRows() {
+    return $("[id^='ujs_WziTabBody']").filter(function () {
+        return /^ujs_WziTabBody(?:ArmyCamp|Mine|Hospital|MercenaryCamp)Row(?:_\d+)?$/.test(this.id);
+    }).map(function () {
+        var row = $(this);
+        var button = row.find("a[id^='ujs_UpgradeBtn']").first();
+        var cost = /Upgrade\s*[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var host = row.find("[id$='_tmp']").filter(function () {
+            return /\/\s*s(?:ec)?\b|Saves/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
+        }).first();
+        var output = /^\s*₳\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(host.text());
+        return cost ? {
+            row: this,
+            camp: /ArmyCampRow/.test(this.id),
+            cost: parseIdleNumber(cost[1]),
+            output: output ? parseIdleNumber(output[1]) : null,
+            host: host[0] || null
+        } : null;
+    }).get().filter(function (entry) {
+        return entry && entry.cost != null;
+    });
+}
+
+// Each army camp upgrade adds about the same share of what the camp makes, so the camp that
+// makes the most per ₩ of its upgrade cost gains the most for the money.
+function idleBestCamp(rows) {
+    return rows.filter(function (entry) {
+        return entry.camp && entry.output && entry.cost > 0;
+    }).sort(function (a, b) {
+        return b.output / b.cost - a.output / a.cost;
+    })[0] || null;
+}
+
+function showIdleUpgradeHints() {
+    var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
+    if (!wallet || wallet.money == null) {
+        return;
+    }
+    var rows = idleUpgradeRows();
+    var best = idleBestCamp(rows);
+    rows.forEach(function (entry) {
+        if (!entry.host) {
+            return;
+        }
+        var wait = entry.cost > wallet.money && wallet.rate > 0 ? formatIdleWait((entry.cost - wallet.money) / wallet.rate) : "";
+        var text = [wait, entry === best ? "Best value" : ""].filter(Boolean).join(" · ");
+        // war.app rewrites its label several times a second, so the hint sits beside it, in the
+        // label's holder, just after the text.
+        var holder = $(entry.host).parent();
+        var hint = holder.children(".idleUpgradeHint");
+        if (!text) {
+            hint.remove();
+            return;
+        }
+        if (!hint.length) {
+            hint = $('<span class="idleUpgradeHint"></span>').appendTo(holder);
+        }
+        var label = $(entry.host).children().first()[0] || entry.host;
+        hint.css({ left: Math.round(label.getBoundingClientRect().width || label.offsetWidth || 0) + 8 + "px", lineHeight: (entry.host.offsetHeight || 18) + "px" });
+        hint.toggleClass("idleBestValue", entry === best).text(text)
+            .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
+    });
+}
+
+function setupIdleUpgradeHints() {
+    addCSS(`
+        .idleUpgradeHint {
+            position: absolute;
+            bottom: 0;
+            color: #aaa;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .idleUpgradeHint.idleBestValue {
+            color: #e0c060;
+            font-weight: 700;
+        }
+    `);
+    window.setInterval(function () {
+        if (!document.hidden) {
+            showIdleUpgradeHints();
+        }
+    }, 1000);
+}
+
+// What Idle is waiting on you for, read from what it shows.
+function idleAttentionItems() {
+    var shown = function (prefix) {
+        return $("[id^='" + prefix + "']").filter(function () {
+            if (!new RegExp("^" + prefix + "(?:_\\d+)?$").test(this.id)) {
+                return false;
+            }
+            for (var element = this; element && element !== document.body; element = element.parentElement) {
+                if (element.style && element.style.display === "none") {
+                    return false;
+                }
+            }
+            return true;
+        }).length > 0;
+    };
+    var says = function (pattern) {
+        return $(".ujsTextInner").filter(function () {
+            return pattern.test($(this).text()) && $(this).closest("[style*='display: none']").length === 0;
+        }).length > 0;
+    };
+    return [
+        [shown("ujs_UnclaimedPowersBtn"), "Unclaimed powers"],
+        [says(/Click Claim below to reveal it/i), "An artifact to claim"],
+        [says(/\bis ready to move\b/i), "A tank is ready to move"],
+        [shown("ujs_BattleIndicatorBtn"), "A battle"],
+        [shown("ujs_DailyBonusBtn"), "The daily bonus"],
+        [shown("ujs_CoinWheelBtn"), "The coin wheel"]
+    ].filter(function (item) {
+        return item[0];
+    }).map(function (item) {
+        return item[1];
+    });
+}
+
+function setupIdleAttention() {
+    var known = [];
+    var check = function () {
+        var items = idleAttentionItems();
+        var title = document.title.replace(/^\(\d+\) /, "");
+        document.title = items.length ? "(" + items.length + ") " + title : title;
+        var fresh = items.filter(function (item) {
+            return known.indexOf(item) === -1;
+        });
+        known = items;
+        if (!fresh.length || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") {
+            return;
+        }
+        ifSettingIsEnabled("idleNotifications", function () {
+            var notification = new Notification("War.app Idle needs you", { body: fresh.join(", "), tag: "tuyd-idle" });
+            notification.onclick = function () {
+                window.focus();
+                notification.close();
+            };
+        });
+    };
+    window.setInterval(check, 2000);
+    check();
+}
+
 function setupClanListSearch() {
     var $container = $("#AutoContainer, .container").filter(function () {
         return $(this).find("a[href*='/Clans/?ID=']").length > 0;
@@ -1607,6 +2235,13 @@ window.userscriptSettings = [
         help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
     },
     {
+        id: 'idleNotifications',
+        text: 'Idle: Desktop Notification When Idle Needs You',
+        selected: false,
+        section: 'Idle',
+        help: 'While Idle is open in a background tab, shows a desktop notification when it needs you: unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus or the coin wheel. Your browser asks for permission when you turn this on.'
+    },
+    {
         id: 'mailPreviewSearch',
         text: 'Mail: Search the First 15 Words of Each Thread',
         selected: true,
@@ -1875,7 +2510,7 @@ function setupUserscriptMenu() {
     $("#importSettings").on("click", function () {
         importSettings();
     });
-    $("#turnNotifications").on("change", function () {
+    $("#turnNotifications, #idleNotifications").on("change", function () {
         if (this.checked && "Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
@@ -2370,6 +3005,10 @@ function pageIsLadders() {
 
 function pageIsMapOfTheWeek() {
     return location.href.match(/^https?:\/\/[^\/]+\/MapOfTheWeek.*/i);
+}
+
+function pageIsIdle() {
+    return location.href.match(/^https?:\/\/[^\/]+\/Idle(?:[\/?#].*)?$/i);
 }
 
 function pageIsMyMail() {
@@ -3840,6 +4479,13 @@ function pageFeatures() {
         { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
         { name: "AWP World Tour stats", section: "Profile", match: pageIsProfile, run: setupAwpProfileStats },
         { name: "custom.wl-stats.com stats", section: "Profile", match: pageIsProfile, run: setupCustomProfileStats },
+        { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
+        { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
+        { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
+        { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
+        { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
+        { name: "Time to afford and best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
+        { name: "Count of things Idle needs you for in the tab title", section: "Idle", match: pageIsIdle, run: setupIdleAttention },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];

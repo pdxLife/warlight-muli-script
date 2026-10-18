@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.25.0
+
+First helpers for War.app Idle, picked from what Idle players ask for on the forum. Each has its own switch in the settings menu's new Idle section.
+
+- **Volume slider.** A slider next to war.app's speaker icon sets how loud Idle's sounds are (battles, challenges and auto-conquer can get noisy), from 0 to 100%, remembered in this browser. war.app's own mute button still works; ads are left alone.
+- **Check big market purchases.** When the number typed into a market is more than your money allows, Idle quietly buys as many as it can, so a typo like "121p" for "1210" (121 quadrillion) spends all your money. The script now asks first: "You typed 121p (121 quadrillion), more than you can afford. This buys 19M Copper Bar for ₩934M, as many as your money allows. Buy them?" Orders you can afford go through as before.
+- **Better artifact copies are pointed out.** In the artifact window ("View All"), an equipped artifact gets a gold "Better: Epic" tag when a higher-rarity copy of it isn't equipped, and that copy is outlined in gold, so you see it before playing on with the weaker one (a Feature Requests idea). It updates as you drag cards.
+- **A list of all your artifacts.** A "List" button next to the artifact window's Sort box opens a compact list of every artifact, sorted by rarity or by name, with copies counted and equipped ones marked: the overview players asked for once the window has more cards than it shows at once.
+- **Time to afford.** Next to each upgrade you can't afford yet (army camps, mines, hospitals), how long until you can at your current ₩/sec: "in 17h 31m", "in 1d 3h".
+- **Best army camp for the money.** The army camp that adds the most armies per ₩ of its upgrade cost is marked "Best value" in gold. Each army camp upgrade adds about the same share of what the camp makes (about 11% at the levels checked), so the camp making the most per ₩ of its upgrade cost gains the most.
+- **What Idle needs you for, in the tab title.** "(2) Idle" when there are unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus or the coin wheel waiting, so Idle can sit in a background tab. An optional desktop notification ("Idle: Desktop Notification When Idle Needs You", off by default) says what's new while the tab is in the background.
+- **A warning when Idle is open in another tab of this browser.** Playing Idle in two places can lose progress; war.app asks about other devices, and now both tabs say so when Idle is open twice in the same browser.
+- **Confirm before using powers and artifacts.** Clicking Use on a power or Activate on an artifact asks first, naming it: "Use Time Warp? You have 5.", "Activate Draft Boost (Epic)?", and says when a power would cost coins because you have none left.
+
 ## 3.24.1
 
 - **Community Events cards for events you're in no longer say "You can join!"**: war.app's green line reads "You're in!" while it's running, "You're signed up!" during signups, "You took part" once it's finished, and "You're in the race!" on AWP World Tour, each in its own colour so they stand out from war.app's green: gold when you're in, light blue when signed up, grey once it's over. Cards for events you're not in keep the green "You can join!".
