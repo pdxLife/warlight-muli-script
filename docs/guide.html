@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guide · Tidy Up Your Dashboard</title>
+<meta name="description" content="How to use every feature of the Tidy Up Your Dashboard userscript for war.app.">
+<style>
+  :root {
+    --bg: #141414;
+    --panel: #1f1f1f;
+    --line: #333;
+    --text: #d6d6d6;
+    --muted: #8d8d8d;
+    --gold: #e0c060;
+    --link: #5a9da5;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  a { color: var(--link); }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 16px 64px; }
+  .back { font-size: 14px; }
+  h1 { margin: 12px 0 4px; font-size: 32px; color: #fff; }
+  .lead { margin: 0 0 24px; color: var(--muted); }
+  nav.toc { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 18px; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; }
+  nav.toc li { margin: 3px 0; break-inside: avoid; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+  h2 { margin: 48px 0 8px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; scroll-margin-top: 16px; }
+  h3 { margin: 24px 0 4px; font-size: 17px; color: #fff; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  .where { color: var(--muted); font-size: 14px; }
+  .setting { display: inline-block; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); font-size: 14px; white-space: nowrap; }
+  .tip { margin: 12px 0; padding: 10px 14px; border-left: 3px solid var(--gold); background: var(--panel); border-radius: 0 6px 6px 0; font-size: 15px; }
+  kbd { padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel); font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; }
+  figure { margin: 14px 0 6px; }
+  figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="./">← Tidy Up Your Dashboard</a>
+  <h1>Guide</h1>
+  <p class="lead">How to use each feature, where to find it, and which setting controls it.</p>
+
+  <nav class="toc" aria-label="Contents">
+    <ol>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#settings">The settings menu</a></li>
+      <li><a href="#dashboard">Dashboard</a></li>
+      <li><a href="#open-games">Open Games filter</a></li>
+      <li><a href="#games">In your games</a></li>
+      <li><a href="#past-games">Past Games</a></li>
+      <li><a href="#chat-rooms">Chat rooms</a></li>
+      <li><a href="#ladders">Ladders, events, leaderboards</a></li>
+      <li><a href="#tournaments">Tournaments</a></li>
+      <li><a href="#profiles">Profiles and clans</a></li>
+      <li><a href="#idle">War.app Idle</a></li>
+      <li><a href="#more">Forum, mail and more</a></li>
+      <li><a href="#help">Troubleshooting</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="start">Getting started</h2>
+  <ol>
+    <li>Install <a href="https://www.tampermonkey.net/">Tampermonkey</a> in Chrome, Edge or Firefox.</li>
+    <li>In Chrome or Edge: open the extensions page (<code>chrome://extensions</code> or <code>edge://extensions</code>), click <strong>Details</strong> on Tampermonkey and turn on <strong>Allow User Scripts</strong>. Firefox doesn't need this.</li>
+    <li>Click <strong>Install</strong> on the <a href="./">home page</a> and confirm in Tampermonkey.</li>
+    <li>Open or reload <a href="https://war.app">war.app</a>. A small version number appears in the bottom-right corner: the script is running.</li>
+  </ol>
+  <p><strong>Updates</strong> install by themselves; Tampermonkey checks about once a day. When a newer version is out, the version number in the corner turns into a gold <strong>Update to …</strong> link, if you'd rather not wait. Every change is in the <a href="https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md">changelog</a>.</p>
+  <div class="tip">The script is for war.app in a desktop browser. war.app's phone app can't run userscripts. If Muli's old version is still installed, turn it off or remove it in Tampermonkey so the two don't run together.</div>
+
+  <h2 id="settings">The settings menu</h2>
+  <p class="where">Your account menu (your name, top right) → <strong>Muli's Userscript</strong>, or click the version number in the bottom-right corner.</p>
+  <ul>
+    <li>Sections by area (Dashboard, Games, Tournaments, Ladders &amp; community, Profile, Clans, Idle, Forum, Maps &amp; levels, Other, Third-party data, Backup) fold open and closed; each shows how many items it holds.</li>
+    <li>Every feature has its own switch, next to the settings for that area. Turn off anything you don't want; nothing else changes.</li>
+    <li>The <strong>search box</strong> at the top finds a setting or feature by name.</li>
+    <li><strong>Backup → Export / Import</strong> copies your settings, bookmarks, game notes, mutes and hidden threads to another browser or computer. Settings are kept per browser, so use this when you switch.</li>
+  </ul>
+
+  <h2 id="dashboard">Dashboard</h2>
+  <p class="where">war.app → Multi-Player → Dashboard</p>
+  <figure>
+    <img src="media/dashboard-chat-refresh.png" width="700" height="334" alt="The dashboard's My Games, Open Games and Past Games tabs with Chat and Refresh buttons, and two games with AWP Tour and Nations Cup badges">
+    <figcaption>The tabs, Chat and Refresh, and event badges on My Games.</figcaption>
+  </figure>
+  <h3>Layout</h3>
+  <p>My Games, Open Games and Past Games become tabs in a fixed window that scrolls on its own, with your bookmarks and the sidebar boxes on the right. <span class="setting">Fixed Window with Scrollable Games</span> (on) turns this off if you prefer war.app's long page.</p>
+  <h3>Refresh</h3>
+  <p>Press <kbd>R</kbd> (not while typing) or click <strong>Refresh (R)</strong>: both game lists and their counts update without reloading the page. <span class="setting">Automatically Refresh Games on Tab-Focus</span> (on) also refreshes when you come back to the tab after a while.</p>
+  <h3>Your turn</h3>
+  <ul>
+    <li>The tab title counts the games waiting for you: "(2) Multi-Player Dashboard". While the tab is in the background it checks every 5 minutes.</li>
+    <li><span class="setting">Desktop Notification When a Game Needs You</span> (off) shows a notification when a game becomes your turn; your browser asks for permission once.</li>
+    <li>Your-turn games are sorted by the time left before you're booted, most urgent first.</li>
+  </ul>
+  <h3>Event badges and Chat</h3>
+  <ul>
+    <li>Games that belong to a community event get a badge at their top right: blue for custom.wl-stats.com events ("Nations Cup", "P/R League", "Titled Tuesday"), gold for the AWP World Tour. Hover it for the full name, click it to open the event.</li>
+    <li><strong>Chat</strong> opens war.app's chat rooms (Global, Clan, groups) straight from the dashboard.</li>
+  </ul>
+  <h3>Bookmarks</h3>
+  <p>The Bookmarks box in the sidebar keeps links you choose. Click <strong>+</strong> to add one, or use the <strong>Bookmark</strong> link that appears on forum threads, tournaments and community levels. Bookmarks can be edited, reordered, deleted and set to open in a new window.</p>
+
+  <h2 id="open-games">Open Games filter</h2>
+  <p class="where">Dashboard → Open Games, or Multi-Player → Open Games → <strong>Filter</strong> in the header</p>
+  <figure>
+    <img src="media/open-games-filter-more.png" width="682" height="424" alt="The Open Games filter panel: hide Auto Games and coin games, a minimum boot time, words to hide, seats from 2 to 4, team games, and settings such as Commerce to hide">
+    <figcaption>Everything ticked or filled in is hidden; the header says how many games are hidden.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Hide Auto Games</strong> and <strong>coin games</strong>.</li>
+    <li><strong>Boot time under … hours</strong>: hides games that boot too fast for you (0 = off).</li>
+    <li><strong>Words</strong>: games whose name contains any of them are hidden, as whole words, separated by commas ("rp, diplo").</li>
+    <li><strong>Players from … to …</strong>: seat count (0 = any).</li>
+    <li><strong>Team games</strong>: show, show only team games, or hide them.</li>
+    <li><strong>Hide games with</strong>: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog other than normal, no-split, and more, read from each game's setting icons.</li>
+  </ul>
+  <p>The filter is remembered and also applies to the games that load later with "Show more". Games you're already in get a green <strong>Joined</strong> badge.</p>
+
+  <h2 id="games">In your games</h2>
+  <p class="where">Any game: war.app → a game's page</p>
+  <h3>Notes in a game</h3>
+  <figure>
+    <img src="media/game-notes.png" width="336" height="310" alt="The Notes panel in a game: general notes, I move first on even turns, Turn 2: you move first, and a note about the other player">
+    <figcaption>Notes, the move order, and a note per player.</figcaption>
+  </figure>
+  <ol>
+    <li>Click <strong>Notes</strong>, next to war.app's Game button at the bottom left (with the chat open, it sits left of the Chat tab).</li>
+    <li>Write anything: plans, picks, deals. It saves as you type; "Saved" confirms it.</li>
+    <li>Choose <strong>I move first on</strong> odd or even turns, and the panel tells you each turn: "Turn 7: you move first".</li>
+    <li>Each other player has a box of their own.</li>
+  </ol>
+  <p>Only you see your notes. A gold dot on the button means the game has notes. Click the map (or anywhere else) and your keys go back to war.app; click in the notes to type again.</p>
+  <h3>Chat in a game</h3>
+  <ul>
+    <li><strong>The whole chat</strong>: the script presses war.app's "Load Older Messages" for you until the whole chat is there, then shows the newest message. Tip: with war.app's App Settings → Chat Dialog unchecked, it loads in one go.</li>
+    <li><strong>Read aloud</strong>: click the faint 🔊 at the left of a message to hear it and the ones after it; click ■ to stop. <span class="setting">Read New Chat Messages Aloud</span> (off) reads new messages from others as they arrive, so you can listen while entering orders. Chrome only speaks after you've clicked somewhere on the page.</li>
+    <li><strong>Tag a player</strong>: type <kbd>@</kbd> in the chat box and pick a name from the list (mouse, arrow keys, then <kbd>Enter</kbd> or <kbd>Tab</kbd>). While the list is open, Enter picks the name instead of sending.</li>
+    <li><strong>Mute</strong>: hover a message and click 🔇 to hide that player's messages; they never know. See <a href="#chat-rooms">Chat rooms</a> to unmute.</li>
+    <li><strong>Mentions</strong>: messages with your name are outlined in gold.</li>
+    <li><strong>Private chat list</strong>: Chat → Private lists the players still in the game first, A to Z, then a gold line and the players who are out.</li>
+  </ul>
+  <h3>Ask before committing</h3>
+  <p><span class="setting">Ask Before Committing Orders</span> (off; settings → Games): Commit and Autopilot's Run+Commit ask "Commit your orders for this turn?" first, against accidental commits.</p>
+
+  <h2 id="past-games">Past Games</h2>
+  <p class="where">war.app → Multi-Player → Past Games</p>
+  <figure>
+    <img src="media/past-games-filter.png" width="486" height="422" alt="The Past Games filter bar: a search box, In progress, Any speed, Reverse order and 18 of 25 shown">
+    <figcaption>The filter bar above your past games.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Search</strong> a game name or a player's name.</li>
+    <li><strong>State</strong>: in progress, your turn, lobby, finished, or games you're out of (surrendered, booted…).</li>
+    <li><strong>Speed</strong>: real-time (boot time under an hour) or multi-day.</li>
+    <li><strong>Reverse order</strong> flips the list.</li>
+  </ul>
+  <p>It filters the page war.app shows. To search more games at once, set war.app's <strong>Number per page</strong> to 200. The state, speed and order are remembered; the search box starts empty.</p>
+
+  <h2 id="chat-rooms">Chat rooms</h2>
+  <p class="where">Dashboard → <strong>Chat</strong>, or Community → Chat (Global, Clan and your groups)</p>
+  <figure>
+    <img src="media/chat-room-bar.png" width="800" height="60" alt="The chat room tabs with the script's bar beside them: Search chat, Hide events (21 hidden) and Muted (0)">
+    <figcaption>The bar beside the chat tabs (below them in a narrow window).</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Hide events</strong> (ticked by default): war.app's notices such as "Joined the group", "Removed from the group due to inactivity" and clan war rewards are taken out, and the chat closes up. The bar counts them; untick to see them again.</li>
+    <li><strong>Search chat</strong>: type a word or a player's name; only matching messages stay ("9 found"). Clear the box to see everything.</li>
+    <li><strong>Mute</strong>: hover a message, click 🔇 and confirm. That player's messages disappear here and in game chats (where they become a faint "muted" line). <strong>Muted (N)</strong> lists everyone you muted, with <strong>Unmute</strong>.</li>
+    <li><strong>Mentions</strong>: messages with your name or @name are outlined in gold. A tab you're not looking at shows "@1" when someone mentions you there.</li>
+    <li><strong>@ tagging</strong> and <strong>read aloud</strong> work as in game chat; hover a message for its 🔊.</li>
+  </ul>
+
+  <h2 id="ladders">Ladders, community events and leaderboards</h2>
+  <h3>Community ladders &amp; leagues</h3>
+  <p class="where">war.app → Multi-Player → Ladders, below war.app's four ladders</p>
+  <figure>
+    <img src="media/ladders-panel-2.png" width="582" height="671" alt="The Community ladders and leagues panel with Players (AWP World Tour, P/R League, Seasonal Ladder, Titled Tuesday) and Clans and nations (Clan League, Clan Cup, Nations Cup)">
+    <figcaption>Each series with its standings and, when you're signed in, your own place.</figcaption>
+  </figure>
+  <p>The AWP World Tour race, P/R League, the Seasonal Ladder, Titled Tuesday (the last event, and the next one in your time zone), Clan League, Clan Cup and Nations Cup. Each line shows the current season, how far it is, the leaders, and your place or your clan's or country's. Buttons open the series on awp.wl-stats.com or custom.wl-stats.com; a series taking signups says until when.</p>
+  <h3>Community Events</h3>
+  <p class="where">war.app → Multi-Player → Community Events</p>
+  <figure>
+    <img src="media/community-events-2.png" width="716" height="270" alt="Community Events cards for Clan League 19, Nations Cup 2026 (You're in!) and AWP World Tour (You're in the race!), each with standings at the top right">
+    <figcaption>Standings at the top right of each card, and where you take part, a gold "You're in!".</figcaption>
+  </figure>
+  <p>Cards for events on awp.wl-stats.com and custom.wl-stats.com show the current edition and its standings, with links to the full standings. Where you take part, war.app's "You can join!" becomes "You're in!", "You're signed up!" or "You took part".</p>
+  <h3>Your rank on Quickmatch leaderboards</h3>
+  <p class="where">war.app → Multi-Player → Quickmatch → Leaderboards</p>
+  <figure>
+    <img src="media/leaderboard-rank.png" width="567" height="144" alt="Quickmatch Leaderboards: Your rating 1,309.8, Rank #104 of 190,975, Global">
+    <figcaption>Your place next to your rating.</figcaption>
+  </figure>
+  <p>Next to "Your rating" the script shows your rank, for Global and for each template you pick. It takes a few seconds the first time (it looks you up page by page), then it's remembered for 10 minutes. "≈" means it counted the players above your rating.</p>
+
+  <h2 id="tournaments">Tournaments</h2>
+  <p class="where">Any tournament's page</p>
+  <figure>
+    <img src="media/tournament-players.png" width="736" height="510" alt="A tournament's Players tab with a search box and a Sort by menu">
+    <figcaption>Search and sort on the Players tab.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Players tab</strong>: type in the search box to bring matching players to the top; <strong>Sort by</strong> wins, losses or name.</li>
+    <li><strong>Bookmark</strong> next to "Created by" saves the tournament to your bookmarks.</li>
+    <li>For community series (Titled Tuesday, War Gaming Live, P/R League…), a link to the tournament's page on custom.wl-stats.com.</li>
+    <li>To find yourself in the bracket, use war.app's own <strong>Find…</strong> on the Bracket tab.</li>
+  </ul>
+
+  <h2 id="profiles">Profiles and clans</h2>
+  <figure>
+    <img src="media/profile-stats.png" width="526" height="654" alt="Profile boxes: AWP World Tour stats and Community tournaments stats">
+    <figcaption>AWP World Tour and community tournament stats on a profile.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>AWP World Tour</strong>: race place, 12-month rank, games and win rate, tournaments, titles, with a link to awp.wl-stats.com.</li>
+    <li><strong>Community tournaments</strong>: games, titles, best placement, tournaments organized, and records in the formats the player plays most.</li>
+    <li><strong>Private notes</strong>: the note you keep about the player on war.app (the profile's "Private Notes" link), shown on their profile. <span class="setting">Show Private Notes on Profile</span> (on).</li>
+    <li>Click a stat section's heading to fold it.</li>
+  </ul>
+  <h3>Clans</h3>
+  <ul>
+    <li><strong>Clan list search</strong>: a search box on Community → Clans.</li>
+    <li><strong>Community events on clan pages</strong>: below Clan Wars, the clan's place in Clan League, Clan Cup and the other community series, and its titles.</li>
+  </ul>
+  <figure>
+    <img src="media/clan-events.png" width="334" height="592" alt="A clan page's Community events box with Clan Cup and Clan League standings and a Champion title">
+    <figcaption>A clan's community events and titles.</figcaption>
+  </figure>
+
+  <h2 id="idle">War.app Idle</h2>
+  <p class="where">war.app → Idle. The helpers only show information and ask before risky clicks; nothing plays the game for you. Each has its own switch under settings → Idle.</p>
+  <figure>
+    <img src="media/idle-tech-cost.png" width="742" height="218" alt="An Idle tech box: Prefab Assembly needs 504 more Copper Wire, about 33.4M, and 64 more Nail, about 214M; all about 248M">
+    <figcaption>What a tech is missing, and what it would cost at the market.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Tech costs</strong>: open a tech in the Techs tab. Beside each item you're short of: "need 504 more ≈ ₩33.4M", at the cheapest market on the level, with the price rising as you buy, as Idle's markets do. With two or more items short, the total is on the tech's name line, in red when it's more than your money.</li>
+    <li><strong>Market typos are caught</strong>: if you type more than you can afford (say "121p" instead of "1210"), the script asks before Idle spends all your money.</li>
+    <li><strong>Powers and artifacts ask first</strong>: Use and Activate name what you're about to use.</li>
+    <li><strong>Artifacts</strong>: in the artifact window, an equipped artifact with a better unequipped copy gets a gold "Better: …" tag. <strong>List</strong> shows every artifact sorted by rarity or name; <strong>store</strong> marks one you never want used.</li>
+    <li><strong>Time to afford</strong> next to upgrades you can't afford yet, and <strong>Best value</strong> on the best army camp for the money.</li>
+    <li><strong>Log</strong> (next to the zoom buttons) lists the pop-ups Idle showed on the map, newest first.</li>
+    <li><strong>Volume slider</strong> next to war.app's speaker icon.</li>
+    <li><strong>Tab title</strong>: "(2) Idle" when something waits for you (powers, an artifact, a tank, a battle, the daily bonus, the coin wheel). <span class="setting">Idle: Desktop Notification When Idle Needs You</span> (off) notifies you while the tab is in the background.</li>
+    <li><strong>Second-tab warning</strong> when Idle is open twice in the same browser.</li>
+  </ul>
+  <div class="tip">Playing Idle in two places at once (two tabs, or a tab and the phone app) can lose progress. Close it everywhere else first.</div>
+
+  <h2 id="more">Forum, mail and more</h2>
+  <h3>Forum</h3>
+  <ul>
+    <li><strong>Formatting toolbar</strong> above the reply box: bold, italic, code, image, line, quote, list.</li>
+    <li><strong>Hide a thread</strong> with the eye icon on a forum list. <span class="setting">Automatically Hide Off-Topic Threads</span> and <span class="setting">Automatically Hide War.app Idle Threads</span> (off) hide whole categories. <strong>Reset Hidden Threads</strong> in the settings menu brings them back.</li>
+    <li>Links to single-player levels in posts become small preview cards.</li>
+  </ul>
+  <h3>Mail</h3>
+  <p class="where">Your mail page</p>
+  <ul>
+    <li><strong>Filter by player</strong>: threads started or last answered by that player, across all pages.</li>
+    <li><strong>Filter by words</strong>: all the words you type, in the subject, or in the first 15 words of each thread. The first time you search the first words, the script reads your threads once (about half a minute for 400 threads); <span class="setting">Mail: Search the First 15 Words of Each Thread</span> turns this off.</li>
+    <li><strong>Last post from … to …</strong>: a date range. The filters combine.</li>
+  </ul>
+  <h3>Player Search</h3>
+  <p class="where">Community → Player Search</p>
+  <ul>
+    <li>Results come as <strong>Best match</strong> (exact names first, then by level), or by level or name.</li>
+    <li>Hide level 1–2 accounts, show only players in a clan, or set a minimum level.</li>
+    <li>Tags: "You", AWP World Tour ranks, and "Blocked" for players on your block list.</li>
+    <li>Paste a profile link or a player ID and press Search to open that profile. An empty search box offers your recent searches.</li>
+  </ul>
+  <h3>Other pages</h3>
+  <ul>
+    <li><strong>Block list</strong>: a player count and a search box.</li>
+    <li><strong>Maps</strong>: a search box on the maps list.</li>
+    <li><strong>Common Games</strong> with a player: a sortable table and your head-to-head record.</li>
+    <li><strong>Points</strong>: your total points earned.</li>
+  </ul>
+
+  <h2 id="help">Troubleshooting</h2>
+  <ul>
+    <li><strong>Nothing changes on war.app.</strong> Look for the version number in the bottom-right corner. If it's missing: check that the script is on in Tampermonkey, and in Chrome or Edge that <strong>Allow User Scripts</strong> is on in Tampermonkey's Details. Then reload war.app.</li>
+    <li><strong>Tampermonkey says "Reinstall" instead of "Update".</strong> You already have that version. Right after a release, GitHub can serve the old file for a few minutes; try again a little later.</li>
+    <li><strong>A feature is in the way.</strong> Turn it off in the settings menu; each one has a switch.</li>
+    <li><strong>Two copies running.</strong> If Muli's old version is still installed, turn it off in Tampermonkey.</li>
+    <li><strong>Something doesn't work.</strong> Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd> on any war.app page to open the script's log, and reply in the <a href="https://war.app/Forum/897130-mulis-userscript-update">forum thread</a> with the page and what the log says. Issues are also welcome on <a href="https://github.com/pdxLife/warlight-muli-script/issues">GitHub</a>.</li>
+  </ul>
+  <p><strong>Privacy:</strong> the script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. MTL stats and community level records use Muli's old server, so they're off by default (<span class="setting">Load MTL Ladder and Community Level Records (via maak.ch)</span>).</p>
+
+  <footer>
+    <a href="./">Home</a> · <a href="https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/pdxLife/warlight-muli-script">GitHub</a> · <a href="https://war.app/Forum/897130-mulis-userscript-update">Forum thread</a><br>
+    Tidy Up Your Dashboard was created by <a href="https://war.app/Profile?p=2211733141">Muli</a> in 2015. A fan project, not affiliated with war.app.
+  </footer>
+</main>
+</body>
+</html>

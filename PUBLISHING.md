@@ -118,6 +118,10 @@ Check two things:
 | Forum **Preview** in the browser | It moves. |
 | war.app's phone app (a real post) | It shows, at least as the panel without the boxes. |
 
+## The guide
+
+`docs/guide.html` is the site's how-to page: one section per area, saying where each feature is, how to use it and which setting controls it, with the images from `docs/media/`. When a feature is added, changed or removed, update its section there too; setting names are written as they appear in the settings menu.
+
 ## Adding images later
 
 1. Put the file in `docs/media/` (not `test/`), with a lowercase name made of words and dashes, e.g. `ladders-panel.png` or `open-games-filter.png` (an APNG keeps the `.png` ending).

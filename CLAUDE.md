@@ -12,7 +12,7 @@ npm run check      # syntax check of the userscript
 
 To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
 
-`docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. Images used in forum posts are PNG or JPG, and motion is an animated PNG made with `tools/make_apng.py`: war.app's phone app shows neither SVG nor GIF (tested), the forum can't play video, and the app shows an APNG's first frame as a still, so that frame must make sense alone. A file a forum post uses must never be renamed or deleted.
+`docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. `docs/guide.html` is its how-to page for every feature, with setting names as the settings menu shows them: update its section when a feature is added, changed or removed. Images used in forum posts are PNG or JPG, and motion is an animated PNG made with `tools/make_apng.py`: war.app's phone app shows neither SVG nor GIF (tested), the forum can't play video, and the app shows an APNG's first frame as a still, so that frame must make sense alone. A file a forum post uses must never be renamed or deleted.
 
 ## How the script is put together
 
