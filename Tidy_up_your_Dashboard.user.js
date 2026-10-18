@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.23.3
+// @version 3.24.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.23.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.24.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -33,6 +33,8 @@ var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
+var MAIL_PREVIEWS_KEY = "tidyUpYourDashboard.mailPreviews";
+var MAIL_PREVIEW_WORDS = 15;
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
 var REPO_URL = "https://github.com/pdxLife/warlight-muli-script";
 var MENU_SECTIONS_KEY = "tidyUpYourDashboard.menuSections";
@@ -892,17 +894,135 @@ function parseMailRange(text) {
     return match ? { from: Number(match[1]), to: Number(match[2]), total: Number(match[3]) } : null;
 }
 
-function filterMailThreads(query) {
+function mailThreadSubject(row) {
+    return $(row).find("a[href*='/Discussion/?ID=']").first().text().trim();
+}
+
+function mailThreadDay(row) {
+    var match = /\d{4}-\d{2}-\d{2}/.exec($(row).children("td").last().text());
+    return match ? match[0] : null;
+}
+
+function mailWords(text) {
+    return String(text || "").toLowerCase().split(/\s+/).filter(function (word) {
+        return word.length > 0;
+    });
+}
+
+function readMailFilters() {
+    return {
+        player: $("#MailSearchInput").val() || "",
+        words: $("#MailWordsInput").val() || "",
+        mode: $("#MailWordsMode").val() || "subject",
+        from: $("#MailFromInput").val() || "",
+        to: $("#MailToInput").val() || ""
+    };
+}
+
+// previews: thread id -> the first words of its opening message, for the "first 15 words" mode.
+function filterMailThreads(filters, previews) {
     var rows = $("table.region tr[data-threadid]");
-    var needle = query.trim().toLowerCase();
+    var player = filters.player.trim().toLowerCase();
+    var words = mailWords(filters.words);
+    var active = player !== "" || words.length > 0 || filters.from !== "" || filters.to !== "";
     var matches = rows.filter(function () {
-        return needle === "" || mailThreadPlayers(this).some(function (name) {
-            return name.toLowerCase().indexOf(needle) !== -1;
-        });
+        if (player && !mailThreadPlayers(this).some(function (name) {
+            return name.toLowerCase().indexOf(player) !== -1;
+        })) {
+            return false;
+        }
+        if (words.length) {
+            var text = filters.mode === "preview" ? (previews || {})[$(this).attr("data-threadid")] : mailThreadSubject(this);
+            if (text == null) {
+                return false;
+            }
+            text = text.toLowerCase();
+            if (!words.every(function (word) {
+                return text.indexOf(word) !== -1;
+            })) {
+                return false;
+            }
+        }
+        var day = mailThreadDay(this);
+        return !(filters.from && (!day || day < filters.from)) && !(filters.to && (!day || day > filters.to));
     });
     rows.not(matches).hide();
     matches.show();
-    $("#MailSearchCount").text(needle === "" ? "" : matches.length + " of " + rows.length + " threads");
+    return active ? matches.length + " of " + rows.length + " threads" : "";
+}
+
+function mailPreviewText(html) {
+    var page = new DOMParser().parseFromString(html, "text/html");
+    var post = page.querySelector("[id^='PostForDisplay_']");
+    if (!post) {
+        return null;
+    }
+    $(post).find("br").replaceWith(" ");
+    return String(post.textContent).trim().split(/\s+/).slice(0, MAIL_PREVIEW_WORDS).join(" ");
+}
+
+function storedMailPreviews() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(MAIL_PREVIEWS_KEY));
+        return stored && typeof stored === "object" ? stored : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// The opening message never changes, so each thread is read once and remembered in this browser.
+function loadMailPreviews(previews, onProgress) {
+    var done = $.Deferred();
+    var missing = $("table.region tr[data-threadid]").map(function () {
+        return $(this).attr("data-threadid");
+    }).get().filter(function (id) {
+        return previews[id] == null;
+    });
+    var next = 0;
+    var finished = 0;
+    var failed = 0;
+    var save = function () {
+        try {
+            localStorage.setItem(MAIL_PREVIEWS_KEY, JSON.stringify(previews));
+        } catch (e) {
+        }
+    };
+    var work = function () {
+        if (next >= missing.length) {
+            return;
+        }
+        var id = missing[next++];
+        $.ajax({ url: "/Discussion/?ID=" + encodeURIComponent(id), dataType: "text" }).done(function (html) {
+            var text = mailPreviewText(html);
+            if (text != null) {
+                previews[id] = text;
+            } else {
+                failed++;
+            }
+        }).fail(function (xhr) {
+            failed++;
+            log("Error reading mail thread " + id + ": " + (xhr && xhr.statusText));
+        }).always(function () {
+            finished++;
+            onProgress(finished, missing.length);
+            if (finished === missing.length) {
+                save();
+                done.resolve(failed);
+            } else {
+                if (finished % 20 === 0) {
+                    save();
+                }
+                work();
+            }
+        });
+    };
+    if (!missing.length) {
+        return done.resolve(0).promise();
+    }
+    for (var i = 0; i < 3; i++) {
+        work();
+    }
+    return done.promise();
 }
 
 function loadAllMailThreads() {
@@ -936,31 +1056,150 @@ function loadAllMailThreads() {
     return loadFrom(range.from === 1 ? range.to : 0);
 }
 
+// A setting added after a user's first run has no stored value yet, so it takes its default.
+function readSettingValue(name, fallback, callback) {
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, name, function (setting) {
+        callback(setting && setting.value !== undefined ? setting.value : fallback);
+    });
+}
+
 function setupMailSearch() {
     var table = $("table.region").first();
     if (table.length === 0 || table.find("tr[data-threadid]").length === 0) {
         return;
     }
-    table.before(`<div id="MailSearch" style="margin: 8px 0">
-        <input type="text" id="MailSearchInput" placeholder="Filter by player" style="padding: 4px 8px; width: 200px; max-width: 60%; background: #222; color: #ddd; border: 1px solid #555">
-        <span id="MailSearchCount" class="text-muted" style="margin-left: 6px; white-space: nowrap"></span></div>`);
+    readSettingValue("mailPreviewSearch", true, function (previewOn) {
+        readSettingValue("mailPreviewAsked", false, function (asked) {
+            buildMailSearch(table, previewOn, asked);
+        });
+    });
+}
+
+function buildMailSearch(table, previewOn, asked) {
+    addCSS(`
+        #MailSearch {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 10px;
+            margin: 8px 0;
+        }
+        #MailSearch input, #MailSearch select {
+            padding: 4px 8px;
+            background: #222;
+            color: #ddd;
+            border: 1px solid #555;
+            color-scheme: dark;
+        }
+        #MailSearch input[type=text] {
+            width: 170px;
+        }
+        #MailSearch > span {
+            white-space: nowrap;
+        }
+        #MailSearch label {
+            margin: 0;
+            font-weight: normal;
+        }
+        #MailPreviewNotice {
+            flex-basis: 100%;
+            max-width: 720px;
+            padding: 8px 12px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #1b1b1b;
+            color: #ccc;
+        }
+        #MailPreviewNotice .btn {
+            margin: 6px 6px 0 0;
+        }
+    `);
+    table.before(`<div id="MailSearch">
+        <input type="text" id="MailSearchInput" placeholder="Filter by player">
+        <span><input type="text" id="MailWordsInput" placeholder="Filter by words">
+        <select id="MailWordsMode" title="Where to look for the words"><option value="subject">in subject</option>` +
+        (previewOn ? `<option value="preview">in first ${MAIL_PREVIEW_WORDS} words</option>` : "") + `</select></span>
+        <span><label>Last post from <input type="date" id="MailFromInput"></label>
+        <label>to <input type="date" id="MailToInput"></label></span>
+        <span id="MailSearchCount" class="text-muted"></span></div>`);
     var allLoaded = null;
+    var previews = null;
+    var reading = null;
+    var progress = "";
     var searchTimer;
-    $("#MailSearchInput").on("input", function () {
-        var input = this;
+    var show = function () {
+        var filters = readMailFilters();
+        if (filters.mode === "preview" && !asked) {
+            filters.words = "";
+        }
+        var count = filterMailThreads(filters, previews);
+        $("#MailSearchCount").text([progress, count].filter(Boolean).join(" · "));
+    };
+    var startReading = function () {
+        previews = storedMailPreviews();
+        reading = loadMailPreviews(previews, function (done, total) {
+            progress = done < total ? "Reading mail " + done + " of " + total + "..." : "";
+            show();
+        }).done(function (failed) {
+            progress = failed ? failed + (failed === 1 ? " thread" : " threads") + " couldn't be read" : "";
+            show();
+        });
+    };
+    // Reading mail opens every thread, so the first time the user is told and can say no.
+    var askFirst = function () {
+        if ($("#MailPreviewNotice").length) {
+            return;
+        }
+        var threads = $("table.region tr[data-threadid]").length;
+        $("#MailSearch").append(`<div id="MailPreviewNotice">To search the first ${MAIL_PREVIEW_WORDS} words, the script opens each of your ${threads} mail threads once
+            (about ${Math.max(5, Math.round(threads / 14 / 5) * 5)} seconds) and keeps those words in this browser, so later searches are instant.<br>
+            <button type="button" class="btn btn-primary btn-sm" id="MailPreviewContinue">Continue</button><button type="button" class="btn btn-secondary btn-sm" id="MailPreviewOff">Turn off</button></div>`);
+        $("#MailPreviewContinue").on("click", function () {
+            asked = true;
+            Database.update(Database.Table.Settings, { name: "mailPreviewAsked", value: true });
+            $("#MailPreviewNotice").remove();
+            startReading();
+            show();
+        });
+        $("#MailPreviewOff").on("click", function () {
+            asked = true;
+            Database.update(Database.Table.Settings, { name: "mailPreviewAsked", value: true });
+            Database.update(Database.Table.Settings, { name: "mailPreviewSearch", value: false });
+            try {
+                localStorage.removeItem(MAIL_PREVIEWS_KEY);
+            } catch (e) {
+            }
+            $("#MailWordsMode option[value=preview]").remove();
+            $("#MailWordsMode").val("subject");
+            $("#MailPreviewNotice").html("Turned off. You can turn it back on in the settings menu, under Other.");
+            show();
+        });
+    };
+    var update = function () {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(function () {
+            var filters = readMailFilters();
+            var inMail = filters.mode === "preview";
             if (!allLoaded) {
+                if (!inMail && !filters.player.trim() && !filters.words.trim() && !filters.from && !filters.to) {
+                    return show();
+                }
                 $("#MailSearchCount").text("Loading all threads...");
                 allLoaded = loadAllMailThreads().fail(function (xhr) {
                     log("Error loading mail threads: " + (xhr && xhr.statusText));
                 });
             }
             allLoaded.always(function () {
-                filterMailThreads($(input).val());
+                if (inMail && !asked) {
+                    askFirst();
+                } else if (inMail && !reading) {
+                    startReading();
+                }
+                show();
             });
         }, 150);
-    });
+    };
+    $("#MailSearch").on("input change", "input, select", update);
 }
 
 function setupClanListSearch() {
@@ -1366,6 +1605,13 @@ window.userscriptSettings = [
         selected: false,
         section: 'Dashboard',
         help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
+    },
+    {
+        id: 'mailPreviewSearch',
+        text: 'Mail: Search the First 15 Words of Each Thread',
+        selected: true,
+        section: 'Other',
+        help: 'Lets "Filter by words" on your mail page look in the first 15 words of each thread, not only the subject. The first time, the script opens each of your mail threads once to read them and keeps those words in this browser. Turning this off deletes them.'
     },
     {
         id: 'useMaakServices',
