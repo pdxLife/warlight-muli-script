@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.35.0
+// @version 3.35.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3314,10 +3314,13 @@ function setupChatRoomTools() {
             });
         }
         var width = bar.outerWidth();
+        // In line with the tabs' labels, which sit above the middle of war.app's tab buttons.
+        var label = buttons.last().find(".ujsTextInner")[0];
+        var middle = label ? label.getBoundingClientRect().top + label.getBoundingClientRect().height / 2 : rect.top + rect.height / 2;
         if (rect.right + 12 + width > window.innerWidth - 8) {
             bar.css({ left: Math.max(8, window.innerWidth - width - 8), top: rect.bottom + 4 });
         } else {
-            bar.css({ left: rect.right + 12, top: rect.top + Math.max(0, (rect.height - 24) / 2) });
+            bar.css({ left: rect.right + 12, top: Math.max(0, middle - bar.outerHeight() / 2) });
         }
         bar.find("[name=hideEvents]").prop("checked", hideEvents);
         bar.find(".tuydEventCount").text(hideEvents && hiddenEvents ? "(" + hiddenEvents + " hidden)" : "");
@@ -3681,19 +3684,73 @@ function setupGameMentionSuggest() {
 }
 
 function setupDashboardChatLink() {
-    if ($("#tuydChatLink").length) {
-        return;
-    }
     var link = $('<a id="tuydChatLink" href="/MultiPlayer?ChatRoom=1" title="Global, clan and group chats (Muli\'s Userscript)">Chat</a>');
-    // The script's own Refresh button with the scrollable dashboard, war.app's otherwise.
-    var refresh = $("#refreshAll, #RefreshBtn, #RefreshBtn2").first();
-    if (refresh.length) {
+    var nextToRefresh = function (refresh) {
         var floated = refresh.css("float");
-        link.addClass(refresh.attr("class") || "btn btn-primary").css({ margin: refresh.is("#refreshAll") ? "5px" : "0 5px", float: floated === "none" ? "" : floated })
-            .insertBefore(refresh);
-        return;
-    }
-    $("#NumberOfMyGamesLabel").after(link.addClass("btn btn-primary btn-sm").css({ marginLeft: "10px" }));
+        link.addClass(refresh.attr("class") || "btn btn-primary").css({ margin: "0 5px", float: floated === "none" ? "" : floated }).insertBefore(refresh);
+    };
+    // With the scrollable dashboard, Chat and Refresh go on the My / Open / Past Games row, lined up
+    // with the right edge of the games table below.
+    var onButtonRow = function (refresh, buttonRow) {
+        addCSS(`
+            #tuydDashButtons {
+                display: flex;
+                gap: 8px;
+                float: right;
+                margin: 5px 0;
+            }
+            #tuydDashButtons > * {
+                float: none;
+                margin: 0;
+            }
+        `);
+        var group = $('<div id="tuydDashButtons"></div>').appendTo(buttonRow);
+        group.append(link.addClass(refresh.attr("class") || "btn btn-primary"), refresh.detach());
+        // Right edge on the Filter button's, or a little inside the table's on the other tabs.
+        var align = function () {
+            var filter = $("#MyGamesFilterBtn").filter(":visible")[0];
+            var table = $("#MyGamesTable, #OpenGamesTable, #PastGamesTable").filter(":visible")[0];
+            var target = filter ? filter.getBoundingClientRect().right : table ? table.getBoundingClientRect().right - 7 : null;
+            if (target === null) {
+                return;
+            }
+            group.css("margin-right", 0);
+            group.css("margin-right", Math.max(0, group[0].getBoundingClientRect().right - target));
+        };
+        align();
+        $(window).on("resize", align);
+        $("#switchGameRadio").on("click", "label", function () {
+            setTimeout(align, 0);
+        });
+    };
+    // The dashboard lays itself out once the settings are read, and makes its Refresh button just after.
+    var tries = 0;
+    var place = function () {
+        if ($("#tuydChatLink").length) {
+            return;
+        }
+        var refresh = $("#refreshAll");
+        if (!refresh.length && ++tries < 50) {
+            setTimeout(place, 100);
+            return;
+        }
+        refresh = refresh.length ? refresh : $("#RefreshBtn, #RefreshBtn2").first();
+        if (!refresh.length) {
+            $("#NumberOfMyGamesLabel").after(link.addClass("btn btn-primary btn-sm").css({ marginLeft: "10px" }));
+            return;
+        }
+        ifSettingIsEnabled("scrollGames", function () {
+            var buttonRow = $(".gameButtonCol").first();
+            if (buttonRow.length) {
+                onButtonRow(refresh, buttonRow);
+            } else {
+                nextToRefresh(refresh);
+            }
+        }, function () {
+            nextToRefresh(refresh);
+        });
+    };
+    place();
 }
 
 function watchQuickmatchLeaderboardRequests(callback) {
