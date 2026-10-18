@@ -205,3 +205,76 @@ test("a second Idle tab in the same browser warns in both tabs", () => {
     first.$("#idleTabWarning button").trigger("click");
     assert.equal(first.$("#idleTabWarning").length, 0, "Got it closes it");
 });
+
+// Mirrors Idle's money counter and army camp rows (recorded on Fort Harbor).
+const moneyCounter = (text) => `<div id="ujs_MoneyContainer"><div id="ujs_MoneyLabel"><div id="ujs_MoneyLabel_tmp" class="ujsTextInner">${text}</div></div></div>`;
+const campRow = (n, name, cost, output) => `<div id="ujs_WziTabBodyArmyCampRow${n ? "_" + n : ""}"><div id="ujs_NameLabel_${n}"><div id="ujs_NameLabel_${n}_tmp">${name}</div></div>`
+    + `<div id="ujs_UpgradeBtnContainer_${n}"><div id="ujs_UpgradeBtn_${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_UpgradeBtn_${n}_btn" href="#"></a><div id="ujs_Text_5${n}"><div id="ujs_Text_5${n}_tmp">Upgrade ￦${cost}</div></div></div></div>`
+    + `<div id="ujs_ArmiesPerSecondLabel_${n}"><div id="ujs_ArmiesPerSecondLabel_${n}_tmp">₳${output} / sec</div></div></div>`;
+
+function upgradePage(html) {
+    const { dom, $ } = createDom(html, "https://war.app/Idle/Play");
+    const ctx = load(["formatIdleWait", "parseIdleMoney", "parseIdleNumber", "idleUpgradeRows", "idleBestCamp", "showIdleUpgradeHints"], { ...domGlobals(dom, $), IDLE_NUMBER_SUFFIXES });
+    return { ctx, $ };
+}
+
+test("waits read as seconds, minutes, hours or days", () => {
+    const { ctx } = upgradePage("");
+    assert.equal(ctx.formatIdleWait(20.2), "in 21s");
+    assert.equal(ctx.formatIdleWait(600), "in 10m");
+    assert.equal(ctx.formatIdleWait(3600 * 19.5), "in 19h 30m");
+    assert.equal(ctx.formatIdleWait(3600 * 3), "in 3h");
+    assert.equal(ctx.formatIdleWait(3600 * 50), "in 2d 2h");
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseIdleMoney("￦1.18B (171K/sec)"))), { money: 1.18e9, rate: 171000 });
+    assert.equal(ctx.parseIdleMoney("₳357.6M (45K/sec)"), null, "armies aren't money");
+});
+
+test("upgrades you can't afford yet say when you can, and the best army camp for the money is marked", () => {
+    const { ctx, $ } = upgradePage(moneyCounter("￦1.18B (171K/sec)") + campRow(2, "Gislic", "12B", "5.86K") + campRow(3, "Vindertion", "8.8B", "4.7K")
+        + campRow(4, "Dawnwardize", "18B", "5.86K") + campRow(5, "Cheap", "1B", "400"));
+    ctx.showIdleUpgradeHints();
+    const hint = (n) => $(`#ujs_ArmiesPerSecondLabel_${n} > .idleUpgradeHint`);
+    assert.equal(hint(2).text(), "in 17h 35m", "(12B − 1.18B) ÷ 171K/sec");
+    assert.equal(hint(3).text(), "in 12h 23m · Best value", "4.7K for 8.8B beats 5.86K for 12B or 18B and 400 for 1B");
+    assert.ok(hint(3).hasClass("idleBestValue"));
+    assert.equal(hint(5).length, 0, "affordable now and not the best value: nothing added");
+    assert.equal($(".idleBestValue").length, 1);
+    ctx.showIdleUpgradeHints();
+    assert.equal($(".idleUpgradeHint").length, 3, "a second pass updates the hints instead of adding more");
+    $("#ujs_ArmiesPerSecondLabel_3_tmp").html("<span>₳4.7K</span> / sec");
+    ctx.showIdleUpgradeHints();
+    assert.equal(hint(3).text(), "in 12h 23m · Best value", "war.app rewriting its label leaves the hint, which sits beside it");
+});
+
+test("the tab title counts what Idle is waiting on you for, and a background tab gets a notification", async () => {
+    const { dom, $ } = createDom(`<div id="ujs_UnclaimedPowersBtn" style="display: none"></div><div id="ujs_BattleIndicatorBtn" style="display: none"></div>`
+        + `<div id="ujs_DailyBonusBtn"></div><div id="dialog" style="display: none"><div class="ujsTextInner">You found an artifact!  Click Claim below to reveal it</div></div>`, "https://war.app/Idle/Play");
+    dom.window.document.title = "Idle - War.app";
+    Object.defineProperty(dom.window.document, "hidden", { value: false, configurable: true });
+    const notifications = [];
+    const intervals = [];
+    const ctx = load(["idleAttentionItems", "setupIdleAttention"], {
+        ...domGlobals(dom, $),
+        setInterval: (fn) => intervals.push(fn),
+        ifSettingIsEnabled: (name, yes) => name === "idleNotifications" && yes(),
+        Notification: Object.assign(function (title, options) {
+            notifications.push([title, options.body]);
+        }, { permission: "granted" })
+    });
+    ctx.setupIdleAttention();
+    assert.deepEqual(Array.from(ctx.idleAttentionItems()), ["The daily bonus"]);
+    assert.equal(dom.window.document.title, "(1) Idle - War.app");
+    assert.deepEqual(notifications, [], "the tab is in front: no notification");
+
+    Object.defineProperty(dom.window.document, "hidden", { value: true, configurable: true });
+    $("#ujs_UnclaimedPowersBtn").show();
+    $("#dialog").show();
+    intervals.forEach((fn) => fn());
+    assert.equal(dom.window.document.title, "(3) Idle - War.app");
+    assert.deepEqual(notifications, [["War.app Idle needs you", "Unclaimed powers, An artifact to claim"]], "only what's new");
+    intervals.forEach((fn) => fn());
+    assert.equal(notifications.length, 1, "nothing new, no second notification");
+    $("#ujs_UnclaimedPowersBtn, #ujs_DailyBonusBtn, #dialog").hide();
+    intervals.forEach((fn) => fn());
+    assert.equal(dom.window.document.title, "Idle - War.app");
+});

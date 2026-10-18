@@ -1664,6 +1664,172 @@ function showIdleTabWarning() {
     });
 }
 
+function formatIdleWait(seconds) {
+    var minutes = Math.ceil(seconds / 60);
+    if (seconds < 60) {
+        return "in " + Math.max(1, Math.ceil(seconds)) + "s";
+    }
+    if (minutes < 60) {
+        return "in " + minutes + "m";
+    }
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+        return "in " + hours + "h" + (minutes % 60 ? " " + minutes % 60 + "m" : "");
+    }
+    return "in " + Math.floor(hours / 24) + "d" + (hours % 24 ? " " + hours % 24 + "h" : "");
+}
+
+// "￦1.18B (171K/sec)" from Idle's money counter.
+function parseIdleMoney(text) {
+    var match = /[￦₩]\s*([\d.,]+\s*[a-z]?)\s*\(\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(String(text || ""));
+    return match ? { money: parseIdleNumber(match[1]), rate: parseIdleNumber(match[2]) } : null;
+}
+
+// The rows of Idle's camp, mine and hospital tabs that can be upgraded for money.
+function idleUpgradeRows() {
+    return $("[id^='ujs_WziTabBody']").filter(function () {
+        return /^ujs_WziTabBody(?:ArmyCamp|Mine|Hospital|MercenaryCamp)Row(?:_\d+)?$/.test(this.id);
+    }).map(function () {
+        var row = $(this);
+        var button = row.find("a[id^='ujs_UpgradeBtn']").first();
+        var cost = /Upgrade\s*[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var host = row.find("[id$='_tmp']").filter(function () {
+            return /\/\s*s(?:ec)?\b|Saves/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
+        }).first();
+        var output = /^\s*₳\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(host.text());
+        return cost ? {
+            row: this,
+            camp: /ArmyCampRow/.test(this.id),
+            cost: parseIdleNumber(cost[1]),
+            output: output ? parseIdleNumber(output[1]) : null,
+            host: host[0] || null
+        } : null;
+    }).get().filter(function (entry) {
+        return entry && entry.cost != null;
+    });
+}
+
+// Each army camp upgrade adds about the same share of what the camp makes, so the camp that
+// makes the most per ₩ of its upgrade cost gains the most for the money.
+function idleBestCamp(rows) {
+    return rows.filter(function (entry) {
+        return entry.camp && entry.output && entry.cost > 0;
+    }).sort(function (a, b) {
+        return b.output / b.cost - a.output / a.cost;
+    })[0] || null;
+}
+
+function showIdleUpgradeHints() {
+    var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
+    if (!wallet || wallet.money == null) {
+        return;
+    }
+    var rows = idleUpgradeRows();
+    var best = idleBestCamp(rows);
+    rows.forEach(function (entry) {
+        if (!entry.host) {
+            return;
+        }
+        var wait = entry.cost > wallet.money && wallet.rate > 0 ? formatIdleWait((entry.cost - wallet.money) / wallet.rate) : "";
+        var text = [wait, entry === best ? "Best value" : ""].filter(Boolean).join(" · ");
+        // war.app rewrites its label several times a second, so the hint sits beside it, in the
+        // label's holder, just after the text.
+        var holder = $(entry.host).parent();
+        var hint = holder.children(".idleUpgradeHint");
+        if (!text) {
+            hint.remove();
+            return;
+        }
+        if (!hint.length) {
+            hint = $('<span class="idleUpgradeHint"></span>').appendTo(holder);
+        }
+        var label = $(entry.host).children().first()[0] || entry.host;
+        hint.css({ left: Math.round(label.getBoundingClientRect().width || label.offsetWidth || 0) + 8 + "px", lineHeight: (entry.host.offsetHeight || 18) + "px" });
+        hint.toggleClass("idleBestValue", entry === best).text(text)
+            .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
+    });
+}
+
+function setupIdleUpgradeHints() {
+    addCSS(`
+        .idleUpgradeHint {
+            position: absolute;
+            bottom: 0;
+            color: #aaa;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .idleUpgradeHint.idleBestValue {
+            color: #e0c060;
+            font-weight: 700;
+        }
+    `);
+    window.setInterval(function () {
+        if (!document.hidden) {
+            showIdleUpgradeHints();
+        }
+    }, 1000);
+}
+
+// What Idle is waiting on you for, read from what it shows.
+function idleAttentionItems() {
+    var shown = function (prefix) {
+        return $("[id^='" + prefix + "']").filter(function () {
+            if (!new RegExp("^" + prefix + "(?:_\\d+)?$").test(this.id)) {
+                return false;
+            }
+            for (var element = this; element && element !== document.body; element = element.parentElement) {
+                if (element.style && element.style.display === "none") {
+                    return false;
+                }
+            }
+            return true;
+        }).length > 0;
+    };
+    var says = function (pattern) {
+        return $(".ujsTextInner").filter(function () {
+            return pattern.test($(this).text()) && $(this).closest("[style*='display: none']").length === 0;
+        }).length > 0;
+    };
+    return [
+        [shown("ujs_UnclaimedPowersBtn"), "Unclaimed powers"],
+        [says(/Click Claim below to reveal it/i), "An artifact to claim"],
+        [says(/\bis ready to move\b/i), "A tank is ready to move"],
+        [shown("ujs_BattleIndicatorBtn"), "A battle"],
+        [shown("ujs_DailyBonusBtn"), "The daily bonus"],
+        [shown("ujs_CoinWheelBtn"), "The coin wheel"]
+    ].filter(function (item) {
+        return item[0];
+    }).map(function (item) {
+        return item[1];
+    });
+}
+
+function setupIdleAttention() {
+    var known = [];
+    var check = function () {
+        var items = idleAttentionItems();
+        var title = document.title.replace(/^\(\d+\) /, "");
+        document.title = items.length ? "(" + items.length + ") " + title : title;
+        var fresh = items.filter(function (item) {
+            return known.indexOf(item) === -1;
+        });
+        known = items;
+        if (!fresh.length || !document.hidden || !("Notification" in window) || Notification.permission !== "granted") {
+            return;
+        }
+        ifSettingIsEnabled("idleNotifications", function () {
+            var notification = new Notification("War.app Idle needs you", { body: fresh.join(", "), tag: "tuyd-idle" });
+            notification.onclick = function () {
+                window.focus();
+                notification.close();
+            };
+        });
+    };
+    window.setInterval(check, 2000);
+    check();
+}
+
 function setupClanListSearch() {
     var $container = $("#AutoContainer, .container").filter(function () {
         return $(this).find("a[href*='/Clans/?ID=']").length > 0;
@@ -2069,6 +2235,13 @@ window.userscriptSettings = [
         help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
     },
     {
+        id: 'idleNotifications',
+        text: 'Idle: Desktop Notification When Idle Needs You',
+        selected: false,
+        section: 'Idle',
+        help: 'While Idle is open in a background tab, shows a desktop notification when it needs you: unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus or the coin wheel. Your browser asks for permission when you turn this on.'
+    },
+    {
         id: 'mailPreviewSearch',
         text: 'Mail: Search the First 15 Words of Each Thread',
         selected: true,
@@ -2337,7 +2510,7 @@ function setupUserscriptMenu() {
     $("#importSettings").on("click", function () {
         importSettings();
     });
-    $("#turnNotifications").on("change", function () {
+    $("#turnNotifications, #idleNotifications").on("change", function () {
         if (this.checked && "Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
@@ -4311,6 +4484,8 @@ function pageFeatures() {
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
+        { name: "Time to afford and best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
+        { name: "Count of things Idle needs you for in the tab title", section: "Idle", match: pageIsIdle, run: setupIdleAttention },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];

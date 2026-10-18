@@ -94,6 +94,8 @@ Helpers for War.app Idle, in the settings menu's Idle section. They only inform 
 - **Better copies pointed out**: in the artifact window, an equipped artifact with a higher-rarity copy that isn't equipped gets a gold "Better: …" tag, and the better copy is outlined.
 - **Artifact list**: a "List" button next to the artifact window's Sort box shows every artifact in a compact list, by rarity or name, with copies counted.
 - **Second-tab warning** when Idle is open in another tab of the same browser, since two places at once can lose progress.
+- **Time to afford** next to each upgrade you can't afford yet, and **"Best value"** on the army camp that adds the most armies per ₩.
+- **Tab-title count** of what Idle is waiting on you for (unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus, the coin wheel), with an optional desktop notification while the tab is in the background.
 
 ### Maps & Levels
 
