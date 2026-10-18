@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.33.0
+// @version 3.34.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.33.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.34.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2924,6 +2924,20 @@ function newChatMessages(messages, lastKey) {
     return { fresh: at === -1 ? [] : messages.slice(at + 1), lastKey: keys.length ? keys[keys.length - 1] : lastKey };
 }
 
+// A chat room tab's messages for reading aloud, oldest first: not war.app's notices, nor rows the script
+// hides (notices, muted players).
+function chatRoomSpeechMessages(tab) {
+    var bottom = function (row) {
+        var original = row.element.getAttribute("data-tuyd-bottom");
+        return original === null ? parseFloat(row.element.style.bottom) || 0 : Number(original);
+    };
+    return chatRoomRows(tab).filter(function (row) {
+        return !row.event && row.text && row.element.style.display !== "none";
+    }).sort(function (a, b) {
+        return bottom(b) - bottom(a);
+    });
+}
+
 function setupChatSpeech() {
     if (!window.speechSynthesis || typeof SpeechSynthesisUtterance !== "function") {
         return;
@@ -2948,6 +2962,13 @@ function setupChatSpeech() {
             opacity: 1;
             background: rgba(255, 255, 255, 0.6);
             text-decoration: none;
+        }
+        .tuydSpeak.tuydSpeakRoom {
+            opacity: 0;
+        }
+        .ujsGameObject:hover > .tuydSpeak.tuydSpeakRoom, .tuydSpeak.tuydSpeakRoom.tuydSpeaking {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.6);
         }
     `);
     var me = "";
@@ -2975,30 +2996,54 @@ function setupChatSpeech() {
             });
         });
     };
+    // Game chat tabs and chat room tabs: how to find them, read them, and place the button.
+    var kinds = [
+        { tab: /^ujs_ChatTab(?:_\d+)?$/, messages: chatMessages, place: function () {
+            return {};
+        } },
+        { tab: /^ujs_ChatRoomTab(?:_\d+)?$/, messages: chatRoomSpeechMessages, room: true, place: function (element) {
+            var bubble = $(element).find("[id^='ujs_BubbleImage'] > .ujsImgInner")[0];
+            var left = bubble ? bubble.getBoundingClientRect().right - element.getBoundingClientRect().left + 6 : 0;
+            return { left: left > 6 ? left : 280, bottom: 4 };
+        } }
+    ];
     var tabOf = function (element) {
-        return $(element).parents().filter(function () {
-            return /^ujs_ChatTab(?:_\d+)?$/.test(this.id);
-        }).first();
+        var tab = null;
+        var kind = null;
+        $(element).parents().each(function () {
+            var parent = this;
+            kinds.forEach(function (candidate) {
+                if (!tab && candidate.tab.test(parent.id)) {
+                    tab = parent;
+                    kind = candidate;
+                }
+            });
+        });
+        return { tab: tab, kind: kind };
     };
     var check = function () {
         timer = null;
-        $("[id^='ujs_ChatTab']").filter(function () {
-            return /^ujs_ChatTab(?:_\d+)?$/.test(this.id);
-        }).each(function () {
-            var messages = chatMessages(this);
-            messages.forEach(function (message) {
-                if (!$(message.element).children(".tuydSpeak").length) {
-                    $('<a class="tuydSpeak" href="#">🔊</a>').attr("title", "Read aloud from this message to the newest (Muli's Userscript)").appendTo(message.element);
+        kinds.forEach(function (kind) {
+            $("[id^='ujs_ChatTab'], [id^='ujs_ChatRoomTab']").filter(function () {
+                return kind.tab.test(this.id);
+            }).each(function () {
+                var messages = kind.messages(this);
+                messages.forEach(function (message) {
+                    if (!$(message.element).children(".tuydSpeak").length) {
+                        $('<a class="tuydSpeak" href="#">🔊</a>').toggleClass("tuydSpeakRoom", !!kind.room).css(kind.place(message.element))
+                            .attr("title", "Read aloud from this message to the newest (Muli's Userscript)").appendTo(message.element);
+                    }
+                });
+                var result = newChatMessages(messages, lastKeys[this.id]);
+                lastKeys[this.id] = result.lastKey;
+                var fresh = result.fresh.filter(function (message) {
+                    return message.name !== me;
+                });
+                // In the chat rooms only the tab you're looking at is read.
+                if (autoRead && fresh.length && (!kind.room || shownUjsElement(this))) {
+                    speak(fresh, null);
                 }
             });
-            var result = newChatMessages(messages, lastKeys[this.id]);
-            lastKeys[this.id] = result.lastKey;
-            var fresh = result.fresh.filter(function (message) {
-                return message.name !== me;
-            });
-            if (autoRead && fresh.length) {
-                speak(fresh, null);
-            }
         });
     };
     $(document).on("click", ".tuydSpeak", function (event) {
@@ -3010,7 +3055,11 @@ function setupChatSpeech() {
         if (wasMine) {
             return;
         }
-        var messages = chatMessages(tabOf(button));
+        var found = tabOf(button);
+        if (!found.tab) {
+            return;
+        }
+        var messages = found.kind.messages(found.tab);
         var from = messages.findIndex(function (message) {
             return message.element === button.parentElement;
         });
@@ -3278,7 +3327,7 @@ function setupChatRoomTools() {
                     if (bubble) {
                         var left = bubble.getBoundingClientRect().right - row.element.getBoundingClientRect().left + 6;
                         $('<a class="tuydMute" href="#" title="Mute this player (Muli\'s Userscript)">🔇</a>').attr("data-name", row.name)
-                            .css({ left: left > 6 ? left : 300, bottom: 4 }).appendTo(row.element);
+                            .css({ left: (left > 6 ? left : 280) + 22, bottom: 4 }).appendTo(row.element);
                     }
                 }
             });
@@ -4269,10 +4318,10 @@ window.userscriptSettings = [
     },
     {
         id: 'readNewChatAloud',
-        text: 'Read New Chat Messages Aloud in Games',
+        text: 'Read New Chat Messages Aloud',
         selected: false,
         section: 'Games',
-        help: 'While a game is open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
+        help: 'While a game or the chat rooms are open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. In the chat rooms, only the tab you are looking at is read, and hidden notices and muted players never are. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
     },
     {
         id: 'idleNotifications',
@@ -6576,7 +6625,7 @@ function mainFeatures() {
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
-        { name: "Read chat messages aloud", section: "Games", match: pageIsGame, run: setupChatSpeech },
+        { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
         { name: "Mute players and highlight mentions in game chat", section: "Games", match: pageIsGame, run: setupGameChatTools },
         { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
