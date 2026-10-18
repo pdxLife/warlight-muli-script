@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.31.0
+
+- **Read chat aloud** (Feature Requests: "Dorex's quality of life updates: Text to speech", 33 votes). In a game's chat, a faint 🔊 at the left of each message reads it and every message after it aloud, with your browser's built-in voice: who wrote it, then the text, with links read as "a link" and smileys as words. ■ stops. A new setting, **Read New Chat Messages Aloud in Games** (off by default, settings → Games), reads new messages from other players as they arrive, so you can listen while entering orders. Messages hidden by your block list are never read. Chrome only speaks after you've clicked somewhere on the page.
+- **The whole chat in a game** now ends on the newest message even when war.app takes a few seconds to draw a long chat.
+
 ## 3.30.0
 
 Two more Feature Requests:

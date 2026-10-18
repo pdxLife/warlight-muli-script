@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.30.0
+// @version 3.31.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.30.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.31.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2608,9 +2608,11 @@ function setupFullGameChat() {
             }
             pressed.set(button, { presses: state.presses + 1, size: size, time: Date.now() });
             $(button).children("a.ujsBtnInner").first().trigger("click");
-            setTimeout(function () {
-                scrollToNewest(chat);
-            }, 1000);
+            [1000, 2500, 4500].forEach(function (delay) {
+                setTimeout(function () {
+                    scrollToNewest(chat);
+                }, delay);
+            });
         });
     };
     new MutationObserver(function () {
@@ -2618,6 +2620,175 @@ function setupFullGameChat() {
             timer = setTimeout(check, 500);
         }
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    check();
+}
+
+// The messages of one chat tab, oldest first; war.app stacks them by `bottom`, the newest at the bottom.
+// Messages hidden by your block list are left out.
+function chatMessages(tab) {
+    var label = function (message, name) {
+        return $(message).find("[id^='ujs_" + name + "'][id$='_tmp']").first();
+    };
+    return $(tab).find("[id^='ujs_ChatMessage']").filter(function () {
+        return /^ujs_ChatMessage(?:_\d+)?$/.test(this.id) && !shownUjsElement(label(this, "BlacklistLabel")[0]);
+    }).get().map(function (element) {
+        return {
+            element: element,
+            name: label(element, "PlayerNameLabel").text().trim(),
+            time: label(element, "TimestampLabel").text().trim(),
+            text: label(element, "MessageLabel").text().replace(/\s+/g, " ").trim()
+        };
+    }).filter(function (message) {
+        return message.text;
+    }).sort(function (a, b) {
+        return (parseFloat(b.element.style.bottom) || 0) - (parseFloat(a.element.style.bottom) || 0);
+    });
+}
+
+function chatSpeechText(message) {
+    var faces = { ":)": "smiley", ":-)": "smiley", "(:": "smiley", ":D": "big smile", ":(": "sad face", ":-(": "sad face", ";)": "wink", ":P": "tongue out", ":p": "tongue out" };
+    var text = message.text.replace(/\bhttps?:\/\/\S+/gi, "a link").replace(/(^|\s)(:-?\)|\(:|:D|:-?\(|;\)|:[Pp])(?=\s|$)/g, function (all, space, face) {
+        return space + faces[face];
+    });
+    return message.name ? message.name + ": " + text : text;
+}
+
+// Chrome stops an utterance after about 15 seconds, so long messages are read in pieces.
+function speechChunks(text, size) {
+    var chunks = [];
+    String(text).split(/(?<=[.!?…])\s+/).forEach(function (sentence) {
+        while (sentence.length > size) {
+            var cut = sentence.lastIndexOf(" ", size);
+            cut = cut > 0 ? cut : size;
+            chunks.push(sentence.slice(0, cut));
+            sentence = sentence.slice(cut).trim();
+        }
+        if (sentence) {
+            chunks.push(sentence);
+        }
+    });
+    return chunks;
+}
+
+// Messages added after `lastKey` at the newest end; older ones war.app loads above it don't count.
+function newChatMessages(messages, lastKey) {
+    var keys = messages.map(function (message) {
+        return message.name + "|" + message.time + "|" + message.text;
+    });
+    var at = lastKey ? keys.lastIndexOf(lastKey) : -1;
+    return { fresh: at === -1 ? [] : messages.slice(at + 1), lastKey: keys.length ? keys[keys.length - 1] : lastKey };
+}
+
+function setupChatSpeech() {
+    if (!window.speechSynthesis || typeof SpeechSynthesisUtterance !== "function") {
+        return;
+    }
+    addCSS(`
+        .tuydSpeak {
+            position: absolute;
+            left: 4px;
+            bottom: 8px;
+            z-index: 2;
+            padding: 0 3px;
+            border-radius: 3px;
+            color: #262626;
+            font-size: 13px;
+            line-height: 16px;
+            text-decoration: none;
+            opacity: 0.35;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .tuydSpeak:hover, .tuydSpeak.tuydSpeaking {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+        }
+    `);
+    var me = "";
+    var autoRead = false;
+    var lastKeys = {};
+    var speakingFrom = null;
+    var timer = null;
+    var stop = function () {
+        speakingFrom = null;
+        window.speechSynthesis.cancel();
+        $(".tuydSpeak.tuydSpeaking").removeClass("tuydSpeaking").text("🔊").attr("title", "Read aloud from this message to the newest (Muli's Userscript)");
+    };
+    var speak = function (messages, button) {
+        messages.forEach(function (message) {
+            speechChunks(chatSpeechText(message), 180).forEach(function (chunk, i, chunks) {
+                var utterance = new SpeechSynthesisUtterance(chunk);
+                if (button && message === messages[messages.length - 1] && i === chunks.length - 1) {
+                    utterance.onend = utterance.onerror = function () {
+                        if (speakingFrom === button) {
+                            stop();
+                        }
+                    };
+                }
+                window.speechSynthesis.speak(utterance);
+            });
+        });
+    };
+    var tabOf = function (element) {
+        return $(element).parents().filter(function () {
+            return /^ujs_ChatTab(?:_\d+)?$/.test(this.id);
+        }).first();
+    };
+    var check = function () {
+        timer = null;
+        $("[id^='ujs_ChatTab']").filter(function () {
+            return /^ujs_ChatTab(?:_\d+)?$/.test(this.id);
+        }).each(function () {
+            var messages = chatMessages(this);
+            messages.forEach(function (message) {
+                if (!$(message.element).children(".tuydSpeak").length) {
+                    $('<a class="tuydSpeak" href="#">🔊</a>').attr("title", "Read aloud from this message to the newest (Muli's Userscript)").appendTo(message.element);
+                }
+            });
+            var result = newChatMessages(messages, lastKeys[this.id]);
+            lastKeys[this.id] = result.lastKey;
+            var fresh = result.fresh.filter(function (message) {
+                return message.name !== me;
+            });
+            if (autoRead && fresh.length) {
+                speak(fresh, null);
+            }
+        });
+    };
+    $(document).on("click", ".tuydSpeak", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var button = this;
+        var wasMine = speakingFrom === button;
+        stop();
+        if (wasMine) {
+            return;
+        }
+        var messages = chatMessages(tabOf(button));
+        var from = messages.findIndex(function (message) {
+            return message.element === button.parentElement;
+        });
+        if (from === -1) {
+            return;
+        }
+        speakingFrom = button;
+        $(button).addClass("tuydSpeaking").text("■").attr("title", "Stop reading");
+        speak(messages.slice(from), button);
+    });
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+        });
+    }
+    ifSettingIsEnabled("readNewChatAloud", function () {
+        autoRead = true;
+    });
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 300);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
     check();
 }
 
@@ -3469,6 +3640,13 @@ window.userscriptSettings = [
         selected: false,
         section: 'Games',
         help: 'In a game, pressing Commit (or Autopilot\'s Run+Commit) first asks "Commit your orders for this turn?", so a stray click or tap doesn\'t send unfinished orders. Takes effect when a game page loads.'
+    },
+    {
+        id: 'readNewChatAloud',
+        text: 'Read New Chat Messages Aloud in Games',
+        selected: false,
+        section: 'Games',
+        help: 'While a game is open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
     },
     {
         id: 'idleNotifications',
@@ -5767,6 +5945,7 @@ function mainFeatures() {
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
+        { name: "Read chat messages aloud", section: "Games", match: pageIsGame, run: setupChatSpeech },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }
