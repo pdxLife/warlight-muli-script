@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.24.1
+
+- **Community Events cards for events you're in no longer say "You can join!"**: war.app's green line reads "You're in!" while it's running, "You're signed up!" during signups, "You took part" once it's finished, and "You're in the race!" on AWP World Tour, each in its own colour so they stand out from war.app's green: gold when you're in, light blue when signed up, grey once it's over. Cards for events you're not in keep the green "You can join!".
+
 ## 3.24.0
 
 - **Mail filters by words and by date.** Next to "Filter by player" on your mail page:

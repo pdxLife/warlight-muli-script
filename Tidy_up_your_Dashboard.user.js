@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.24.0
+// @version 3.24.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.24.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.24.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3610,11 +3610,13 @@ function setupCommunityEventsStanding() {
         $(scene).find("[id^='ujs_EventRow']").filter(function () {
             return /^ujs_EventRow(?:_\d+)?$/.test(this.id);
         }).each(function () {
+            var title = $(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim();
+            markJoinedEvent(this, joinedEventLabel(title, community));
             var box = $(this).children("[id$='_img']").first();
             if (!box.length || box.children(".tuydEventStanding").length) {
                 return;
             }
-            var html = communityEventHtml($(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim(), community);
+            var html = communityEventHtml(title, community);
             if (html) {
                 box.css("container", "tuydEventCard / inline-size").append(html);
                 // The lines don't wrap, so war.app's own text keeps its room; a cut line shows in full on hover.
@@ -3626,6 +3628,33 @@ function setupCommunityEventsStanding() {
     };
     check();
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+// war.app tells everyone "You can join!" in green; where you already take part, the card says so
+// instead, in its own colour.
+function joinedEventLabel(title, community) {
+    var colors = { in: "#e0c060", signedUp: "#6cc4f0", tookPart: "#babbbb" };
+    if (/^AWP World Tour/i.test(title)) {
+        return community.rankings && awpStanding(community.rankings, community.playerId) ? { text: "You're in the race!", color: colors.in } : null;
+    }
+    var series = community.series.filter(function (entry) {
+        return entry.warapp_event && entry.current && title.toLowerCase().indexOf(String(entry.warapp_event).toLowerCase()) === 0;
+    })[0];
+    if (!series || !series.you) {
+        return null;
+    }
+    return series.you.status === "signed_up" ? { text: "You're signed up!", color: colors.signedUp }
+        : series.current.status === "finished" ? { text: "You took part", color: colors.tookPart }
+        : { text: "You're in!", color: colors.in };
+}
+
+function markJoinedEvent(row, label) {
+    if (!label) {
+        return;
+    }
+    $(row).find("[id^='ujs_vert'] .ujsTextInner").filter(function () {
+        return $(this).text().trim() === "You can join!";
+    }).text(label.text).css({ width: "auto", whiteSpace: "nowrap", color: label.color });
 }
 
 // Each card gets the event's standings beside war.app's title and player count, and your place,

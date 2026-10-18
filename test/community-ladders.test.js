@@ -18,7 +18,7 @@ const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", 
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
-    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml"];
+    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
 const series = {
@@ -288,7 +288,8 @@ test("a league player's line names division, group, place, record and a promotio
 
 // Mirrors war.app's Community Events page: a card per event with a View button and a title.
 const card = (n, title) => `<div id="ujs_EventRow${n}"><div id="ujs_EventRow${n}_img"></div><div id="ujs_Button${n}"><div class="ujsTextInner">View</div></div>`
-    + `<div id="ujs_vert${n}"><div><div class="ujsTextInner">${title}</div></div><div><div class="ujsTextInner">~100 players</div></div></div></div>`;
+    + `<div id="ujs_vert${n}"><div><div class="ujsTextInner">${title}</div></div><div><div class="ujsTextInner">~100 players</div></div><div><div class="ujsTextInner">A community event</div></div>`
+    + `<div><div class="ujsTextInner" style="width: 91px; color: rgb(0, 255, 0)">You can join!</div></div></div></div>`;
 const eventsScene = `<div id="ujs_CommunityEventsScene"><div id="ujs_Rows">${card("", "Clan League 19")}${card("_2", "Nations Cup 2026")}${card("_3", "AWP World Tour")}`
     + `${card("_4", "Multi Template Ladder (MTL)")}${card("_5", "Clan Cup")}${card("_6", "Titled Tuesdays")}</div></div>`;
 
@@ -347,6 +348,43 @@ test("signed out, Community Events cards still show the standings, with links to
     assert.deepEqual(eventLines($, "ujs_EventRow_3"), ["2026 race · 5 players", "Rankings: Top 16 ›"], "signed out, no You line");
     assert.equal($("#ujs_EventRow_3_img .tuydEventMore").length, 0);
     assert.equal(eventLines($, "ujs_EventRow_2")[1], "Full standings on custom.wl-stats.com ›");
+});
+
+test("cards for events you take part in say so instead of war.app's \"You can join!\"", async () => {
+    const joined = JSON.parse(JSON.stringify(series));
+    joined.series[0].you = { as: "clan", name: "Icelandic Turtles", status: "signed_up", url: "/c" };
+    joined.series.push({ slug: "clan-league", name: "Clan League", kind: "clan_league", url: "/s/cl", warapp_event: "Clan League",
+        current: { name: "Clan League 19", url: "/s/cl/19", status: "finished", players: 18, winner: null, leader: null },
+        you: { as: "clan", name: "Icelandic Turtles", division: "A", place: 4, of: 6, status: "finished", url: "/c" } });
+    const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, seriesResponse: joined });
+    ctx.setupCommunityEventsStanding();
+    await flush();
+    const join = (id) => $(`#${id} [id^='ujs_vert'] .ujsTextInner`).last();
+    assert.equal(join("ujs_EventRow_2").text(), "You're in!", "Nations Cup, running, your country is in");
+    assert.equal(join("ujs_EventRow_3").text(), "You're in the race!");
+    assert.equal(join("ujs_EventRow_5").text(), "You're signed up!");
+    assert.equal(join("ujs_EventRow").text(), "You took part", "a finished season");
+    assert.equal(join("ujs_EventRow_6").text(), "You can join!", "Titled Tuesday: not in it");
+    assert.equal(join("ujs_EventRow_4").text(), "You can join!", "MTL is left alone");
+    assert.equal(join("ujs_EventRow_2")[0].style.width, "auto", "war.app's fixed width doesn't cut the new text");
+    assert.equal(join("ujs_EventRow_2")[0].style.color, "rgb(224, 192, 96)", "in: gold, not war.app's green");
+    assert.equal(join("ujs_EventRow_3")[0].style.color, "rgb(224, 192, 96)");
+    assert.equal(join("ujs_EventRow_5")[0].style.color, "rgb(108, 196, 240)", "signed up: light blue");
+    assert.equal(join("ujs_EventRow")[0].style.color, "rgb(186, 187, 187)", "took part: grey");
+    assert.equal(join("ujs_EventRow_6")[0].style.color, "rgb(0, 255, 0)", "You can join! keeps war.app's green");
+
+    $("#ujs_EventRow_2 [id^='ujs_vert'] .ujsTextInner").last().text("You can join!");
+    $("#ujs_Rows").append("<div>redraw</div>");
+    await flush();
+    assert.equal(join("ujs_EventRow_2").text(), "You're in!", "war.app redrawing the card gets it changed again");
+});
+
+test("signed out, every card keeps war.app's \"You can join!\"", async () => {
+    const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, playerId: null,
+        seriesResponse: { series: series.series.map((entry) => ({ ...entry, you: null })) } });
+    ctx.setupCommunityEventsStanding();
+    await flush();
+    assert.equal($(".ujsTextInner").filter((i, el) => $(el).text() === "You can join!").length, 6);
 });
 
 test("a signed-in player outside the AWP race is told so on its card", async () => {
