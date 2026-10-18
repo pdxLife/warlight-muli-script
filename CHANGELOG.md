@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.33.0
+
+War.app's chat rooms (Global, Clan, groups), from the chat requests on the forum:
+
+- **Hide events.** War.app's automatic notices ("Joined the group", "Left the group", "Removed from the group due to inactivity", clan war rewards and territories) are hidden and the chat closes up, so the conversation is readable. A bar right of the tabs says how many ("23 hidden"); untick **Hide events** to see them.
+- **Mute a player** (Feature Requests: "Mute Button"). Hover a message and click 🔇: that player's messages are hidden in chat rooms and game chats, without blocking them, and they never know. **Muted (N)** on the bar lists them with Unmute.
+- **Mentions** (Feature Requests: "Tagging Players in Public Chat"). Messages that mention you, by name or @name, are outlined in gold in chat rooms and game chat, and a chat tab you're not looking at shows "@1" for each new one.
+
 ## 3.32.0
 
 - **Idle: what a tech is missing, and what it would cost at the market** (Feature Requests: "Ability to click a tech and pay for it from market", 71 votes). Idle helpers never buy for you, so the script shows the numbers instead: in a tech's details box, beside each item you're short of, "need 5 more ≈ ₩221M", priced at the cheapest market on the level that sells it. The estimate follows Idle's own market rule (each one bought raises the price by the same step), read from Idle's save in this browser, and matches Idle's market box: 30M Copper Bar ≈ ₩1.57B where Idle says ₩1.56B. With two or more items short, the tech's name line shows the total ("all ≈ ₩248M"), in red when it's more than your money. Items no market sells say "no market sells it".
