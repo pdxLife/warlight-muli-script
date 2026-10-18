@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.25.0  
+> **Version:** 3.26.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -83,6 +83,13 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Filter by player** — a search box on your mail page shows only threads started or last answered by a given player. The first search loads all pages of your mail, so it covers the whole mailbox.
 - **Filter by words** — threads with all the words you type, in the subject (the default) or in the first 15 words of each thread's opening message. Searching the first words opens every thread once (about half a minute for 400 threads) and keeps those words in this browser's storage on war.app, so later searches are instant. The first time, a notice asks before reading, with a **Turn off** button; the setting "Mail: Search the First 15 Words of Each Thread" (Other) switches it back.
 - **Filter by date** — "Last post from … to …", either date optional. All the mail filters combine.
+
+### Player Search
+
+- **Sorted results**: best match first (exact names, then names starting with what you typed, each by level), or by level, by name, or war.app's own order.
+- **Filters**: hide level 1–2 accounts, only players in a clan, a minimum level.
+- **Tags**: "You", the AWP World Tour rank ("AWP #1"), and "Blocked" for players on your block list.
+- **Paste a profile link** or a player ID to open that profile; an empty search box offers your recent searches.
 
 ### Idle
 

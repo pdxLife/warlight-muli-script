@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.26.0
+
+Player Search (Community → Player Search), whose results came in no useful order:
+
+- **Sort.** Results now come as **Best match**: exact names first, then names starting with what you typed, then the rest, each by level, highest first. Searching "tornado" puts the L65 tornado first instead of second among a dozen L2 accounts. Also by level, by name, or war.app's own order. Remembered for the next search. (Feature Requests: "Sort players by level in Player Search results".)
+- **Filter.** "Hide L1–2" (mostly new or abandoned accounts), "In a clan" and a minimum level; the count says "24 of 64 shown".
+- **Tags.** Next to each name: "You", the player's AWP World Tour rank ("AWP #1", linking to their AWP page), and "Blocked" for players on your block list.
+- **Paste a profile link.** Pasting a profile link or a player ID into the search box and pressing Search opens that profile. Clicking into an empty search box offers your last 8 searches.
+
 ## 3.25.0
 
 First helpers for War.app Idle, picked from what Idle players ask for on the forum. Each has its own switch in the settings menu's new Idle section.
