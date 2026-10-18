@@ -106,3 +106,15 @@ test("without it, Chat sits next to Refresh; it waits for the script's Refresh b
     for (let i = 0; i < 60 && later.length; i++) later.splice(0).forEach((fn) => fn());
     assert.equal($("#tuydChatLink").prev().attr("id"), "NumberOfMyGamesLabel");
 });
+
+test("the script's Refresh button gets war.app's blue button style when war.app's has none", () => {
+    const run = (html) => {
+        const { dom, $ } = createDom(html, "https://war.app/MultiPlayer/");
+        load(["isTypingTarget", "setupRefreshFunction"], { ...domGlobals(dom, $), ifSettingIsEnabled: () => { }, log: () => { }, refreshAllGames: () => { } }).setupRefreshFunction();
+        return $("#refreshAll");
+    };
+    const plain = run(`<input type="button" id="RefreshBtn" value="Refresh (F5)">`);
+    assert.equal(plain.attr("class"), "btn btn-primary");
+    assert.equal(plain.val(), "Refresh (R)");
+    assert.equal(run(`<a class="btn btn-primary" id="RefreshBtn2" href="#">Refresh (F5)</a>`).attr("class"), "btn btn-primary", "war.app's own classes are kept as they are");
+});
