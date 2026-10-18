@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.35.2
+// @version 3.36.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.36.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -37,7 +37,6 @@ var MAIL_PREVIEWS_KEY = "tidyUpYourDashboard.mailPreviews";
 var MAIL_PREVIEW_WORDS = 15;
 var IDLE_VOLUME_KEY = "tidyUpYourDashboard.idleVolume";
 var PLAYER_SEARCH_KEY = "tidyUpYourDashboard.playerSearch";
-var IDLE_VIEW_ONLY_KEY = "tidyUpYourDashboard.idleViewOnly";
 var IDLE_LOG_KEY = "tidyUpYourDashboard.idleLog";
 var IDLE_STORED_KEY = "tidyUpYourDashboard.idleStoredArtifacts";
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
@@ -3878,163 +3877,6 @@ function setupLeaderboardRank() {
 }
 
 
-// Idle reads the map's mouse and touch input from document.onpointerdown/move/up and decides
-// itself whether a press was a tap (select or conquer) or a drag (pan). With "View only" on, a
-// press on the map is held back: if it turns into a drag, the press is passed on and the map pans
-// as usual; if it's let go without moving, Idle never sees it, so nothing is selected or conquered.
-function setupIdleViewOnlyMap() {
-    var on = false;
-    try {
-        on = localStorage.getItem(IDLE_VIEW_ONLY_KEY) === "1";
-    } catch (e) {
-    }
-    var pending = null;
-    var replaying = false;
-    var swallow = false;
-    var onMap = function (event) {
-        return !!(event.target && event.target.closest && event.target.closest("#UjsWorldHolder"));
-    };
-    var copy = function (event) {
-        var init = { bubbles: true, cancelable: true, composed: true };
-        ["clientX", "clientY", "screenX", "screenY", "button", "buttons", "ctrlKey", "shiftKey", "altKey", "metaKey",
-            "pointerId", "pointerType", "isPrimary", "width", "height", "pressure"].forEach(function (key) {
-            init[key] = event[key];
-        });
-        return init;
-    };
-    var replay = function () {
-        var press = pending;
-        pending = null;
-        replaying = true;
-        try {
-            press.target.dispatchEvent(new PointerEvent("pointerdown", press.init));
-            if (press.init.pointerType === "mouse") {
-                press.target.dispatchEvent(new MouseEvent("mousedown", press.init));
-            }
-        } finally {
-            replaying = false;
-        }
-    };
-    var stop = function (event) {
-        event.stopImmediatePropagation();
-    };
-    window.addEventListener("pointerdown", function (event) {
-        if (replaying || !on || !onMap(event)) {
-            return;
-        }
-        if (pending) {
-            // A second finger: pinching to zoom, so the first press goes through.
-            replay();
-            return;
-        }
-        pending = { target: event.target, init: copy(event), id: event.pointerId, x: event.clientX, y: event.clientY };
-        stop(event);
-    }, true);
-    window.addEventListener("mousedown", function (event) {
-        if (!replaying && pending) {
-            stop(event);
-        }
-    }, true);
-    window.addEventListener("pointermove", function (event) {
-        if (pending && event.pointerId === pending.id && Math.abs(event.clientX - pending.x) + Math.abs(event.clientY - pending.y) > 6) {
-            replay();
-        }
-    }, true);
-    window.addEventListener("pointerup", function (event) {
-        if (pending && event.pointerId === pending.id) {
-            pending = null;
-            swallow = true;
-            stop(event);
-            showIdleViewOnlyNotice(event.clientX, event.clientY);
-        }
-    }, true);
-    window.addEventListener("pointercancel", function () {
-        pending = null;
-    }, true);
-    ["mouseup", "click"].forEach(function (type) {
-        window.addEventListener(type, function (event) {
-            if (swallow && onMap(event)) {
-                stop(event);
-            }
-            if (type === "click") {
-                swallow = false;
-            }
-        }, true);
-    });
-    addCSS(`
-        #idleViewOnlyBtn {
-            position: absolute;
-            left: -96px;
-            bottom: 0;
-            width: 90px;
-            height: 40px;
-            z-index: 3;
-            pointer-events: auto;
-            padding: 0 4px;
-            border: 2px solid #555;
-            border-radius: 5px;
-            background: #222;
-            color: #ccc;
-            font-size: 13px;
-            font-weight: 700;
-            line-height: 15px;
-        }
-        #idleViewOnlyBtn.on {
-            border-color: #e0c060;
-            background: #3a3016;
-            color: #e0c060;
-        }
-        #idleViewOnlyNotice {
-            position: fixed;
-            z-index: 3000;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: rgba(20, 20, 20, 0.9);
-            color: #e0c060;
-            font-size: 12px;
-            pointer-events: none;
-            transform: translate(-50%, -130%);
-        }
-    `);
-    var label = function () {
-        return on ? "View only ✓" : "View only";
-    };
-    var place = function () {
-        var zoom = $("[id^='ujs_MagnifyingButtonsContainer']").first();
-        if (!zoom.length || $("#idleViewOnlyBtn").length) {
-            return;
-        }
-        zoom.append($('<button type="button" id="idleViewOnlyBtn"></button>').toggleClass("on", on).text(label())
-            .attr("title", "While on, a click or tap on the map does nothing, so territories can't be conquered by accident. Dragging and zooming still work. (Muli's Userscript)"));
-    };
-    $(document).on("click", "#idleViewOnlyBtn", function () {
-        on = !on;
-        try {
-            localStorage.setItem(IDLE_VIEW_ONLY_KEY, on ? "1" : "0");
-        } catch (e) {
-        }
-        $(this).toggleClass("on", on).text(label());
-    });
-    var timer = null;
-    new MutationObserver(function () {
-        if (!timer) {
-            timer = setTimeout(function () {
-                timer = null;
-                place();
-            }, 500);
-        }
-    }).observe(document.body, { childList: true, subtree: true });
-    place();
-}
-
-function showIdleViewOnlyNotice(x, y) {
-    $("#idleViewOnlyNotice").remove();
-    var notice = $('<div id="idleViewOnlyNotice">View only: the map ignores clicks</div>').css({ left: x + "px", top: y + "px" }).appendTo("body");
-    setTimeout(function () {
-        notice.remove();
-    }, 1400);
-}
-
 // A pop-up's title and message: WziBalloon > Header, and Content > Row > Label (holding a close button).
 function idleBalloonEntry(balloon) {
     var title = $(balloon).find("[id^='ujs_Header']").first().text().trim();
@@ -4069,7 +3911,7 @@ function setupIdlePopupLog() {
     addCSS(`
         #idleLogBtn {
             position: absolute;
-            left: -168px;
+            left: -72px;
             bottom: 0;
             width: 66px;
             height: 40px;
@@ -6877,7 +6719,6 @@ function pageFeatures() {
         { name: "Load the whole chat in games", section: "Games", match: pageIsGame, run: setupFullGameChat },
         { name: "Private chat list: players still in the game first", section: "Games", match: pageIsGame, run: setupPrivateChatList },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
-        { name: "View-only switch for the Idle map", section: "Idle", match: pageIsIdle, run: setupIdleViewOnlyMap },
         { name: "Log of Idle's pop-ups", section: "Idle", match: pageIsIdle, run: setupIdlePopupLog },
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
