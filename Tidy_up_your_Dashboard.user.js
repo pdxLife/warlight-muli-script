@@ -1382,6 +1382,288 @@ function setupIdleActionConfirm() {
     }, true);
 }
 
+function idleRarityRank(rarity) {
+    return ["Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Insane"].indexOf(String(rarity || "").trim());
+}
+
+// The cards in Idle's artifact window: the equipped row and everything else, scrolled out of view or not.
+function idleArtifactCards(dialog) {
+    return $(dialog).find("[id^='ujs_WziArtifactCard']").filter(function () {
+        return /^ujs_WziArtifactCard(?:_\d+)?$/.test(this.id);
+    }).map(function () {
+        var card = $(this);
+        var rarity = card.find("[id^='ujs_Rarity']").first().text().trim();
+        return {
+            element: this,
+            name: card.find("[id^='ujs_Name']").first().text().trim(),
+            rarity: rarity,
+            rank: idleRarityRank(rarity),
+            equipped: card.closest("[id^='ujs_EquippedCard']").length > 0
+        };
+    }).get().filter(function (card) {
+        return card.name;
+    });
+}
+
+// Each equipped artifact that has a higher-rarity copy among the unequipped ones, with the best copy.
+function idleBetterCopies(cards) {
+    return cards.filter(function (card) {
+        return card.equipped;
+    }).map(function (card) {
+        var better = cards.filter(function (other) {
+            return !other.equipped && other.name === card.name && other.rank > card.rank;
+        }).sort(function (a, b) {
+            return b.rank - a.rank;
+        })[0];
+        return better ? { card: card, better: better } : null;
+    }).filter(Boolean);
+}
+
+function idleArtifactListHtml(cards, sortBy) {
+    var sorted = cards.slice().sort(function (a, b) {
+        return sortBy === "name" ? a.name.localeCompare(b.name) || b.rank - a.rank : b.rank - a.rank || a.name.localeCompare(b.name);
+    });
+    var lower = idleBetterCopies(cards).map(function (pair) {
+        return pair.card.element;
+    });
+    var counts = {};
+    cards.forEach(function (card) {
+        counts[card.name] = (counts[card.name] || 0) + 1;
+    });
+    return '<div class="idleArtifactListHead">All artifacts (' + cards.length + ')' +
+        '<span class="idleArtifactSort">Sort: <a href="#" data-sort="rarity"' + (sortBy === "name" ? "" : ' class="active"') + '>rarity</a> · ' +
+        '<a href="#" data-sort="name"' + (sortBy === "name" ? ' class="active"' : "") + '>name</a></span>' +
+        '<a href="#" class="idleArtifactListClose" title="Close">×</a></div><table>' + sorted.map(function (card) {
+            return '<tr' + (lower.indexOf(card.element) !== -1 ? ' class="idleArtifactLower" title="A higher-rarity copy isn\'t equipped"' : "") + '>' +
+                '<td>' + htmlEscape(card.name) + (counts[card.name] > 1 ? ' <span class="idleArtifactCount">×' + counts[card.name] + '</span>' : "") + '</td>' +
+                '<td class="idleRarity' + htmlEscape(card.rarity) + '">' + htmlEscape(card.rarity) + '</td>' +
+                '<td>' + (card.equipped ? "equipped" : "") + '</td></tr>';
+        }).join("") + '</table>';
+}
+
+function markIdleArtifacts(dialog) {
+    var cards = idleArtifactCards(dialog);
+    $(dialog).find(".tuydBetterTag").remove();
+    $(dialog).find(".tuydBetterCopy, .tuydLowerCopy").removeClass("tuydBetterCopy tuydLowerCopy");
+    idleBetterCopies(cards).forEach(function (pair) {
+        var image = $(pair.card.element).children("[id$='_img']").first();
+        image.addClass("tuydLowerCopy").append('<div class="tuydBetterTag" title="' + htmlEscape("You have " + pair.better.rarity + " " + pair.card.name + " that isn't equipped") + '">Better: ' + htmlEscape(pair.better.rarity) + '</div>');
+        $(pair.better.element).children("[id$='_img']").first().addClass("tuydBetterCopy");
+    });
+    return cards;
+}
+
+function setupIdleArtifactHelpers() {
+    addCSS(`
+        .tuydLowerCopy, .tuydBetterCopy {
+            outline: 2px solid #e0c060;
+            outline-offset: -2px;
+        }
+        .tuydBetterTag {
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            top: 34px;
+            z-index: 3;
+            padding: 1px 0;
+            border-radius: 3px;
+            background: #e0c060;
+            color: #1b1b1b;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 13px;
+            text-align: center;
+            pointer-events: auto;
+        }
+        #idleArtifactListBtn {
+            position: absolute;
+            left: 92px;
+            bottom: 3px;
+            z-index: 3;
+            padding: 3px 9px;
+            pointer-events: auto;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        #idleArtifactList {
+            position: fixed;
+            top: 80px;
+            right: 12px;
+            z-index: 2000;
+            width: 300px;
+            max-width: calc(100vw - 24px);
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            padding: 8px 10px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #1b1b1b;
+            color: #ccc;
+            font-size: 13px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #idleArtifactList .idleArtifactListHead {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: #fff;
+            font-weight: 700;
+        }
+        #idleArtifactList .idleArtifactSort {
+            font-weight: normal;
+            color: #999;
+            font-size: 12px;
+        }
+        #idleArtifactList .idleArtifactSort a.active {
+            color: #fff;
+            text-decoration: underline;
+        }
+        #idleArtifactList .idleArtifactListClose {
+            margin-left: auto;
+            color: #aaa;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        #idleArtifactList table {
+            width: 100%;
+        }
+        #idleArtifactList td {
+            padding: 2px 4px;
+            border-top: 1px solid #2c2c2c;
+        }
+        #idleArtifactList td:last-child {
+            color: #888;
+            font-size: 12px;
+        }
+        #idleArtifactList .idleArtifactCount {
+            color: #888;
+            font-size: 12px;
+        }
+        #idleArtifactList tr.idleArtifactLower td:first-child:before {
+            content: "⚠ ";
+            color: #e0c060;
+        }
+        .idleRarityPoor { color: #9d9d9d; }
+        .idleRarityCommon { color: #ffffff; }
+        .idleRarityUncommon { color: #4fbf4f; }
+        .idleRarityRare { color: #6f8fff; }
+        .idleRarityEpic { color: #e040e0; }
+        .idleRarityLegendary { color: #ff9a2e; }
+        .idleRarityInsane { color: #ff4040; }
+    `);
+    var sortBy = "rarity";
+    var signature = "";
+    var timer = null;
+    var render = function (cards) {
+        $("#idleArtifactList").html(idleArtifactListHtml(cards, sortBy));
+    };
+    var check = function () {
+        timer = null;
+        var dialog = $("[id^='ujs_WziArtifactsDialog']").filter(function () {
+            return /^ujs_WziArtifactsDialog(?:_\d+)?$/.test(this.id);
+        }).last();
+        if (!dialog.length) {
+            $("#idleArtifactList").remove();
+            signature = "";
+            return;
+        }
+        var cards = idleArtifactCards(dialog);
+        var now = cards.map(function (card) {
+            return card.name + "|" + card.rarity + "|" + card.equipped;
+        }).join(";");
+        // Marking changes the page too; only redo it when the cards themselves changed.
+        if (now !== signature || !dialog.find(".tuydBetterTag").length !== !idleBetterCopies(cards).length) {
+            signature = now;
+            markIdleArtifacts(dialog);
+            if ($("#idleArtifactList").length) {
+                render(cards);
+            }
+        }
+        var toggle = dialog.find("[id^='ujs_AutoSortToggle']").first();
+        if (toggle.length && !$("#idleArtifactListBtn").length) {
+            toggle.append('<a href="#" id="idleArtifactListBtn" class="btn btn-primary btn-sm" title="All artifacts as a sortable list (Muli\'s Userscript)">List</a>');
+        }
+    };
+    $(document).on("click", "#idleArtifactListBtn", function (event) {
+        event.preventDefault();
+        if ($("#idleArtifactList").length) {
+            $("#idleArtifactList").remove();
+            return;
+        }
+        $("body").append('<div id="idleArtifactList"></div>');
+        render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
+    }).on("click", "#idleArtifactList [data-sort]", function (event) {
+        event.preventDefault();
+        sortBy = $(this).attr("data-sort");
+        render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
+    }).on("click", "#idleArtifactList .idleArtifactListClose", function (event) {
+        event.preventDefault();
+        $("#idleArtifactList").remove();
+    });
+    // Idle redraws its counters many times a second, so the check runs at most four times a second.
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 250);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+    check();
+}
+
+// Idle open in two places can lose progress; war.app asks about other devices, but not about a
+// second tab in the same browser.
+function setupIdleTabWarning() {
+    if (typeof BroadcastChannel !== "function" || !/\/Idle\/Play/i.test(location.pathname)) {
+        return;
+    }
+    var channel = new BroadcastChannel("tidyUpYourDashboard.idle");
+    var me = String(Math.random()).slice(2);
+    channel.onmessage = function (event) {
+        var data = event.data || {};
+        if (data.from === me) {
+            return;
+        }
+        if (data.type === "hello") {
+            channel.postMessage({ type: "here", from: me });
+        }
+        if (data.type === "hello" || data.type === "here") {
+            showIdleTabWarning();
+        }
+    };
+    channel.postMessage({ type: "hello", from: me });
+}
+
+function showIdleTabWarning() {
+    if ($("#idleTabWarning").length) {
+        return;
+    }
+    addCSS(`
+        #idleTabWarning {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            z-index: 3000;
+            transform: translateX(-50%);
+            max-width: calc(100vw - 24px);
+            padding: 10px 14px;
+            border: 1px solid #a33;
+            border-radius: 6px;
+            background: #3a1212;
+            color: #fff;
+            font-size: 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #idleTabWarning button {
+            margin-left: 10px;
+        }
+    `);
+    $("body").append('<div id="idleTabWarning" role="alert">War.app Idle is also open in another tab of this browser. Having Idle open in two places can lose progress: close one of them.' +
+        '<button type="button" class="btn btn-secondary btn-sm">Got it</button></div>');
+    $("#idleTabWarning button").on("click", function () {
+        $("#idleTabWarning").remove();
+    });
+}
+
 function setupClanListSearch() {
     var $container = $("#AutoContainer, .container").filter(function () {
         return $(this).find("a[href*='/Clans/?ID=']").length > 0;
@@ -4027,6 +4309,8 @@ function pageFeatures() {
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
+        { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
+        { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
         { name: "global styles", run: setGlobalStyles },
         { name: "Map of the Week table fix", section: "Maps & levels", match: pageIsMapOfTheWeek, run: setupMapOfTheWeekStyles }
     ];

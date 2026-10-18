@@ -91,6 +91,9 @@ Helpers for War.app Idle, in the settings menu's Idle section. They only inform 
 - **Volume slider** next to war.app's speaker icon, from 0 to 100%, for Idle's sounds only.
 - **Big market purchases are checked**: when the number typed is more than your money allows (a typo like "121p", which Idle reads as 121 quadrillion, buys as many as your money allows), the script asks before buying.
 - **Using a power or activating an artifact asks first**, naming it and how many you have, and saying when it would cost coins.
+- **Better copies pointed out**: in the artifact window, an equipped artifact with a higher-rarity copy that isn't equipped gets a gold "Better: …" tag, and the better copy is outlined.
+- **Artifact list**: a "List" button next to the artifact window's Sort box shows every artifact in a compact list, by rarity or name, with copies counted.
+- **Second-tab warning** when Idle is open in another tab of the same browser, since two places at once can lose progress.
 
 ### Maps & Levels
 

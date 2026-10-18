@@ -6,6 +6,9 @@ First helpers for War.app Idle, picked from what Idle players ask for on the for
 
 - **Volume slider.** A slider next to war.app's speaker icon sets how loud Idle's sounds are (battles, challenges and auto-conquer can get noisy), from 0 to 100%, remembered in this browser. war.app's own mute button still works; ads are left alone.
 - **Check big market purchases.** When the number typed into a market is more than your money allows, Idle quietly buys as many as it can, so a typo like "121p" for "1210" (121 quadrillion) spends all your money. The script now asks first: "You typed 121p (121 quadrillion), more than you can afford. This buys 19M Copper Bar for ₩934M, as many as your money allows. Buy them?" Orders you can afford go through as before.
+- **Better artifact copies are pointed out.** In the artifact window ("View All"), an equipped artifact gets a gold "Better: Epic" tag when a higher-rarity copy of it isn't equipped, and that copy is outlined in gold, so you see it before playing on with the weaker one (a Feature Requests idea). It updates as you drag cards.
+- **A list of all your artifacts.** A "List" button next to the artifact window's Sort box opens a compact list of every artifact, sorted by rarity or by name, with copies counted and equipped ones marked: the overview players asked for once the window has more cards than it shows at once.
+- **A warning when Idle is open in another tab of this browser.** Playing Idle in two places can lose progress; war.app asks about other devices, and now both tabs say so when Idle is open twice in the same browser.
 - **Confirm before using powers and artifacts.** Clicking Use on a power or Activate on an artifact asks first, naming it: "Use Time Warp? You have 5.", "Activate Draft Boost (Epic)?", and says when a power would cost coins because you have none left.
 
 ## 3.24.1
