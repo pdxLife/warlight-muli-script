@@ -13,6 +13,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 ## Installation
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) (Chrome/Edge/Firefox) or a compatible userscript manager.
+   - **Chrome, Edge, Brave and other Chrome-based browsers:** also open the extensions page (`chrome://extensions`, or `edge://extensions` in Edge), click **Details** on Tampermonkey and turn on **Allow User Scripts**. In older versions without that switch, turn on **Developer mode** at the top right of the extensions page instead. Without it, Tampermonkey shows the script as enabled but it doesn't run. Firefox doesn't need this.
 2. Open [`Tidy_up_your_Dashboard.user.js`](Tidy_up_your_Dashboard.user.js) and click **Raw** — your userscript manager will prompt to install.
 3. Navigate to [war.app](https://war.app) and the script loads automatically.
 
