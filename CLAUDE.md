@@ -37,7 +37,7 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 
 ## Conventions
 
-- When bumping the version, update `@version`, the `GM_info` fallback near the top of the script, and the version line in `README.md` together. A test checks that they match.
+- When bumping the version, update `@version`, the `GM_info` fallback near the top of the script, the version line in `README.md`, and the version next to the title in `docs/index.html` together. A test checks that they match.
 - `@downloadURL` and `@updateURL` must point at this repo's raw file, not Greasy Fork. Otherwise upstream releases overwrite this fork.
 - Escape third-party and user-supplied strings with `htmlEscape()` before putting them into HTML. URLs from outside (API data, bookmarks) go through `htmlEscape(safeUrl(url))`; `safeUrl` allows only `http(s)://` and same-site `/` paths. `test/security.test.js` covers each renderer with an injection payload, so add a case there when adding a new one.
 - Every `@require` must carry a `#sha256-` hash. A test enforces this.
