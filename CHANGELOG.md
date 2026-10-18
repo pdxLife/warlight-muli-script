@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.30.0
+
+Two more Feature Requests:
+
+- **Private chat list: players still in the game first** ("Dorex's quality of life updates: Border in PMs", 84 votes). In a game, the Private button's list of players to chat with now shows the players still in the game first, A to Z, then a gold line and the players who are out (eliminated, booted, surrendered, removed or declined), dimmed. Handy in big diplomacy and mega games.
+- **Ask before committing orders** ("Are you sure you want to commit your orders?", 27 votes). A new setting, off by default (settings menu → Games): pressing Commit, or Autopilot's Run+Commit, first asks "Commit your orders for this turn?". Cancel keeps your orders as they are.
+
 ## 3.29.1
 
 - The **Notes** button in a game no longer covers the chat's message box when the chat is open: it moves up beside war.app's "Chat" tab, and the notes open above it. With the chat closed it's back next to the Game button.

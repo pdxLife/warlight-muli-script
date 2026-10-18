@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.29.1
+// @version 3.30.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.29.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.30.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2458,6 +2458,114 @@ function leaderboardRankText(result) {
     return result ? "Rank " + (result.exact ? "" : "≈ ") + "#" + result.rank.toLocaleString("en-US") + " of " + result.total.toLocaleString("en-US") : "";
 }
 
+function commitQuestion(link) {
+    var match = /^ujs_(CommitBtn|RunAndCommitBtn)(?:_\d+)?_btn$/.exec(link && link.id || "");
+    if (!match) {
+        return null;
+    }
+    return match[1] === "RunAndCommitBtn" ? "Let Autopilot make your orders and commit them?" : "Commit your orders for this turn?";
+}
+
+function setupCommitConfirm() {
+    document.addEventListener("click", function (event) {
+        var link = $(event.target).closest("a.ujsBtnInner")[0];
+        var question = commitQuestion(link);
+        if (question && !window.confirm(question)) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    }, true);
+}
+
+// Names of the players war.app's Players panel marks as out of the game.
+function gameOutPlayers() {
+    return $("[id^='ujs_PlayersSummaryPlayer']").filter(function () {
+        return /^ujs_PlayersSummaryPlayer(?:_\d+)?$/.test(this.id);
+    }).filter(function () {
+        var status = $(this).find("[id^='ujs_PlayerStatusLabel']").filter(function () {
+            return !/_tmp$/.test(this.id);
+        }).first().text();
+        return /\b(?:Eliminated|Booted|Surrendered|Removed by host|Declined)\b/i.test(status);
+    }).map(function () {
+        return $(this).find("[id^='ujs_PlayerNameContainer']").first().text().replace(/\s+/g, " ").trim().replace(/^L\d+ /, "");
+    }).get();
+}
+
+function privateChatRows(prompt) {
+    return $(prompt).parent().children(".ujsBtn").map(function () {
+        return { element: this, name: $(this).find(".ujsTextInner").first().text().trim() };
+    }).get().filter(function (row) {
+        return row.name;
+    });
+}
+
+// war.app stacks the rows by their `bottom`; the rows trade places, so the list keeps its size.
+function orderPrivateChatRows(rows, outNames) {
+    var slots = rows.map(function (row) {
+        return parseFloat(row.element.style.bottom) || 0;
+    }).sort(function (a, b) {
+        return b - a;
+    });
+    var isOut = function (row) {
+        return outNames.indexOf(row.name) !== -1;
+    };
+    var byName = function (a, b) {
+        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    };
+    var ordered = rows.filter(function (row) {
+        return !isOut(row);
+    }).sort(byName).concat(rows.filter(isOut).sort(byName));
+    var changed = false;
+    ordered.forEach(function (row, i) {
+        if (parseFloat(row.element.style.bottom) !== slots[i]) {
+            row.element.style.bottom = slots[i] + "px";
+            changed = true;
+        }
+        var first = isOut(row) && i > 0 && !isOut(ordered[i - 1]);
+        $(row.element).toggleClass("tuydPmOut", isOut(row));
+        var divider = $(row.element).children(".tuydPmDivider");
+        if (first && !divider.length) {
+            var image = $(row.element).children(".ujsImgInner").first()[0];
+            $('<div class="tuydPmDivider"></div>').css({
+                width: image ? image.style.width : "100%",
+                bottom: (image ? parseFloat(image.style.height) || 30 : 30) + 1
+            }).appendTo(row.element);
+        } else if (!first) {
+            divider.remove();
+        }
+    });
+    return changed;
+}
+
+function setupPrivateChatList() {
+    addCSS(`
+        .ujsBtn.tuydPmOut > :not(.tuydPmDivider) {
+            opacity: 0.55;
+        }
+        .tuydPmDivider {
+            position: absolute;
+            left: 0;
+            height: 0;
+            border-bottom: 2px solid #e0c060;
+            pointer-events: none;
+        }
+    `);
+    var timer = null;
+    var check = function () {
+        timer = null;
+        $("[id^='ujs_PromptFromList'] .ujsTextInner").filter(function () {
+            return /chat privately with/i.test($(this).text());
+        }).each(function () {
+            orderPrivateChatRows(privateChatRows($(this).parent()), gameOutPlayers());
+        });
+    };
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 200);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+}
+
 function shownUjsElement(element) {
     for (; element && element !== document.body; element = element.parentElement) {
         if (element.style && element.style.display === "none") {
@@ -3354,6 +3462,13 @@ window.userscriptSettings = [
         selected: false,
         section: 'Dashboard',
         help: 'While a dashboard tab is open, the script checks your games every 5 minutes in the background and shows a desktop notification when a game becomes your turn. Your browser asks for permission when you turn this on.'
+    },
+    {
+        id: 'confirmCommit',
+        text: 'Ask Before Committing Orders',
+        selected: false,
+        section: 'Games',
+        help: 'In a game, pressing Commit (or Autopilot\'s Run+Commit) first asks "Commit your orders for this turn?", so a stray click or tap doesn\'t send unfinished orders. Takes effect when a game page loads.'
     },
     {
         id: 'idleNotifications',
@@ -5617,6 +5732,7 @@ function pageFeatures() {
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
         { name: "Your rank next to your rating on Quickmatch leaderboards", section: "Community", match: pageIsQuickmatch, run: setupLeaderboardRank },
         { name: "Load the whole chat in games", section: "Games", match: pageIsGame, run: setupFullGameChat },
+        { name: "Private chat list: players still in the game first", section: "Games", match: pageIsGame, run: setupPrivateChatList },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
         { name: "View-only switch for the Idle map", section: "Idle", match: pageIsIdle, run: setupIdleViewOnlyMap },
         { name: "Log of Idle's pop-ups", section: "Idle", match: pageIsIdle, run: setupIdlePopupLog },
@@ -5650,6 +5766,7 @@ function mainFeatures() {
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
+        { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }
