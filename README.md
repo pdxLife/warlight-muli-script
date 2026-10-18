@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.29.1  
+> **Version:** 3.30.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -40,6 +40,8 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Notes in a game** — a **Notes** button next to war.app's Game button on a game's page (left of the Chat tab while the chat is open) opens your private notes for that game: general notes, which turns you move first on (odd or even; the panel then says "Turn 7: you move first"), and a note for each other player. Notes save as you type, only you see them, and the button shows a gold dot on games that have notes. They're kept with your settings, so Export / Import carries them.
 - **Past Games filters** — a bar above the list on Past Games: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of (surrendered, booted…), only real-time or multi-day games, and reverse the order. The bar shows "12 of 25 shown". It filters the games on the current page; war.app's "Number per page" goes up to 200.
 - **The whole chat in a game** — when a game's chat has older messages behind war.app's "Load Older Messages" or "Older Chat" button, the script presses it for you until the whole chat is there, then returns to the newest message. With war.app's App Settings → **Chat Dialog** checked, war.app loads a page at a time (the script keeps pressing, up to 20 times) and opens long chats (300+) in a dialog; unchecked, one press loads everything.
+- **Private chat list** — in a game, the Private button's "select the player you'd like to chat privately with" list shows the players still in the game first, A to Z, then a gold line and the players who are out (eliminated, booted, surrendered, removed or declined), dimmed. In big games you no longer scroll past players who left long ago.
+- **Ask before committing** (setting, off by default) — pressing Commit, or Autopilot's Run+Commit, first asks "Commit your orders for this turn?", so a stray click or tap doesn't send unfinished orders.
 
 ### Bookmarks
 
@@ -149,6 +151,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Off-Topic Threads | Off | Automatically hide Off-Topic forum threads |
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
+| Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
 | Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
 | Load MTL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 
