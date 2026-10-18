@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.34.0
+// @version 3.35.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.34.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3221,6 +3221,18 @@ function chatToolsCss() {
             margin: 0 4px 0 0;
             vertical-align: middle;
         }
+        #tuydChatTools input[type=search] {
+            width: 140px;
+            padding: 1px 6px;
+            border: 1px solid #555;
+            border-radius: 3px;
+            background: #222;
+            color: #ddd;
+        }
+        #tuydChatTools .tuydSearchCount {
+            margin-left: -6px;
+            color: #aaa;
+        }
         #tuydChatTools a {
             color: #e0c060;
         }
@@ -3269,6 +3281,7 @@ function setupChatRoomTools() {
     var me = "";
     var muted = [];
     var hideEvents = true;
+    var search = "";
     var lastKeys = {};
     var mentionCounts = {};
     var timer = null;
@@ -3282,7 +3295,7 @@ function setupChatRoomTools() {
         var index = tabs.indexOf(tab);
         return index !== -1 && tabs.length === buttons.length ? buttons[index] : null;
     };
-    var toolbar = function (hiddenEvents) {
+    var toolbar = function (hiddenEvents, found) {
         var buttons = $("[id^='ujs_TabData_']").filter(function () {
             return /^ujs_TabData_-?\d+$/.test(this.id);
         });
@@ -3294,16 +3307,28 @@ function setupChatRoomTools() {
         var rect = last.getBoundingClientRect();
         var bar = $("#tuydChatTools");
         if (!bar.length) {
-            bar = $('<div id="tuydChatTools" title="Muli\'s Userscript"><label><input type="checkbox" name="hideEvents">Hide events <span class="tuydEventCount"></span></label><a href="#" class="tuydMutedLink"></a></div>').appendTo("body");
+            bar = $('<div id="tuydChatTools" title="Muli\'s Userscript"><input type="search" name="chatSearch" placeholder="Search chat"><span class="tuydSearchCount"></span>'
+                + '<label><input type="checkbox" name="hideEvents">Hide events <span class="tuydEventCount"></span></label><a href="#" class="tuydMutedLink"></a></div>').appendTo("body");
+            bar.on("keydown keyup keypress", function (event) {
+                event.stopPropagation();
+            });
         }
-        bar.css({ left: rect.right + 12, top: rect.top + Math.max(0, (rect.height - 24) / 2) });
+        var width = bar.outerWidth();
+        if (rect.right + 12 + width > window.innerWidth - 8) {
+            bar.css({ left: Math.max(8, window.innerWidth - width - 8), top: rect.bottom + 4 });
+        } else {
+            bar.css({ left: rect.right + 12, top: rect.top + Math.max(0, (rect.height - 24) / 2) });
+        }
         bar.find("[name=hideEvents]").prop("checked", hideEvents);
         bar.find(".tuydEventCount").text(hideEvents && hiddenEvents ? "(" + hiddenEvents + " hidden)" : "");
         bar.find(".tuydMutedLink").text("Muted (" + muted.length + ")");
+        bar.find(".tuydSearchCount").text(search ? found + " found" : "");
     };
     var check = function () {
         timer = null;
         var hiddenEvents = 0;
+        var found = 0;
+        var needle = search.toLowerCase();
         $("[id^='ujs_ChatRoomTab']").filter(function () {
             return /^ujs_ChatRoomTab(?:_\d+)?$/.test(this.id);
         }).each(function () {
@@ -3312,10 +3337,15 @@ function setupChatRoomTools() {
             if (!rows.length) {
                 return;
             }
+            var visible = shownUjsElement(tab);
             stackChatRows(rows, function (row) {
                 var gone = muted.indexOf(row.name) !== -1 || (hideEvents && row.event);
                 if (hideEvents && row.event && muted.indexOf(row.name) === -1) {
-                    hiddenEvents += shownUjsElement(tab) ? 1 : 0;
+                    hiddenEvents += visible ? 1 : 0;
+                }
+                if (!gone && needle) {
+                    gone = (row.name + " " + row.text).toLowerCase().indexOf(needle) === -1;
+                    found += !gone && visible ? 1 : 0;
                 }
                 return gone;
             });
@@ -3359,7 +3389,7 @@ function setupChatRoomTools() {
                 }
             }
         });
-        toolbar(hiddenEvents);
+        toolbar(hiddenEvents, found);
     };
     var schedule = function () {
         if (!timer) {
@@ -3375,6 +3405,9 @@ function setupChatRoomTools() {
             saveMutedPlayers(muted);
             schedule();
         }
+    }).on("input", "#tuydChatTools [name=chatSearch]", function () {
+        search = this.value.trim();
+        schedule();
     }).on("change", "#tuydChatTools [name=hideEvents]", function () {
         hideEvents = this.checked;
         Database.update(Database.Table.Settings, { name: "hideChatEvents", value: hideEvents }, undefined);
@@ -3465,6 +3498,202 @@ function setupGameChatTools() {
         schedule();
     });
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+}
+
+// "@" and what follows it right before the caret, if the person is typing a name to tag.
+function mentionQuery(value, caret) {
+    var before = String(value || "").slice(0, caret);
+    var match = /(?:^|\s)@([^@\n]{0,30})$/.exec(before);
+    return match ? { start: before.length - match[1].length - 1, text: match[1] } : null;
+}
+
+function mentionCandidates(names, typed, me) {
+    var seen = {};
+    var lower = String(typed || "").toLowerCase();
+    var unique = names.filter(function (name) {
+        var key = String(name || "").toLowerCase();
+        if (!key || key === String(me || "").toLowerCase() || seen[key]) {
+            return false;
+        }
+        seen[key] = true;
+        return true;
+    });
+    var starts = unique.filter(function (name) {
+        return name.toLowerCase().indexOf(lower) === 0;
+    });
+    var contains = lower ? unique.filter(function (name) {
+        return name.toLowerCase().indexOf(lower) > 0;
+    }) : [];
+    return starts.concat(contains).slice(0, 6);
+}
+
+function insertMention(value, caret, query, name) {
+    var text = "@" + name + " ";
+    return { value: value.slice(0, query.start) + text + value.slice(caret), caret: query.start + text.length };
+}
+
+// Suggests player names after "@" in war.app's chat boxes; Enter, Tab and the arrows pick a name
+// while the list is open, so a half-typed message isn't sent.
+function setupChatMentionSuggest(isChatBox, namesFor) {
+    addCSS(`
+        #tuydMentionList {
+            position: fixed;
+            z-index: 60;
+            min-width: 160px;
+            padding: 3px 0;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #1b1b1b;
+            color: #ddd;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        }
+        #tuydMentionList div {
+            padding: 2px 10px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        #tuydMentionList div.tuydActive {
+            background: #3a3a3a;
+            color: #fff;
+        }
+    `);
+    var state = null;
+    var swallow = false;
+    var close = function () {
+        state = null;
+        $("#tuydMentionList").remove();
+    };
+    var pick = function (name) {
+        var box = state.box;
+        var next = insertMention(box.value, box.selectionStart, state.query, name);
+        box.value = next.value;
+        box.setSelectionRange(next.caret, next.caret);
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+        close();
+        box.focus();
+    };
+    var render = function () {
+        var list = $("#tuydMentionList");
+        if (!list.length) {
+            list = $('<div id="tuydMentionList" title="Muli\'s Userscript"></div>').appendTo("body");
+        }
+        list.empty().append(state.names.map(function (name, i) {
+            return $("<div></div>").text(name).toggleClass("tuydActive", i === state.active).attr("data-index", i);
+        }));
+        var rect = state.box.getBoundingClientRect();
+        list.css({ left: rect.left + 8, top: Math.max(4, rect.top - list.outerHeight() - 4) });
+    };
+    var update = function (box) {
+        var query = mentionQuery(box.value, box.selectionStart);
+        var names = query ? mentionCandidates(namesFor(box), query.text, "") : [];
+        if (!names.length) {
+            close();
+            return;
+        }
+        state = { box: box, query: query, names: names, active: 0 };
+        render();
+    };
+    document.addEventListener("input", function (event) {
+        if (isChatBox(event.target)) {
+            update(event.target);
+        }
+    }, true);
+    document.addEventListener("keydown", function (event) {
+        if (!state || event.target !== state.box) {
+            return;
+        }
+        var key = event.key;
+        if (key === "ArrowDown" || key === "ArrowUp") {
+            state.active = (state.active + (key === "ArrowDown" ? 1 : state.names.length - 1)) % state.names.length;
+            render();
+        } else if (key === "Enter" || key === "Tab") {
+            swallow = key === "Enter";
+            pick(state.names[state.active]);
+        } else if (key === "Escape") {
+            close();
+        } else {
+            return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, true);
+    ["keypress", "keyup"].forEach(function (type) {
+        document.addEventListener(type, function (event) {
+            if (swallow && event.key === "Enter") {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                if (type === "keyup") {
+                    swallow = false;
+                }
+            }
+        }, true);
+    });
+    $(document).on("mousedown", "#tuydMentionList div", function (event) {
+        event.preventDefault();
+        if (state) {
+            pick(state.names[Number($(this).attr("data-index"))]);
+        }
+    }).on("focusout", function (event) {
+        if (state && event.target === state.box) {
+            setTimeout(function () {
+                if (state && document.activeElement !== state.box) {
+                    close();
+                }
+            }, 150);
+        }
+    });
+}
+
+function setupChatRoomMentionSuggest() {
+    var me = "";
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+        });
+    }
+    setupChatMentionSuggest(function (element) {
+        return !!element && /^ujs_SendChatText(?:_\d+)?_input$/.test(element.id);
+    }, function (box) {
+        var tab = $(box).parents().filter(function () {
+            return /^ujs_ChatRoomTab(?:_\d+)?$/.test(this.id);
+        }).first();
+        return mentionCandidates(chatRoomRows(tab).filter(function (row) {
+            return !row.event;
+        }).reverse().map(function (row) {
+            return row.name;
+        }), "", me);
+    });
+}
+
+function setupGameMentionSuggest() {
+    var me = "";
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+        });
+    }
+    setupChatMentionSuggest(function (element) {
+        return !!element && /^ujs_SendChatInput(?:_\d+)?_input$/.test(element.id);
+    }, function () {
+        return mentionCandidates(gamePlayerNames(me), "", me);
+    });
+}
+
+function setupDashboardChatLink() {
+    if ($("#tuydChatLink").length) {
+        return;
+    }
+    var link = $('<a id="tuydChatLink" href="/MultiPlayer?ChatRoom=1" title="Global, clan and group chats (Muli\'s Userscript)">Chat</a>');
+    // The script's own Refresh button with the scrollable dashboard, war.app's otherwise.
+    var refresh = $("#refreshAll, #RefreshBtn, #RefreshBtn2").first();
+    if (refresh.length) {
+        var floated = refresh.css("float");
+        link.addClass(refresh.attr("class") || "btn btn-primary").css({ margin: refresh.is("#refreshAll") ? "5px" : "0 5px", float: floated === "none" ? "" : floated })
+            .insertBefore(refresh);
+        return;
+    }
+    $("#NumberOfMyGamesLabel").after(link.addClass("btn btn-primary btn-sm").css({ marginLeft: "10px" }));
 }
 
 function watchQuickmatchLeaderboardRequests(callback) {
@@ -6617,6 +6846,7 @@ function mainFeatures() {
         { name: "Mail search by player", section: "Other", match: pageIsMyMail, run: setupMailSearch },
         { name: "Total points earned", section: "Other", match: pageIsPointsPage, run: displayTotalPointsEarned },
         { name: "dashboard", match: pageIsDashboard, run: setupDashboard },
+        { name: "Chat button on the dashboard", section: "Dashboard", match: pageIsDashboard, run: setupDashboardChatLink },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
         { name: "Community event badges on My Games", section: "Dashboard", match: pageIsDashboard, run: setupEventBadges },
@@ -6628,6 +6858,8 @@ function mainFeatures() {
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
         { name: "Mute players and highlight mentions in game chat", section: "Games", match: pageIsGame, run: setupGameChatTools },
         { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },
+        { name: "Suggest names after @ in chat rooms", section: "Community", match: pageIsChatRoom, run: setupChatRoomMentionSuggest },
+        { name: "Suggest names after @ in game chat", section: "Games", match: pageIsGame, run: setupGameMentionSuggest },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }

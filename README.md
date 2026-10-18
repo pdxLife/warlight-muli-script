@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.34.0  
+> **Version:** 3.35.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -31,6 +31,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Boot-time sorting** — games where it's your turn are ordered by time left before you're booted (boot time plus bank, minus how long it's been your turn), most urgent first. Other games keep their place.
 - **Joined games marked** — Open Games rows where you hold a seat (or are invited) get a green **Joined** badge.
 - **Vacation banner** — displays a notice when your account is on vacation.
+- **Chat button** — a **Chat** button next to Refresh opens war.app's chat rooms (Global, Clan, groups) without going through a game.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
 - **Forum thread hiding** — right-click any forum thread on the dashboard to hide it; hidden threads persist across sessions.
 - **Sortable right-column tables** — reorder and toggle visibility of Bookmarks, Map of the Week, Forum, Clan Forum, Blog, and other sidebar blocks.
@@ -90,11 +91,14 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 
 ### Chat rooms
 
-On war.app's chat rooms (Global, Clan and your groups), a small bar right of the tabs:
+On war.app's chat rooms (Global, Clan and your groups), a small bar right of the tabs (below them in a narrow window):
+
+- **Search chat**: type a word or a player's name and only the messages that have it stay, with "N found"; clear the box to see everything.
 
 - **Hide events** (on by default): war.app's automatic notices — "Joined the group", "Left the group", "Removed from the group due to inactivity", clan war rewards and territories — are taken out and the messages close up. The bar says how many are hidden; untick it to see them again.
 - **Mute** a player without blocking them: hover their message and click 🔇. Their messages disappear from chat rooms and from game chats (where they become a faint "muted" line), and they never know. **Muted (N)** lists them, each with Unmute. Kept with your settings, so Export / Import carries the list.
 - **Mentions**: messages with your name (or @name) are outlined in gold, in chat rooms and game chat; a chat tab you're not looking at shows "@2" for new messages that mention you.
+- **Tagging**: type @ in a chat box (chat rooms or a game) and pick from the names of players in that chat, with the mouse, the arrows and Enter or Tab; the picked name goes in as "@Name ". While the list is open, Enter picks a name instead of sending. (Only war.app could notify the player you tag; the gold outline above is how they'd see it with this script.)
 - **Read aloud**: hover a message and click 🔊 to hear it and the ones after it, as in game chat; hidden notices and muted players are skipped. With **Read New Chat Messages Aloud** on, new messages in the tab you're looking at are read as they arrive.
 
 ### Mail
