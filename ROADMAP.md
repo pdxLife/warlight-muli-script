@@ -113,6 +113,15 @@ Ground rules for everything here:
 - **Read what's on screen, not the game's internals.** war.app's client code is minified and renamed on every build; visible text and numbers are much sturdier. Use the same patterns as tournament pages: `ujsElement()` lookups, a `MutationObserver` that re-checks, absolutely positioned additions that don't enter war.app's layout, and `pointer-events: auto` on anything clickable.
 - Each helper gets its own switch under a new "Idle" section in Features, plus tests from recorded Idle markup and a QA.md row.
 
+From the Idle and Feature Requests forums (October 2026), the requests a script can help with on desktop, most asked first; many others are game rules or the phone app, which only war.app can change:
+
+- [x] **Volume slider** *(3.25.0)*: Idle is loud in battles, challenges and auto-conquer, and a player wrote a userscript just to lower it. Idle plays its sounds with SoundManager 2 as HTML audio, often from elements outside the page, so the script scales every audio element's volume where it's set (`setupIdleVolume()`), leaving videos (ads) alone.
+- [x] **Check big market purchases** *(3.25.0)*: a typo such as "121p" (Idle reads k, m, b, t, p, e, z) makes Idle buy as many as your money allows. The market's Purchase button already shows what it will buy ("Purchase 19M for ₩934M"); when that's less than the number typed, the script asks first (`idleMarketQuestion()`).
+- [x] **Confirm before using powers and activating artifacts** *(3.25.0)*: players hit Time Warp by accident. Powers are the Use buttons in the Powers tab (`WziTabBodyIAPRow`), artifacts the Activate buttons on the AP tab's cards (`WziTabBodyAPArtifact`). war.app's buttons are links with a jQuery click handler, so a capturing click listener asks first and stops the click on Cancel (`idleActionQuestion()`).
+- [ ] **Warn when using a lower-rarity artifact** (Feature Requests, 4 votes): needs the full artifact list ("View All") to know a better copy exists.
+- [ ] **See all artifacts at once, with sorting**: players shrink the browser window to get a bigger artifact view; someone asked for a userscript for it.
+- [ ] **Warning when Idle is open in another tab of this browser**, against the lost-progress threads; war.app already asks about other devices.
+
 - [ ] **Attention alerts.** A tab-title count and an optional desktop notification when Idle needs you: a tank has finished its queued moves, a battle is ready, powers are waiting to be claimed, and similar. Same idea as the multiplayer "Your turn" alert, so Idle can sit in a background tab. First step: list which on-screen signals mark each of these states.
 - [ ] **Best next upgrade.** Next to each upgrade, show how long it takes to pay for itself (cost ÷ income gained) and highlight the best value. Needs the cost and the income gain of each upgrade from the screen; check which panels (army camps, mines, hospitals, mercenary camps, dig sites) show both.
 - [ ] **Time to afford.** Next to each upgrade cost, show how long until you can afford it at the current ₩/sec or ₳/sec (both are shown in the top-right counters, e.g. "￦131 (1/sec)").

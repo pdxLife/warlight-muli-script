@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.24.1  
+> **Version:** 3.25.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -83,6 +83,14 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Filter by player** — a search box on your mail page shows only threads started or last answered by a given player. The first search loads all pages of your mail, so it covers the whole mailbox.
 - **Filter by words** — threads with all the words you type, in the subject (the default) or in the first 15 words of each thread's opening message. Searching the first words opens every thread once (about half a minute for 400 threads) and keeps those words in this browser's storage on war.app, so later searches are instant. The first time, a notice asks before reading, with a **Turn off** button; the setting "Mail: Search the First 15 Words of Each Thread" (Other) switches it back.
 - **Filter by date** — "Last post from … to …", either date optional. All the mail filters combine.
+
+### Idle
+
+Helpers for War.app Idle, in the settings menu's Idle section. They only inform and ask; nothing plays the game for you.
+
+- **Volume slider** next to war.app's speaker icon, from 0 to 100%, for Idle's sounds only.
+- **Big market purchases are checked**: when the number typed is more than your money allows (a typo like "121p", which Idle reads as 121 quadrillion, buys as many as your money allows), the script asks before buying.
+- **Using a power or activating an artifact asks first**, naming it and how many you have, and saying when it would cost coins.
 
 ### Maps & Levels
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.25.0
+
+First helpers for War.app Idle, picked from what Idle players ask for on the forum. Each has its own switch in the settings menu's new Idle section.
+
+- **Volume slider.** A slider next to war.app's speaker icon sets how loud Idle's sounds are (battles, challenges and auto-conquer can get noisy), from 0 to 100%, remembered in this browser. war.app's own mute button still works; ads are left alone.
+- **Check big market purchases.** When the number typed into a market is more than your money allows, Idle quietly buys as many as it can, so a typo like "121p" for "1210" (121 quadrillion) spends all your money. The script now asks first: "You typed 121p (121 quadrillion), more than you can afford. This buys 19M Copper Bar for ₩934M, as many as your money allows. Buy them?" Orders you can afford go through as before.
+- **Confirm before using powers and artifacts.** Clicking Use on a power or Activate on an artifact asks first, naming it: "Use Time Warp? You have 5.", "Activate Draft Boost (Epic)?", and says when a power would cost coins because you have none left.
+
 ## 3.24.1
 
 - **Community Events cards for events you're in no longer say "You can join!"**: war.app's green line reads "You're in!" while it's running, "You're signed up!" during signups, "You took part" once it's finished, and "You're in the race!" on AWP World Tour, each in its own colour so they stand out from war.app's green: gold when you're in, light blue when signed up, grey once it's over. Cards for events you're not in keep the green "You can join!".
