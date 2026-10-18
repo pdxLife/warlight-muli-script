@@ -196,3 +196,11 @@ test("the Idle artifact list escapes names read from the page", () => {
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
 });
+
+test("Player Search tags and recent searches escape what they show", () => {
+    const ctx = load(["playerSearchTagsHtml", "htmlEscape"], { AWP_SITE: "https://awp.wl-stats.com" });
+    const row = { id: PAYLOAD, name: PAYLOAD, level: 1 };
+    const container = render(ctx.playerSearchTagsHtml(row, { me: PAYLOAD, year: PAYLOAD, awp: { [PAYLOAD]: { rank: PAYLOAD, points: PAYLOAD } }, blocked: { [PAYLOAD]: true } }));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});
