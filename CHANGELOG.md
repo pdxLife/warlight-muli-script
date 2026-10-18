@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.29.1
+
+- The **Notes** button in a game no longer covers the chat's message box when the chat is open: it moves up beside war.app's "Chat" tab, and the notes open above it. With the chat closed it's back next to the Game button.
+- **Notes no longer keep the keyboard.** After typing a note, a click on the map (or anywhere outside the notes) hands the keyboard back to war.app, so its shortcuts work again; the notes stay open to read, and a click in them lets you type again. Clicking the Notes button itself no longer holds on to the keyboard either.
+
 ## 3.29.0
 
 Two more Feature Requests:

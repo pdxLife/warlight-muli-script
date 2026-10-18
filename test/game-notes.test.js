@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -17,6 +17,7 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123") {
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
         location: dom.window.location,
+        innerHeight: 768,
         addCSS: () => { },
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: () => { },
@@ -95,12 +96,53 @@ test("saved notes come back, players no longer on the page included, and clearin
     runTimers();
 });
 
-test("keys typed in the notes don't reach war.app's hotkeys", () => {
+test("keys typed in the notes don't reach war.app's hotkeys, but the Notes button lets them through", () => {
     const { $, dom } = setup();
-    let reached = 0;
-    $(dom.window.document).on("keydown pointerdown", () => reached++);
+    let keys = 0;
+    let pointers = 0;
+    $(dom.window.document).on("keydown", () => keys++).on("pointerdown", () => pointers++);
     $("#tuydGameNotesBtn").trigger("click");
     $("#tuydGameNotes textarea").first().trigger("keydown").trigger("pointerdown");
-    $("#tuydGameNotesBtn").trigger("pointerdown");
-    assert.equal(reached, 0);
+    assert.equal(keys, 0);
+    $("#tuydGameNotesBtn").trigger("keydown").trigger("pointerdown");
+    assert.equal(keys, 1, "a focused Notes button doesn't swallow war.app's shortcuts");
+    assert.equal(pointers, 0, "nor does a click on it reach the map");
+});
+
+test("a click outside the notes hands the keyboard back to war.app, and the notes stay open", () => {
+    const { $, dom } = setup();
+    const document = dom.window.document;
+    $("body").append('<div id="UjsWorldHolder"><canvas></canvas></div>');
+    $("#tuydGameNotesBtn").trigger("click");
+    const box = $("#tuydGameNotes textarea[name=text]")[0];
+    box.focus();
+    assert.equal(document.activeElement, box);
+    box.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true }));
+    assert.equal(document.activeElement, box, "a click inside the notes keeps typing there");
+    $("#UjsWorldHolder canvas")[0].dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true }));
+    assert.notEqual(document.activeElement, box);
+    assert.equal($("#tuydGameNotes").length, 1);
+});
+
+test("clicking Notes doesn't leave the button holding the keyboard", () => {
+    const { $, dom } = setup();
+    const button = $("#tuydGameNotesBtn")[0];
+    button.focus();
+    $(button).trigger("click");
+    assert.notEqual(dom.window.document.activeElement, button);
+});
+
+test("the Notes button sits next to war.app's Game button, and left of the Chat tab while the chat is open", () => {
+    const { ctx } = setup();
+    const spot = (...args) => JSON.parse(JSON.stringify(ctx.gameNotesButtonSpot(...args)));
+    assert.deepEqual(spot(null, 768, 56), { left: 96, bottom: 10, onChat: false });
+    assert.deepEqual(spot({ left: 372, bottom: 451, height: 17 }, 768, 50), { left: 314, bottom: 317, onChat: true });
+    assert.deepEqual(spot({ left: 20, bottom: 451, height: 17 }, 768, 50), { left: 8, bottom: 317, onChat: true });
+});
+
+test("a closed chat doesn't move the button", () => {
+    const { ctx, $ } = setup();
+    $("body").append('<div id="ujs_Chat" style="display: none"><div id="ujs_ChatTab"></div></div><div id="ujs_ChatCollapseButton"><a id="ujs_ChatCollapseButton_btn"></a></div>');
+    assert.equal(ctx.openGameChatTabRect(), null);
+    assert.equal($("#tuydGameNotesBtn").hasClass("tuydOnChat"), false);
 });

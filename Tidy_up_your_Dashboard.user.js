@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.29.0
+// @version 3.29.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.29.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.29.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6954,6 +6954,27 @@ function readGameNotesPanel(panel, name) {
     });
 }
 
+// While war.app's chat is open it covers the bottom of the game; the button then sits left of the
+// chat's "Chat" tab, on the same line, and the notes open above it.
+function gameNotesButtonSpot(chatTabRect, viewportHeight, buttonWidth) {
+    if (!chatTabRect || chatTabRect.height <= 0) {
+        return { left: 96, bottom: 10, onChat: false };
+    }
+    return { left: Math.max(8, chatTabRect.left - 8 - buttonWidth), bottom: Math.max(0, viewportHeight - chatTabRect.bottom), onChat: true };
+}
+
+function openGameChatTabRect() {
+    var chat = $("[id^='ujs_Chat']").filter(function () {
+        return /^ujs_Chat(?:_\d+)?$/.test(this.id);
+    }).first();
+    var tab = $("#ujs_ChatCollapseButton_btn");
+    if (!chat.length || !tab.length || !shownUjsElement(chat[0]) || !shownUjsElement(tab[0])) {
+        return null;
+    }
+    var rect = tab[0].getBoundingClientRect();
+    return rect.height > 0 ? { left: rect.left, bottom: rect.bottom, height: rect.height } : null;
+}
+
 function setupGameNotes() {
     addCSS(`
         #tuydGameNotesBtn {
@@ -6962,6 +6983,11 @@ function setupGameNotes() {
             bottom: 10px;
             z-index: 50;
             pointer-events: auto;
+        }
+        #tuydGameNotesBtn.tuydOnChat {
+            padding: 0 8px;
+            font-size: 12px;
+            line-height: 17px;
         }
         #tuydGameNotesBtn.tuydHasNotes:after {
             content: "●";
@@ -7036,8 +7062,8 @@ function setupGameNotes() {
     var timer = null;
     var button = $('<a href="#" id="tuydGameNotesBtn" class="btn btn-primary btn-sm" title="Your private notes for this game (Muli\'s Userscript)">Notes</a>');
     // Keys typed into the notes must not reach war.app's game hotkeys, nor clicks its map.
-    var isolate = function (element) {
-        element.on("keydown keyup keypress pointerdown pointerup pointermove mousedown mouseup touchstart touchend wheel", function (event) {
+    var isolate = function (element, keys) {
+        element.on((keys ? "keydown keyup keypress " : "") + "pointerdown pointerup pointermove mousedown mouseup touchstart touchend wheel", function (event) {
             event.stopPropagation();
         });
         return element;
@@ -7055,13 +7081,28 @@ function setupGameNotes() {
         });
         button.toggleClass("tuydHasNotes", !gameNotesEmpty(notes));
     };
+    var spot = null;
+    var place = function () {
+        var tab = openGameChatTabRect();
+        button.toggleClass("tuydOnChat", !!tab);
+        var next = gameNotesButtonSpot(tab, window.innerHeight, button.outerWidth());
+        var panel = $("#tuydGameNotes");
+        if (spot && next.left === spot.left && next.bottom === spot.bottom && panel.attr("data-placed")) {
+            return;
+        }
+        spot = next;
+        button.css({ left: spot.left, bottom: spot.bottom });
+        panel.attr("data-placed", "1").css({ left: spot.onChat ? Math.max(8, spot.left - 160) : 8, bottom: spot.bottom + (spot.onChat ? 24 : 46) });
+    };
+    var placing = null;
     var showTurn = function () {
         var panel = $("#tuydGameNotes");
         panel.find(".tuydGameNotesTurn").text(gameFirstMoveText(panel.find("select[name=firstMove]").val(), gameTurnNumber()));
     };
     var open = function () {
-        var panel = isolate($('<div id="tuydGameNotes"></div>')).html(gameNotesHtml(notes, gamePlayerNames(self)));
+        var panel = isolate($('<div id="tuydGameNotes"></div>'), true).html(gameNotesHtml(notes, gamePlayerNames(self)));
         $("body").append(panel);
+        place();
         showTurn();
         panel.find("textarea[name=text]").trigger("focus");
     };
@@ -7091,15 +7132,24 @@ function setupGameNotes() {
             }
         });
     };
-    $("body").append(isolate(button));
+    $("body").append(isolate(button, false));
     button.on("click", function (event) {
         event.preventDefault();
+        this.blur();
         if ($("#tuydGameNotes").length) {
             close();
         } else {
             open();
         }
     });
+    // war.app's map doesn't take the focus on a click, so typing would stay in the notes; a click
+    // anywhere else hands the keyboard back to war.app.
+    document.addEventListener("pointerdown", function (event) {
+        var active = document.activeElement;
+        if (active && $(active).closest("#tuydGameNotes, #tuydGameNotesBtn").length && !$(event.target).closest("#tuydGameNotes, #tuydGameNotesBtn").length) {
+            active.blur();
+        }
+    }, true);
     $(document).on("input change", "#tuydGameNotes textarea, #tuydGameNotes select", function () {
         $("#tuydGameNotes .tuydGameNotesSaved").text("");
         showTurn();
@@ -7115,6 +7165,16 @@ function setupGameNotes() {
         });
     }
     load();
+    place();
+    // war.app slides the chat open and closed by changing styles.
+    new MutationObserver(function () {
+        if (!placing) {
+            placing = setTimeout(function () {
+                placing = null;
+                place();
+            }, 100);
+        }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     // war.app can move to another game without loading a page.
     setInterval(function () {
         load();
