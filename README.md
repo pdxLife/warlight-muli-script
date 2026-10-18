@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.32.0  
+> **Version:** 3.33.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -87,6 +87,14 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Tab key support** — inserts a tab character in textareas instead of moving focus.
 - **Community level previews** — single-player level links in forum posts are expanded into info cards, read from the level's page on war.app.
 - **MTL rankings in ladder threads** *(opt-in, via maak.ch)* — MTL-themed forum threads get a live rankings + recent games table below the reply area.
+
+### Chat rooms
+
+On war.app's chat rooms (Global, Clan and your groups), a small bar right of the tabs:
+
+- **Hide events** (on by default): war.app's automatic notices — "Joined the group", "Left the group", "Removed from the group due to inactivity", clan war rewards and territories — are taken out and the messages close up. The bar says how many are hidden; untick it to see them again.
+- **Mute** a player without blocking them: hover their message and click 🔇. Their messages disappear from chat rooms and from game chats (where they become a faint "muted" line), and they never know. **Muted (N)** lists them, each with Unmute. Kept with your settings, so Export / Import carries the list.
+- **Mentions**: messages with your name (or @name) are outlined in gold, in chat rooms and game chat; a chat tab you're not looking at shows "@2" for new messages that mention you.
 
 ### Mail
 

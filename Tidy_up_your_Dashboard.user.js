@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.32.0
+// @version 3.33.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.32.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.33.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3037,6 +3037,387 @@ function setupChatSpeech() {
     check();
 }
 
+// war.app writes its automatic notices (joined or left a group, clan war rewards) in bold italic.
+function chatEventLabel(label) {
+    var style = (label && label.getAttribute("style")) || "";
+    return /font-style:\s*italic/.test(style) && /font-weight:\s*(?:bold|[6-9]00)/.test(style);
+}
+
+function chatMentions(text, name) {
+    if (!name) {
+        return false;
+    }
+    var escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp("(?:^|[^\\p{L}\\p{N}_])@?" + escaped + "(?:$|[^\\p{L}\\p{N}_])", "iu").test(String(text || ""));
+}
+
+function chatRoomRows(tab) {
+    return $(tab).find("[id^='ujs_ChatRoomMessageControl']").filter(function () {
+        return /^ujs_ChatRoomMessageControl(?:_\d+)?$/.test(this.id);
+    }).get().map(function (element) {
+        var label = $(element).find("[id^='ujs_Message'] .ujsTextInner")[0];
+        return {
+            element: element,
+            name: $(element).find("[id^='ujs_PlayerName'] .ujsTextInner").first().text().trim(),
+            text: label ? $(label).text().trim() : "",
+            event: chatEventLabel(label)
+        };
+    });
+}
+
+// war.app stacks the rows by `bottom`, newest at the bottom. Hidden rows are taken out and the rows
+// above them slide down; war.app's own positions are kept to start from when it lays the tab out again.
+function stackChatRows(rows, hide) {
+    rows.forEach(function (row) {
+        var current = parseFloat(row.element.style.bottom) || 0;
+        if (row.element.getAttribute("data-tuyd-set") === null || Number(row.element.getAttribute("data-tuyd-set")) !== current) {
+            row.element.setAttribute("data-tuyd-bottom", current);
+        }
+    });
+    var original = function (row) {
+        return Number(row.element.getAttribute("data-tuyd-bottom"));
+    };
+    var ordered = rows.slice().sort(function (a, b) {
+        return original(a) - original(b);
+    });
+    var y = ordered.length ? original(ordered[0]) : 0;
+    var hidden = 0;
+    ordered.forEach(function (row, i) {
+        var next = ordered[i + 1];
+        var height = next ? original(next) - original(row) : (i > 0 ? original(row) - original(ordered[i - 1]) : 25);
+        var gone = hide(row);
+        if (row.element.style.display !== (gone ? "none" : "")) {
+            row.element.style.display = gone ? "none" : "";
+        }
+        if (gone) {
+            hidden++;
+            return;
+        }
+        if (parseFloat(row.element.style.bottom) !== y) {
+            row.element.style.bottom = y + "px";
+        }
+        row.element.setAttribute("data-tuyd-set", y);
+        y += height;
+    });
+    return hidden;
+}
+
+function readMutedPlayers(callback) {
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "mutedChatPlayers", function (setting) {
+        var value = setting && setting.value;
+        callback(Array.isArray(value) ? value.filter(function (name) {
+            return typeof name === "string" && name;
+        }) : []);
+    });
+}
+
+function saveMutedPlayers(names) {
+    Database.update(Database.Table.Settings, { name: "mutedChatPlayers", value: names }, undefined);
+}
+
+function chatToolsCss() {
+    addCSS(`
+        .tuydMute {
+            position: absolute;
+            z-index: 2;
+            padding: 0 3px;
+            border-radius: 3px;
+            font-size: 12px;
+            line-height: 16px;
+            text-decoration: none;
+            opacity: 0;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .ujsGameObject:hover > .tuydMute, .tuydMute:focus {
+            opacity: 0.8;
+            background: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+        }
+        .tuydMention [id^='ujs_BubbleImage'] > .ujsImgInner, .tuydMention [id^='ujs_RightCol'] > .ujsImgInner {
+            outline: 2px solid #e0c060;
+            outline-offset: 1px;
+        }
+        .tuydMutedMessage [id^='ujs_RightCol'], .tuydMutedMessage [id^='ujs_PlayerNameLabel'] {
+            visibility: hidden;
+        }
+        .tuydMutedMessage:after {
+            content: "muted";
+            position: absolute;
+            left: 160px;
+            bottom: 8px;
+            color: rgba(0, 0, 0, 0.45);
+            font-size: 11px;
+            font-style: italic;
+            pointer-events: none;
+        }
+        #tuydChatTools {
+            position: fixed;
+            z-index: 50;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.55);
+            color: #ddd;
+            font-size: 13px;
+            pointer-events: auto;
+        }
+        #tuydChatTools label {
+            margin: 0;
+            font-weight: normal;
+        }
+        #tuydChatTools input {
+            margin: 0 4px 0 0;
+            vertical-align: middle;
+        }
+        #tuydChatTools a {
+            color: #e0c060;
+        }
+        #tuydMutedList {
+            position: fixed;
+            z-index: 51;
+            min-width: 200px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 6px 10px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #1b1b1b;
+            color: #ccc;
+            font-size: 13px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #tuydMutedList div {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 2px 0;
+        }
+        .tuydMentionCount {
+            position: absolute;
+            right: 4px;
+            top: 2px;
+            padding: 0 4px;
+            border-radius: 7px;
+            background: #e0c060;
+            color: #1b1b1b;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 14px;
+            pointer-events: none;
+        }
+    `);
+}
+
+function confirmMute(name) {
+    return window.confirm("Mute " + name + "? Their messages are hidden from you in chat rooms and game chats. They won't know; unmute any time from the chat room's \"Muted\" list.");
+}
+
+function setupChatRoomTools() {
+    chatToolsCss();
+    var me = "";
+    var muted = [];
+    var hideEvents = true;
+    var lastKeys = {};
+    var mentionCounts = {};
+    var timer = null;
+    var tabButtonFor = function (tab) {
+        var tabs = $("[id^='ujs_ChatRoomTab']").filter(function () {
+            return /^ujs_ChatRoomTab(?:_\d+)?$/.test(this.id);
+        }).get();
+        var buttons = $("[id^='ujs_TabData_']").filter(function () {
+            return /^ujs_TabData_-?\d+$/.test(this.id);
+        }).get();
+        var index = tabs.indexOf(tab);
+        return index !== -1 && tabs.length === buttons.length ? buttons[index] : null;
+    };
+    var toolbar = function (hiddenEvents) {
+        var buttons = $("[id^='ujs_TabData_']").filter(function () {
+            return /^ujs_TabData_-?\d+$/.test(this.id);
+        });
+        var last = buttons.last().children("a.ujsBtnInner")[0];
+        if (!last) {
+            $("#tuydChatTools, #tuydMutedList").remove();
+            return;
+        }
+        var rect = last.getBoundingClientRect();
+        var bar = $("#tuydChatTools");
+        if (!bar.length) {
+            bar = $('<div id="tuydChatTools" title="Muli\'s Userscript"><label><input type="checkbox" name="hideEvents">Hide events <span class="tuydEventCount"></span></label><a href="#" class="tuydMutedLink"></a></div>').appendTo("body");
+        }
+        bar.css({ left: rect.right + 12, top: rect.top + Math.max(0, (rect.height - 24) / 2) });
+        bar.find("[name=hideEvents]").prop("checked", hideEvents);
+        bar.find(".tuydEventCount").text(hideEvents && hiddenEvents ? "(" + hiddenEvents + " hidden)" : "");
+        bar.find(".tuydMutedLink").text("Muted (" + muted.length + ")");
+    };
+    var check = function () {
+        timer = null;
+        var hiddenEvents = 0;
+        $("[id^='ujs_ChatRoomTab']").filter(function () {
+            return /^ujs_ChatRoomTab(?:_\d+)?$/.test(this.id);
+        }).each(function () {
+            var tab = this;
+            var rows = chatRoomRows(tab);
+            if (!rows.length) {
+                return;
+            }
+            stackChatRows(rows, function (row) {
+                var gone = muted.indexOf(row.name) !== -1 || (hideEvents && row.event);
+                if (hideEvents && row.event && muted.indexOf(row.name) === -1) {
+                    hiddenEvents += shownUjsElement(tab) ? 1 : 0;
+                }
+                return gone;
+            });
+            rows.forEach(function (row) {
+                var mention = !row.event && row.name !== me && chatMentions(row.text, me);
+                $(row.element).toggleClass("tuydMention", mention);
+                if (!row.event && row.name && row.name !== me && !$(row.element).children(".tuydMute").length) {
+                    var bubble = $(row.element).find("[id^='ujs_BubbleImage'] > .ujsImgInner")[0];
+                    if (bubble) {
+                        var left = bubble.getBoundingClientRect().right - row.element.getBoundingClientRect().left + 6;
+                        $('<a class="tuydMute" href="#" title="Mute this player (Muli\'s Userscript)">🔇</a>').attr("data-name", row.name)
+                            .css({ left: left > 6 ? left : 300, bottom: 4 }).appendTo(row.element);
+                    }
+                }
+            });
+            var oldestFirst = rows.slice().sort(function (a, b) {
+                return Number(b.element.getAttribute("data-tuyd-bottom")) - Number(a.element.getAttribute("data-tuyd-bottom"));
+            });
+            var keys = oldestFirst.map(function (row) {
+                return row.name + "|" + row.text;
+            });
+            var at = lastKeys[tab.id] ? keys.lastIndexOf(lastKeys[tab.id]) : -1;
+            if (shownUjsElement(tab)) {
+                mentionCounts[tab.id] = 0;
+            } else if (at !== -1) {
+                mentionCounts[tab.id] = (mentionCounts[tab.id] || 0) + oldestFirst.slice(at + 1).filter(function (row) {
+                    return !row.event && row.name !== me && chatMentions(row.text, me);
+                }).length;
+            }
+            lastKeys[tab.id] = keys[keys.length - 1];
+            var button = tabButtonFor(tab);
+            if (button) {
+                var badge = $(button).children(".tuydMentionCount");
+                if (mentionCounts[tab.id]) {
+                    if (!badge.length) {
+                        badge = $('<span class="tuydMentionCount" title="Messages mentioning you since you opened the chat (Muli\'s Userscript)"></span>').appendTo(button);
+                    }
+                    badge.text("@" + mentionCounts[tab.id]);
+                } else {
+                    badge.remove();
+                }
+            }
+        });
+        toolbar(hiddenEvents);
+    };
+    var schedule = function () {
+        if (!timer) {
+            timer = setTimeout(check, 200);
+        }
+    };
+    $(document).on("click", ".tuydMute", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var name = $(this).attr("data-name");
+        if (name && muted.indexOf(name) === -1 && confirmMute(name)) {
+            muted.push(name);
+            saveMutedPlayers(muted);
+            schedule();
+        }
+    }).on("change", "#tuydChatTools [name=hideEvents]", function () {
+        hideEvents = this.checked;
+        Database.update(Database.Table.Settings, { name: "hideChatEvents", value: hideEvents }, undefined);
+        schedule();
+    }).on("click", "#tuydChatTools .tuydMutedLink", function (event) {
+        event.preventDefault();
+        if ($("#tuydMutedList").length) {
+            $("#tuydMutedList").remove();
+            return;
+        }
+        var rect = this.getBoundingClientRect();
+        var list = $('<div id="tuydMutedList"></div>').css({ left: rect.left, top: rect.bottom + 6 });
+        list.append(muted.length ? muted.map(function (name) {
+            return $("<div></div>").append($("<span></span>").text(name), $('<a href="#" class="tuydUnmute">Unmute</a>').attr("data-name", name));
+        }) : $("<div></div>").text("Nobody muted. Hover a message and click 🔇 to mute its player."));
+        $("body").append(list);
+    }).on("click", "#tuydMutedList .tuydUnmute", function (event) {
+        event.preventDefault();
+        var name = $(this).attr("data-name");
+        muted = muted.filter(function (other) {
+            return other !== name;
+        });
+        saveMutedPlayers(muted);
+        $(this).parent().remove();
+        schedule();
+    });
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+            schedule();
+        });
+    }
+    readMutedPlayers(function (names) {
+        muted = names;
+        schedule();
+    });
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "hideChatEvents", function (setting) {
+        hideEvents = !(setting && setting.value === false);
+        schedule();
+    });
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+}
+
+function setupGameChatTools() {
+    chatToolsCss();
+    var me = "";
+    var muted = [];
+    var timer = null;
+    var check = function () {
+        timer = null;
+        $("[id^='ujs_ChatTab']").filter(function () {
+            return /^ujs_ChatTab(?:_\d+)?$/.test(this.id);
+        }).each(function () {
+            chatMessages(this).forEach(function (message) {
+                var isMuted = muted.indexOf(message.name) !== -1;
+                $(message.element).toggleClass("tuydMutedMessage", isMuted)
+                    .toggleClass("tuydMention", !isMuted && message.name !== me && chatMentions(message.text, me));
+                if (message.name && message.name !== me && !$(message.element).children(".tuydMute").length) {
+                    $('<a class="tuydMute" href="#" title="Mute this player (Muli\'s Userscript)">🔇</a>').attr("data-name", message.name)
+                        .css({ left: 24, bottom: 8 }).appendTo(message.element);
+                }
+            });
+        });
+    };
+    var schedule = function () {
+        if (!timer) {
+            timer = setTimeout(check, 300);
+        }
+    };
+    $(document).on("click", ".tuydMute", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var name = $(this).attr("data-name");
+        if (name && muted.indexOf(name) === -1 && confirmMute(name)) {
+            muted.push(name);
+            saveMutedPlayers(muted);
+            schedule();
+        }
+    });
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+            schedule();
+        });
+    }
+    readMutedPlayers(function (names) {
+        muted = names;
+        schedule();
+    });
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+}
+
 function watchQuickmatchLeaderboardRequests(callback) {
     var open = XMLHttpRequest.prototype.open;
     var send = XMLHttpRequest.prototype.send;
@@ -4666,6 +5047,10 @@ function pageIsMapOfTheWeek() {
     return location.href.match(/^https?:\/\/[^\/]+\/MapOfTheWeek.*/i);
 }
 
+function pageIsChatRoom() {
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/?\?(?:[^#]*&)?ChatRoom=/i);
+}
+
 function pageIsQuickmatch() {
     return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/?\?(?:[^#]*&)?Quickmatch=/i);
 }
@@ -6192,6 +6577,8 @@ function mainFeatures() {
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Read chat messages aloud", section: "Games", match: pageIsGame, run: setupChatSpeech },
+        { name: "Mute players and highlight mentions in game chat", section: "Games", match: pageIsGame, run: setupGameChatTools },
+        { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }
