@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.27.0
+// @version 3.28.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.27.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.28.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -44,7 +44,7 @@ var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
 var REPO_URL = "https://github.com/pdxLife/warlight-muli-script";
 var MENU_SECTIONS_KEY = "tidyUpYourDashboard.menuSections";
 // The settings menu's sections, in order: the key a setting or feature names, and its heading.
-var MENU_SECTIONS = [["Dashboard", "Dashboard"], ["Tournaments", "Tournaments"], ["Community", "Ladders & community"], ["Profile", "Profile"], ["Clans", "Clans"],
+var MENU_SECTIONS = [["Dashboard", "Dashboard"], ["Games", "Games"], ["Tournaments", "Tournaments"], ["Community", "Ladders & community"], ["Profile", "Profile"], ["Clans", "Clans"],
     ["Idle", "Idle"], ["Forum", "Forum"], ["Maps & levels", "Maps & levels"], ["Other", "Other"], ["Third-party data", "Third-party data"]];
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
 var UPDATE_RETRY_MS = 60 * 60 * 1000;
@@ -3791,6 +3791,10 @@ function pageIsPlayerSearch() {
     return location.href.match(/^https?:\/\/[^\/]+\/Community\/PlayerSearch(?:[?#].*)?$/i);
 }
 
+function pageIsPastGames() {
+    return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/PastGames(?:[?#].*)?$/i);
+}
+
 function pageIsIdle() {
     return location.href.match(/^https?:\/\/[^\/]+\/Idle(?:[\/?#].*)?$/i);
 }
@@ -5297,6 +5301,8 @@ function mainFeatures() {
         { name: "Community event badges on My Games", section: "Dashboard", match: pageIsDashboard, run: setupEventBadges },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
+        { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
+        { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }
@@ -6159,8 +6165,41 @@ function normalizeOpenGamesFilter(value) {
         hideAutoGames: value.hideAutoGames === true,
         hideCoinGames: value.hideCoinGames === true,
         minBootHours: Math.max(0, Number(value.minBootHours) || 0),
-        keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : []
+        keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : [],
+        minPlayers: Math.max(0, Math.floor(Number(value.minPlayers)) || 0),
+        maxPlayers: Math.max(0, Math.floor(Number(value.maxPlayers)) || 0),
+        teamGames: value.teamGames === "only" || value.teamGames === "none" ? value.teamGames : "",
+        hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (icon) {
+            return openGameSettingIcons().some(function (known) {
+                return known[0] === icon;
+            });
+        }) : []
     };
+}
+
+// war.app's game setting icons, by file name, with a short label for the filter.
+function openGameSettingIcons() {
+    return [
+        ["Commerce.png", "Commerce"],
+        ["LocalDeployment.png", "Local deployments"],
+        ["ManualDistribution.png", "Manual distribution"],
+        ["AutoDist.png", "Automatic distribution"],
+        ["Cards.png", "Cards"],
+        ["Wastelands.png", "Wastelands"],
+        ["Fog.png", "Fog other than normal"],
+        ["NoSplit.png", "No-split mode"],
+        ["OverriddenBonuses.png", "Overridden bonuses"],
+        ["AttackTransferOnly.png", "Attack-only / transfer-only"],
+        ["OneArmyStandGuard.png", "One army must stand guard"],
+        ["AllSkill.png", "Pure skill (no luck)"],
+        ["BankingBoot.png", "Banked boot time"]
+    ];
+}
+
+function openGameIcons(row) {
+    return $(row).find("img").not(".MyGamesGameThumbnail").map(function () {
+        return String($(this).attr("src") || "").split(/[?#]/)[0].split("/").pop();
+    }).get();
 }
 
 function openGameIsFiltered(row, filter) {
@@ -6173,6 +6212,20 @@ function openGameIsFiltered(row, filter) {
     }
     var bootMinutes = parseBootTime($(row).find(".BootTimeLabel").text());
     if (filter.minBootHours > 0 && bootMinutes !== null && bootMinutes < filter.minBootHours * 60) {
+        return true;
+    }
+    var seats = $(row).find(".MyGamesGameBox").length;
+    if (seats > 0 && ((filter.minPlayers > 0 && seats < filter.minPlayers) || (filter.maxPlayers > 0 && seats > filter.maxPlayers))) {
+        return true;
+    }
+    var icons = openGameIcons(row);
+    var teamGame = icons.indexOf("Teams.png") !== -1;
+    if ((filter.teamGames === "only" && !teamGame) || (filter.teamGames === "none" && teamGame)) {
+        return true;
+    }
+    if (filter.hideSettings.some(function (icon) {
+        return icons.indexOf(icon) !== -1;
+    })) {
         return true;
     }
     var name = link.text();
@@ -6197,7 +6250,13 @@ function readOpenGamesFilterForm(panel) {
         hideAutoGames: panel.find("[name=hideAutoGames]").prop("checked"),
         hideCoinGames: panel.find("[name=hideCoinGames]").prop("checked"),
         minBootHours: panel.find("[name=minBootHours]").val(),
-        keywords: parseFilterKeywords(panel.find("[name=keywords]").val())
+        keywords: parseFilterKeywords(panel.find("[name=keywords]").val()),
+        minPlayers: panel.find("[name=minPlayers]").val(),
+        maxPlayers: panel.find("[name=maxPlayers]").val(),
+        teamGames: panel.find("[name=teamGames]").val(),
+        hideSettings: panel.find("[name=hideSetting]:checked").map(function () {
+            return this.value;
+        }).get()
     });
 }
 
@@ -6215,7 +6274,9 @@ function setupOpenGamesFilter() {
             #OpenGamesFilterPanel label { display: block; margin: 0 0 6px; font-weight: normal; }
             #OpenGamesFilterPanel input[type=number] { width: 60px; }
             #OpenGamesFilterPanel input[type=text] { width: 260px; max-width: 100%; }
-            #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text] { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+            #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text], #OpenGamesFilterPanel select { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+            #OpenGamesFilterPanel .tuydFilterSettings { display: flex; flex-wrap: wrap; gap: 0 16px; margin: 2px 0 0 18px; }
+            #OpenGamesFilterPanel .tuydFilterSettings label { margin-bottom: 2px; }
         `);
         var filterLink = ` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`;
         var codeLink = table.find("thead a[href*='GameInviteCode']").first();
@@ -6230,17 +6291,29 @@ function setupOpenGamesFilter() {
                 <label><input type="checkbox" name="hideCoinGames"> Hide coin games</label>
                 <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours (0 = off)</label>
                 <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
+                <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
+                <label>Team games: <select name="teamGames"><option value="">show</option><option value="only">show only team games</option><option value="none">hide</option></select></label>
+                <div>Hide games with:</div>
+                <div class="tuydFilterSettings">${openGameSettingIcons().map(function (icon) {
+                    return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(icon[0]) + '"> ' + htmlEscape(icon[1]) + '</label>';
+                }).join("")}</div>
             </td></tr>`);
         panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
         panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
         panel.find("[name=minBootHours]").val(filter.minBootHours);
         panel.find("[name=keywords]").val(filter.keywords.join(", "));
+        panel.find("[name=minPlayers]").val(filter.minPlayers);
+        panel.find("[name=maxPlayers]").val(filter.maxPlayers);
+        panel.find("[name=teamGames]").val(filter.teamGames);
+        panel.find("[name=hideSetting]").each(function () {
+            this.checked = filter.hideSettings.indexOf(this.value) !== -1;
+        });
         table.find("thead").first().append(panel);
         $("#OpenGamesFilterLink").on("click", function (e) {
             e.preventDefault();
             panel.toggle();
         });
-        panel.find("input").on("change", function () {
+        panel.find("input, select").on("change", function () {
             filter = readOpenGamesFilterForm(panel);
             Database.update(Database.Table.Settings, { name: "openGamesFilter", value: filter }, undefined);
             applyOpenGamesFilter(filter);
@@ -6289,6 +6362,417 @@ function setupJoinedOpenGames() {
             markJoinedOpenGames(player.Name);
         }).observe(table[0], { childList: true, subtree: true });
     });
+}
+
+function pastGameState(row) {
+    if ($(row).find("span").filter(function () {
+        return /^Your turn/i.test($(this).text().trim());
+    }).length) {
+        return "yourTurn";
+    }
+    var status = $(row).find("td p").first().text().replace(/\s+/g, " ").trim();
+    if (/^Lobby\b/i.test(status)) {
+        return "lobby";
+    }
+    if (/^(?:Turn \d+|Picking)\b/i.test(status)) {
+        return "running";
+    }
+    if (/^Finished\b/i.test(status)) {
+        return "finished";
+    }
+    return "out";
+}
+
+function pastGameSpeed(row) {
+    var minutes = parseBootTime($(row).find(".BootTimeLabel").text());
+    return minutes === null ? "" : minutes < 60 ? "realTime" : "multiDay";
+}
+
+function pastGameMatches(row, filter) {
+    var state = pastGameState(row);
+    if (filter.state === "running" ? state !== "running" && state !== "yourTurn" : filter.state && state !== filter.state) {
+        return false;
+    }
+    if (filter.speed && pastGameSpeed(row) !== filter.speed) {
+        return false;
+    }
+    var query = String(filter.query || "").trim().toLowerCase();
+    if (!query) {
+        return true;
+    }
+    var names = [$(row).find("td").eq(1).find("a").first().text()].concat($(row).find(".MyGamesGameBox").map(function () {
+        return String($(this).attr("title") || "").split(": ")[0];
+    }).get());
+    return names.some(function (name) {
+        return name.toLowerCase().indexOf(query) !== -1;
+    });
+}
+
+function normalizePastGamesFilter(value) {
+    value = value || {};
+    return {
+        state: ["running", "yourTurn", "lobby", "finished", "out"].indexOf(value.state) !== -1 ? value.state : "",
+        speed: value.speed === "realTime" || value.speed === "multiDay" ? value.speed : "",
+        reversed: value.reversed === true,
+        query: typeof value.query === "string" ? value.query : ""
+    };
+}
+
+function orderPastGames(tbody, reversed) {
+    var rows = $(tbody).children("tr.GameRow");
+    var next = rows.length ? Math.max.apply(null, rows.map(function () {
+        return Number($(this).attr("data-tuyd-order")) || 0;
+    }).get()) + 1 : 0;
+    rows.each(function () {
+        if (!$(this).attr("data-tuyd-order")) {
+            $(this).attr("data-tuyd-order", next++);
+        }
+    });
+    var sorted = rows.get().sort(function (a, b) {
+        var difference = Number($(a).attr("data-tuyd-order")) - Number($(b).attr("data-tuyd-order"));
+        return reversed ? -difference : difference;
+    });
+    var changed = sorted.some(function (row, i) {
+        return row !== rows[i];
+    });
+    if (changed) {
+        $(tbody).append(sorted);
+    }
+    return changed;
+}
+
+function applyPastGamesFilter(table, filter) {
+    var rows = $(table).find("tbody tr.GameRow");
+    var shown = rows.filter(function () {
+        return pastGameMatches(this, filter);
+    });
+    rows.not(shown).addClass("tuyd-pastHidden");
+    shown.removeClass("tuyd-pastHidden");
+    $("#PastGamesFilterCount").text(shown.length === rows.length ? "" : shown.length + " of " + rows.length + " shown");
+}
+
+function setupPastGamesFilter() {
+    var table = $("#MyGamesTable");
+    if (!table.length) {
+        return;
+    }
+    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "pastGamesFilter", function (setting) {
+        var filter = normalizePastGamesFilter(setting && setting.value);
+        filter.query = "";
+        addCSS(`
+            #MyGamesTable tr.tuyd-pastHidden { display: none; }
+            #PastGamesFilterBar td { padding: 6px 0 10px; }
+            #PastGamesFilterBar input, #PastGamesFilterBar select { display: inline-block; width: auto; margin-right: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+            #PastGamesFilterBar input[type=search] { width: 220px; max-width: 100%; }
+            #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }
+            #PastGamesFilterBar input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
+            #PastGamesFilterCount { color: #999; }
+        `);
+        var bar = $(`<tr id="PastGamesFilterBar"><td colspan="3">
+            <input type="search" name="query" placeholder="Game or player name">
+            <select name="state">
+                <option value="">All games</option>
+                <option value="running">In progress</option>
+                <option value="yourTurn">Your turn</option>
+                <option value="lobby">Lobby</option>
+                <option value="finished">Finished</option>
+                <option value="out" title="Surrendered, booted, eliminated or declined">You're out</option>
+            </select>
+            <select name="speed">
+                <option value="">Any speed</option>
+                <option value="realTime" title="Boot time under an hour">Real-time</option>
+                <option value="multiDay">Multi-day</option>
+            </select>
+            <label><input type="checkbox" name="reversed">Reverse order</label>
+            <span id="PastGamesFilterCount" title="Filters the games on this page. Number per page shows up to 200."></span>
+        </td></tr>`);
+        bar.find("[name=state]").val(filter.state);
+        bar.find("[name=speed]").val(filter.speed);
+        bar.find("[name=reversed]").prop("checked", filter.reversed);
+        table.children("thead").first().append(bar);
+        var tbody = table.children("tbody").first();
+        var observer = new MutationObserver(function () {
+            update();
+        });
+        var update = function () {
+            observer.disconnect();
+            orderPastGames(tbody, filter.reversed);
+            applyPastGamesFilter(table, filter);
+            observer.observe(tbody[0], { childList: true });
+        };
+        bar.on("input change", "input, select", function (event) {
+            filter = normalizePastGamesFilter({
+                state: bar.find("[name=state]").val(),
+                speed: bar.find("[name=speed]").val(),
+                reversed: bar.find("[name=reversed]").prop("checked"),
+                query: bar.find("[name=query]").val()
+            });
+            if (event.type === "change" && event.target.name !== "query") {
+                Database.update(Database.Table.Settings, { name: "pastGamesFilter", value: { state: filter.state, speed: filter.speed, reversed: filter.reversed } }, undefined);
+            }
+            update();
+        });
+        update();
+    });
+}
+
+function gameNotesKey(gameId) {
+    return "gameNotes:" + gameId;
+}
+
+function normalizeGameNotes(value) {
+    value = value || {};
+    var players = {};
+    if (value.players && typeof value.players === "object") {
+        Object.keys(value.players).forEach(function (name) {
+            if (typeof value.players[name] === "string" && value.players[name].trim()) {
+                players[name] = value.players[name];
+            }
+        });
+    }
+    return {
+        text: typeof value.text === "string" ? value.text : "",
+        firstMove: value.firstMove === "odd" || value.firstMove === "even" ? value.firstMove : "",
+        players: players,
+        name: typeof value.name === "string" ? value.name : ""
+    };
+}
+
+function gameNotesEmpty(notes) {
+    return !notes.text.trim() && !notes.firstMove && Object.keys(notes.players).length === 0;
+}
+
+function gamePlayerNames(self) {
+    var names = [];
+    $("[id^='ujs_PlayerNameContainer']").filter(function () {
+        return /^ujs_PlayerNameContainer(?:_\d+)?$/.test(this.id);
+    }).each(function () {
+        var name = $(this).text().replace(/\s+/g, " ").trim().replace(/^L\d+ /, "");
+        if (name && name !== self && names.indexOf(name) === -1) {
+            names.push(name);
+        }
+    });
+    return names;
+}
+
+function gameTurnNumber() {
+    var turn = null;
+    $("[id^='ujs_TurnNumberLabel']").each(function () {
+        var match = /^Turn (\d+)$/.exec($(this).text().trim());
+        if (match) {
+            turn = Number(match[1]);
+        }
+    });
+    return turn;
+}
+
+function gameFirstMoveText(firstMove, turn) {
+    if (!firstMove || !turn) {
+        return "";
+    }
+    var first = (turn % 2 === 1) === (firstMove === "odd");
+    return "Turn " + turn + ": you move " + (first ? "first" : "second");
+}
+
+function gameNotesHtml(notes, players) {
+    var names = players.slice();
+    Object.keys(notes.players).forEach(function (name) {
+        if (names.indexOf(name) === -1) {
+            names.push(name);
+        }
+    });
+    return '<div class="tuydGameNotesHead">Notes for this game<span class="tuydGameNotesSaved"></span>' +
+        '<a href="#" class="tuydGameNotesClose" title="Close">×</a></div>' +
+        '<textarea name="text" rows="5" placeholder="Plans, picks, deals… only you can see these.">' + htmlEscape(notes.text) + '</textarea>' +
+        '<label class="tuydGameNotesMove">I move first on <select name="firstMove">' +
+        '<option value="">—</option><option value="odd"' + (notes.firstMove === "odd" ? " selected" : "") + '>odd turns</option>' +
+        '<option value="even"' + (notes.firstMove === "even" ? " selected" : "") + '>even turns</option></select>' +
+        '<span class="tuydGameNotesTurn"></span></label>' +
+        (names.length ? '<div class="tuydGameNotesPlayers">' + names.map(function (name) {
+            return '<label>' + htmlEscape(name) + '<textarea rows="2" data-player="' + htmlEscape(name) + '" placeholder="About this player">' +
+                htmlEscape(notes.players[name] || "") + '</textarea></label>';
+        }).join("") + '</div>' : "");
+}
+
+function readGameNotesPanel(panel, name) {
+    var players = {};
+    panel.find("textarea[data-player]").each(function () {
+        players[$(this).attr("data-player")] = this.value;
+    });
+    return normalizeGameNotes({
+        text: panel.find("textarea[name=text]").val(),
+        firstMove: panel.find("select[name=firstMove]").val(),
+        players: players,
+        name: name
+    });
+}
+
+function setupGameNotes() {
+    addCSS(`
+        #tuydGameNotesBtn {
+            position: fixed;
+            left: 96px;
+            bottom: 10px;
+            z-index: 50;
+            pointer-events: auto;
+        }
+        #tuydGameNotesBtn.tuydHasNotes:after {
+            content: "●";
+            margin-left: 5px;
+            color: #e0c060;
+        }
+        #tuydGameNotes {
+            position: fixed;
+            left: 8px;
+            bottom: 56px;
+            z-index: 51;
+            width: 320px;
+            max-width: calc(100vw - 16px);
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding: 8px 10px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #1b1b1b;
+            color: #ccc;
+            font-size: 13px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            pointer-events: auto;
+        }
+        #tuydGameNotes .tuydGameNotesHead {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 6px;
+            color: #fff;
+            font-weight: 700;
+        }
+        #tuydGameNotes .tuydGameNotesSaved {
+            color: #888;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        #tuydGameNotes .tuydGameNotesClose {
+            margin-left: auto;
+            color: #aaa;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        #tuydGameNotes textarea, #tuydGameNotes select {
+            background: #222;
+            color: #ddd;
+            border: 1px solid #555;
+        }
+        #tuydGameNotes textarea {
+            display: block;
+            width: 100%;
+            padding: 3px 5px;
+            resize: vertical;
+        }
+        #tuydGameNotes label {
+            display: block;
+            margin: 8px 0 0;
+            font-weight: normal;
+        }
+        #tuydGameNotes .tuydGameNotesTurn {
+            display: block;
+            margin-top: 2px;
+            color: #e0c060;
+        }
+        #tuydGameNotes .tuydGameNotesPlayers label {
+            color: #fff;
+        }
+    `);
+    var self = "";
+    var gameId = null;
+    var notes = normalizeGameNotes();
+    var timer = null;
+    var button = $('<a href="#" id="tuydGameNotesBtn" class="btn btn-primary btn-sm" title="Your private notes for this game (Muli\'s Userscript)">Notes</a>');
+    // Keys typed into the notes must not reach war.app's game hotkeys, nor clicks its map.
+    var isolate = function (element) {
+        element.on("keydown keyup keypress pointerdown pointerup pointermove mousedown mouseup touchstart touchend wheel", function (event) {
+            event.stopPropagation();
+        });
+        return element;
+    };
+    var save = function () {
+        timer = null;
+        var panel = $("#tuydGameNotes");
+        if (!panel.length || !gameId) {
+            return;
+        }
+        notes = readGameNotesPanel(panel, $("[id^='ujs_GameNameLabel']").first().text().trim() || notes.name);
+        var key = gameNotesKey(gameId);
+        (gameNotesEmpty(notes) ? Database.delete(Database.Table.Settings, key) : Database.update(Database.Table.Settings, { name: key, value: notes }, undefined)).then(function () {
+            panel.find(".tuydGameNotesSaved").text("Saved");
+        });
+        button.toggleClass("tuydHasNotes", !gameNotesEmpty(notes));
+    };
+    var showTurn = function () {
+        var panel = $("#tuydGameNotes");
+        panel.find(".tuydGameNotesTurn").text(gameFirstMoveText(panel.find("select[name=firstMove]").val(), gameTurnNumber()));
+    };
+    var open = function () {
+        var panel = isolate($('<div id="tuydGameNotes"></div>')).html(gameNotesHtml(notes, gamePlayerNames(self)));
+        $("body").append(panel);
+        showTurn();
+        panel.find("textarea[name=text]").trigger("focus");
+    };
+    var close = function () {
+        if (timer) {
+            clearTimeout(timer);
+            save();
+        }
+        $("#tuydGameNotes").remove();
+    };
+    var load = function () {
+        var id = (/[?&]GameID=(\d+)/i.exec(location.search) || [])[1] || null;
+        if (id === gameId) {
+            return;
+        }
+        close();
+        gameId = id;
+        notes = normalizeGameNotes();
+        button.toggle(!!id).removeClass("tuydHasNotes");
+        if (!id) {
+            return;
+        }
+        Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, gameNotesKey(id), function (setting) {
+            if (gameId === id) {
+                notes = normalizeGameNotes(setting && setting.value);
+                button.toggleClass("tuydHasNotes", !gameNotesEmpty(notes));
+            }
+        });
+    };
+    $("body").append(isolate(button));
+    button.on("click", function (event) {
+        event.preventDefault();
+        if ($("#tuydGameNotes").length) {
+            close();
+        } else {
+            open();
+        }
+    });
+    $(document).on("input change", "#tuydGameNotes textarea, #tuydGameNotes select", function () {
+        $("#tuydGameNotes .tuydGameNotesSaved").text("");
+        showTurn();
+        clearTimeout(timer);
+        timer = setTimeout(save, 600);
+    }).on("click", "#tuydGameNotes .tuydGameNotesClose", function (event) {
+        event.preventDefault();
+        close();
+    });
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            self = player && player.Name || "";
+        });
+    }
+    load();
+    // war.app can move to another game without loading a page.
+    setInterval(function () {
+        load();
+        showTurn();
+    }, 1000);
 }
 
 // war.app adds the My Games footer and the Open Games "Show more" row client-side, from the

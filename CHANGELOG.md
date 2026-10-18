@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.28.0
+
+Three of the most-voted Feature Requests on the forum:
+
+- **Notes in a game** ("Provide Space for In-Game Notes", 188 votes). A **Notes** button next to war.app's Game button on a game's page opens your private notes for that game: general notes, which turns you move first on (odd or even, after which the panel says "Turn 7: you move first"), and a note per player. They save as you type, a gold dot on the button shows the game has notes, and typing in them doesn't trigger war.app's game shortcuts. They're stored with your settings, so Export / Import carries them.
+- **Past Games filters** (Feature Requests: better filtering and sorting on Past Games). A bar above the list: search by game or player name; show only games in progress, your turn, lobbies, finished games or games you're out of; only real-time or multi-day games; reverse the order. "12 of 25 shown". It works on the page war.app shows, so set "Number per page" to 200 to filter more at once. The choices are remembered, the search isn't.
+- **More Open Games filters** ("add more open games filters"). The Filter panel can now hide games with fewer or more seats than you choose, show only team games or hide them, and hide games with settings you tick: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog other than normal, no-split, overridden bonuses, attack-only / transfer-only, one army must stand guard, pure skill and banked boot time. Map size isn't shown in the list, so it can't be filtered yet.
+
 ## 3.27.0
 
 More Idle helpers, from the forum:

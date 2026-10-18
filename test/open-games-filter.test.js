@@ -3,12 +3,12 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 // Mirrors an Open Games row on war.app's dashboard (names and ids are invented).
-function openGameRow(id, name, { boot = "3 days", auto = false, coins = false, seats = ["Open Seat"] } = {}) {
+function openGameRow(id, name, { boot = "3 days", auto = false, coins = false, seats = ["Open Seat"], icons = [] } = {}) {
     const href = auto ? `/MultiPlayer?AutoGameID=wlnet_${id}&amp;From=MPDashboard` : `/MultiPlayer?GameID=${id}&amp;From=MPDashboard`;
     return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="${href}"><img class="MyGamesGameThumbnail" src="x.jpg"></a><span class="BootTimeLabel" style="color: #00DD00">${boot}</span></span></td>`
         + `<td><a style="font-size: 17px; color: white" href="${href}">${name}</a><br>`
         + (coins ? `<font color="gold">Entry fee: 5 coins. Prize: 9 coins</font><br>` : "")
-        + `<div class="MyGamesGameBoxesRow">${seats.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div><div></div></td></tr>`;
+        + `<div class="MyGamesGameBoxesRow">${seats.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div><div>${icons.map((icon) => `<img src="https://warappcdn.com/UJS/Resources/GameInfoIcons/${icon}" width="18" height="18" title="${icon}">`).join("")}</div></td></tr>`;
 }
 
 function openGames(rows) {
@@ -17,7 +17,7 @@ function openGames(rows) {
         + `<tbody>${rows.join("")}<tr><td colspan="2"><a href="#" id="ShowMoreOpenGamesLink">+ Show 35 more open games</a></td></tr></tbody></table>`;
 }
 
-const FUNCTIONS = ["parseBootTime", "parseFilterKeywords", "normalizeOpenGamesFilter", "openGameIsFiltered", "applyOpenGamesFilter", "readOpenGamesFilterForm", "setupOpenGamesFilter"];
+const FUNCTIONS = ["parseBootTime", "parseFilterKeywords", "normalizeOpenGamesFilter", "openGameIsFiltered", "applyOpenGamesFilter", "readOpenGamesFilterForm", "setupOpenGamesFilter", "openGameSettingIcons", "openGameIcons", "htmlEscape"];
 
 function setup(rows, saved) {
     const { dom, $ } = createDom(openGames(rows));
@@ -41,7 +41,7 @@ function setup(rows, saved) {
     return { ctx, dom, $, writes, visibleIds };
 }
 
-const filter = (overrides) => ({ hideAutoGames: false, hideCoinGames: false, minBootHours: 0, keywords: [], ...overrides });
+const filter = (overrides) => ({ hideAutoGames: false, hideCoinGames: false, minBootHours: 0, keywords: [], minPlayers: 0, maxPlayers: 0, teamGames: "", hideSettings: [], ...overrides });
 
 test("reads boot time labels in minutes", () => {
     const { ctx } = setup([]);
@@ -79,6 +79,50 @@ test("each filter hides only the games it targets", () => {
     assert.deepEqual(hiddenBy({ minBootHours: 24 }), ["4"]);
     assert.deepEqual(hiddenBy({ keywords: ["rp"] }), ["5"]);
     assert.equal($("#ShowMoreOpenGamesLink").closest("tr").hasClass("tuyd-filtered"), false);
+});
+
+test("stored seat, team and setting filters are normalized", () => {
+    const { ctx } = setup([]);
+    const normalize = (value) => JSON.parse(JSON.stringify(ctx.normalizeOpenGamesFilter(value)));
+    assert.deepEqual(normalize({ minPlayers: "3.7", maxPlayers: -2, teamGames: "maybe", hideSettings: ["Commerce.png", "evil.png"] }),
+        filter({ minPlayers: 3, hideSettings: ["Commerce.png"] }));
+    assert.deepEqual(normalize({ teamGames: "none", hideSettings: "Commerce.png" }), filter({ teamGames: "none" }));
+});
+
+test("filters by seat count, team games and game settings", () => {
+    const rows = [
+        openGameRow("1", "1v1", { seats: ["Alice", "Open Seat"], icons: ["AutoDist.png"] }),
+        openGameRow("2", "3v3", { seats: ["Bob", "Open Seat", "Open Seat", "Open Seat", "Open Seat", "Open Seat"], icons: ["Teams.png", "Cards.png"] }),
+        openGameRow("3", "FFA", { seats: ["Cy", "Open Seat", "Open Seat", "Open Seat"], icons: ["Commerce.png", "LocalDeployment.png"] })
+    ];
+    const { ctx, visibleIds } = setup(rows);
+    const shownBy = (overrides) => {
+        ctx.applyOpenGamesFilter(filter(overrides));
+        return Array.from(visibleIds());
+    };
+    assert.deepEqual(shownBy({ minPlayers: 3 }), ["2", "3"]);
+    assert.deepEqual(shownBy({ maxPlayers: 4 }), ["1", "3"]);
+    assert.deepEqual(shownBy({ minPlayers: 3, maxPlayers: 4 }), ["3"]);
+    assert.deepEqual(shownBy({ teamGames: "only" }), ["2"]);
+    assert.deepEqual(shownBy({ teamGames: "none" }), ["1", "3"]);
+    assert.deepEqual(shownBy({ hideSettings: ["LocalDeployment.png", "Cards.png"] }), ["1"]);
+});
+
+test("the panel reads and restores the seat, team and setting filters", () => {
+    const { $, writes, visibleIds } = setup([
+        openGameRow("1", "1v1", { seats: ["A", "Open Seat"] }),
+        openGameRow("2", "Teams", { seats: ["A", "B", "C", "Open Seat"], icons: ["Teams.png", "Wastelands.png"] })
+    ], { teamGames: "only", hideSettings: ["Fog.png"] });
+    const panel = $("#OpenGamesFilterPanel");
+    assert.equal(panel.find("[name=teamGames]").val(), "only");
+    assert.equal(panel.find("[name=hideSetting][value='Fog.png']").prop("checked"), true);
+    assert.deepEqual(Array.from(visibleIds()), ["2"]);
+    panel.find("[name=hideSetting][value='Wastelands.png']").prop("checked", true).trigger("change");
+    assert.deepEqual(Array.from(visibleIds()), []);
+    panel.find("[name=teamGames]").val("").trigger("change");
+    panel.find("[name=maxPlayers]").val("2").trigger("change");
+    assert.deepEqual(Array.from(visibleIds()), ["1"]);
+    assert.deepEqual(writes.at(-1).value, filter({ maxPlayers: 2, hideSettings: ["Wastelands.png", "Fog.png"] }));
 });
 
 test("keywords match whole words only", () => {
