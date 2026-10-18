@@ -96,14 +96,40 @@ test("saved notes come back, players no longer on the page included, and clearin
     runTimers();
 });
 
-test("keys typed in the notes don't reach war.app's hotkeys", () => {
+test("keys typed in the notes don't reach war.app's hotkeys, but the Notes button lets them through", () => {
     const { $, dom } = setup();
-    let reached = 0;
-    $(dom.window.document).on("keydown pointerdown", () => reached++);
+    let keys = 0;
+    let pointers = 0;
+    $(dom.window.document).on("keydown", () => keys++).on("pointerdown", () => pointers++);
     $("#tuydGameNotesBtn").trigger("click");
     $("#tuydGameNotes textarea").first().trigger("keydown").trigger("pointerdown");
-    $("#tuydGameNotesBtn").trigger("pointerdown");
-    assert.equal(reached, 0);
+    assert.equal(keys, 0);
+    $("#tuydGameNotesBtn").trigger("keydown").trigger("pointerdown");
+    assert.equal(keys, 1, "a focused Notes button doesn't swallow war.app's shortcuts");
+    assert.equal(pointers, 0, "nor does a click on it reach the map");
+});
+
+test("a click outside the notes hands the keyboard back to war.app, and the notes stay open", () => {
+    const { $, dom } = setup();
+    const document = dom.window.document;
+    $("body").append('<div id="UjsWorldHolder"><canvas></canvas></div>');
+    $("#tuydGameNotesBtn").trigger("click");
+    const box = $("#tuydGameNotes textarea[name=text]")[0];
+    box.focus();
+    assert.equal(document.activeElement, box);
+    box.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true }));
+    assert.equal(document.activeElement, box, "a click inside the notes keeps typing there");
+    $("#UjsWorldHolder canvas")[0].dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true }));
+    assert.notEqual(document.activeElement, box);
+    assert.equal($("#tuydGameNotes").length, 1);
+});
+
+test("clicking Notes doesn't leave the button holding the keyboard", () => {
+    const { $, dom } = setup();
+    const button = $("#tuydGameNotesBtn")[0];
+    button.focus();
+    $(button).trigger("click");
+    assert.notEqual(dom.window.document.activeElement, button);
 });
 
 test("the Notes button sits next to war.app's Game button, and left of the Chat tab while the chat is open", () => {

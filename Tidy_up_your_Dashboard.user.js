@@ -7062,8 +7062,8 @@ function setupGameNotes() {
     var timer = null;
     var button = $('<a href="#" id="tuydGameNotesBtn" class="btn btn-primary btn-sm" title="Your private notes for this game (Muli\'s Userscript)">Notes</a>');
     // Keys typed into the notes must not reach war.app's game hotkeys, nor clicks its map.
-    var isolate = function (element) {
-        element.on("keydown keyup keypress pointerdown pointerup pointermove mousedown mouseup touchstart touchend wheel", function (event) {
+    var isolate = function (element, keys) {
+        element.on((keys ? "keydown keyup keypress " : "") + "pointerdown pointerup pointermove mousedown mouseup touchstart touchend wheel", function (event) {
             event.stopPropagation();
         });
         return element;
@@ -7100,7 +7100,7 @@ function setupGameNotes() {
         panel.find(".tuydGameNotesTurn").text(gameFirstMoveText(panel.find("select[name=firstMove]").val(), gameTurnNumber()));
     };
     var open = function () {
-        var panel = isolate($('<div id="tuydGameNotes"></div>')).html(gameNotesHtml(notes, gamePlayerNames(self)));
+        var panel = isolate($('<div id="tuydGameNotes"></div>'), true).html(gameNotesHtml(notes, gamePlayerNames(self)));
         $("body").append(panel);
         place();
         showTurn();
@@ -7132,15 +7132,24 @@ function setupGameNotes() {
             }
         });
     };
-    $("body").append(isolate(button));
+    $("body").append(isolate(button, false));
     button.on("click", function (event) {
         event.preventDefault();
+        this.blur();
         if ($("#tuydGameNotes").length) {
             close();
         } else {
             open();
         }
     });
+    // war.app's map doesn't take the focus on a click, so typing would stay in the notes; a click
+    // anywhere else hands the keyboard back to war.app.
+    document.addEventListener("pointerdown", function (event) {
+        var active = document.activeElement;
+        if (active && $(active).closest("#tuydGameNotes, #tuydGameNotesBtn").length && !$(event.target).closest("#tuydGameNotes, #tuydGameNotesBtn").length) {
+            active.blur();
+        }
+    }, true);
     $(document).on("input change", "#tuydGameNotes textarea, #tuydGameNotes select", function () {
         $("#tuydGameNotes .tuydGameNotesSaved").text("");
         showTurn();
