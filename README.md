@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.31.0  
+> **Version:** 3.32.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -111,6 +111,7 @@ Helpers for War.app Idle, in the settings menu's Idle section. They only inform 
 - **Better copies pointed out**: in the artifact window, an equipped artifact with a higher-rarity copy that isn't equipped gets a gold "Better: …" tag, and the better copy is outlined.
 - **Artifact list**: a "List" button next to the artifact window's Sort box shows every artifact in a compact list, by rarity or name, with copies counted.
 - **Second-tab warning** when Idle is open in another tab of the same browser, since two places at once can lose progress.
+- **What a tech is missing, and its market cost**: in a tech's details box, beside each item you don't have enough of, "need 5 more ≈ ₩221M", at the cheapest of the level's markets, with the price rising as you buy the way Idle's markets do; with two or more items short, the total on the tech's name line ("all ≈ ₩248M", in red when it's more than your money). Items no market sells say so. Nothing is bought for you.
 - **Time to afford** next to each upgrade you can't afford yet, and **"Best value"** on the army camp that adds the most armies per ₩.
 - **"View only" map**: a switch next to the zoom buttons; while it's on, clicks and taps on the map do nothing (no accidental conquests), and dragging and zooming still work.
 - **Pop-up log**: a "Log" button lists the last 100 pop-ups Idle showed on the map, newest first.
