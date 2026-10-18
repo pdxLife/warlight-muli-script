@@ -17,7 +17,7 @@ Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=221173314
 2. Open [`Tidy_up_your_Dashboard.user.js`](Tidy_up_your_Dashboard.user.js) and click **Raw** — your userscript manager will prompt to install.
 3. Navigate to [war.app](https://war.app) and the script loads automatically.
 
-The script is for war.app in a desktop browser. It doesn't run in war.app's phone app, and war.app sends phone browsers on most multiplayer pages to its app page. A narrow desktop window works: additions follow war.app's compact layout or step aside where there's no room.
+The script is for war.app in a desktop browser; it's used in Firefox, Zen and Chrome. It doesn't run in war.app's phone app, and war.app sends phone browsers on most multiplayer pages to its app page. A narrow desktop window works: additions follow war.app's compact layout or step aside where there's no room.
 
 ## Features
 
