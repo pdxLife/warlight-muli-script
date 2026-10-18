@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.29.1
+
+- The **Notes** button in a game no longer covers the chat's message box when the chat is open: it moves up beside war.app's "Chat" tab, and the notes open above it. With the chat closed it's back next to the Game button.
+
 ## 3.29.0
 
 Two more Feature Requests:

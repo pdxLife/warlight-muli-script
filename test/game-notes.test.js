@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -17,6 +17,7 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123") {
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
         location: dom.window.location,
+        innerHeight: 768,
         addCSS: () => { },
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: () => { },
@@ -103,4 +104,19 @@ test("keys typed in the notes don't reach war.app's hotkeys", () => {
     $("#tuydGameNotes textarea").first().trigger("keydown").trigger("pointerdown");
     $("#tuydGameNotesBtn").trigger("pointerdown");
     assert.equal(reached, 0);
+});
+
+test("the Notes button sits next to war.app's Game button, and left of the Chat tab while the chat is open", () => {
+    const { ctx } = setup();
+    const spot = (...args) => JSON.parse(JSON.stringify(ctx.gameNotesButtonSpot(...args)));
+    assert.deepEqual(spot(null, 768, 56), { left: 96, bottom: 10, onChat: false });
+    assert.deepEqual(spot({ left: 372, bottom: 451, height: 17 }, 768, 50), { left: 314, bottom: 317, onChat: true });
+    assert.deepEqual(spot({ left: 20, bottom: 451, height: 17 }, 768, 50), { left: 8, bottom: 317, onChat: true });
+});
+
+test("a closed chat doesn't move the button", () => {
+    const { ctx, $ } = setup();
+    $("body").append('<div id="ujs_Chat" style="display: none"><div id="ujs_ChatTab"></div></div><div id="ujs_ChatCollapseButton"><a id="ujs_ChatCollapseButton_btn"></a></div>');
+    assert.equal(ctx.openGameChatTabRect(), null);
+    assert.equal($("#tuydGameNotesBtn").hasClass("tuydOnChat"), false);
 });
