@@ -6,7 +6,7 @@
   - **Filter by words** finds threads with all the words you type, in any order. A menu next to it chooses where to look: **in subject** (the default) or **in first 15 words** of each thread's opening message.
   - **Last post from … to …** keeps the threads whose last post falls in that range; either date can be left empty.
   - The filters combine, and the count shows how many threads match.
-- The first time you search in the first 15 words, the script opens each mail thread once to read them (about half a minute for 400 threads, with progress shown) and keeps those words in this browser, so later searches are instant and only new threads are read.
+- The first time you pick "in first 15 words", a notice explains that the script will open each of your mail threads once to read them (about half a minute for 400 threads, with progress shown) and keep those words in this browser, so later searches are instant and only new threads are read. **Continue** goes ahead; **Turn off** removes the option and deletes any stored words. It's on by default, and the new setting "Mail: Search the First 15 Words of Each Thread" (settings menu → Other) turns it back on or off.
 
 ## 3.23.3
 

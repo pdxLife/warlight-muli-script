@@ -16,7 +16,7 @@ function mailPage(rows, from, total) {
 }
 
 const FUNCTIONS = ["mailThreadPlayers", "parseMailRange", "filterMailThreads", "loadAllMailThreads", "setupMailSearch", "mailThreadSubject", "mailThreadDay",
-    "mailWords", "readMailFilters", "mailPreviewText", "storedMailPreviews", "loadMailPreviews"];
+    "mailWords", "readMailFilters", "mailPreviewText", "storedMailPreviews", "loadMailPreviews", "readSettingValue", "buildMailSearch"];
 
 // Mirrors a thread page on war.app: the opening message first, then the replies and the reply box.
 function threadPage(text) {
@@ -26,10 +26,21 @@ function threadPage(text) {
 
 function memoryStorage(initial = {}) {
     const items = { ...initial };
-    return { getItem: (key) => (key in items ? items[key] : null), setItem: (key, value) => { items[key] = String(value); }, items };
+    return { getItem: (key) => (key in items ? items[key] : null), setItem: (key, value) => { items[key] = String(value); }, removeItem: (key) => { delete items[key]; }, items };
 }
 
-function setup(html, pages = {}, storage = memoryStorage()) {
+function fakeSettings(values = {}) {
+    const saved = { ...values };
+    return {
+        saved,
+        Table: { Settings: "Settings" },
+        Row: { Settings: { Name: "name" } },
+        readIndex: (table, row, name, callback) => callback(name in saved ? { name, value: saved[name] } : undefined),
+        update: (table, setting) => { saved[setting.name] = setting.value; }
+    };
+}
+
+function setup(html, pages = {}, storage = memoryStorage(), settings = fakeSettings({ mailPreviewAsked: true })) {
     const { dom, $ } = createDom(html, "https://war.app/Discussion/MyMail");
     const requests = [];
     $.ajax = (options) => {
@@ -46,6 +57,7 @@ function setup(html, pages = {}, storage = memoryStorage()) {
         clearTimeout: () => { },
         addCSS: () => { },
         localStorage: storage,
+        Database: settings,
         MAIL_PREVIEWS_KEY: "tidyUpYourDashboard.mailPreviews",
         MAIL_PREVIEW_WORDS: 15
     });
@@ -63,7 +75,7 @@ function setup(html, pages = {}, storage = memoryStorage()) {
     }).map(function () {
         return $(this).attr("data-threadid");
     }).get());
-    return { ctx, $, requests, search, set, shownIds, storage };
+    return { ctx, $, requests, search, set, shownIds, storage, settings };
 }
 
 test("reads the thread starter and the last poster", () => {
@@ -193,4 +205,45 @@ test("a thread that can't be read is left out of the words mode and tried again 
     assert.deepEqual(shownIds(), ["1"]);
     assert.match($("#MailSearchCount").text(), /^1 thread couldn't be read · 1 of 2 threads$/);
     assert.deepEqual(Object.keys(JSON.parse(storage.items["tidyUpYourDashboard.mailPreviews"])), ["1"]);
+});
+
+test("the first time the words mode would read mail, it asks, and Continue reads and is remembered", () => {
+    const settings = fakeSettings();
+    const { $, set, shownIds, requests } = setup(mailPage([threadRow(1, "a", "A", "Me"), threadRow(2, "b", "B", "Me")], 1, 2),
+        { "/Discussion/?ID=1": threadPage("hello there"), "/Discussion/?ID=2": threadPage("bye") }, memoryStorage(), settings);
+    assert.equal($("#MailWordsMode option[value=preview]").length, 1, "on by default, also with no stored setting");
+    set("#MailWordsInput", "hello");
+    set("#MailWordsMode", "preview");
+    assert.match($("#MailPreviewNotice").text(), /opens each of your 2 mail threads once/);
+    assert.deepEqual(requests, [], "nothing is read before the answer");
+    assert.deepEqual(shownIds(), ["1", "2"], "the words wait for the answer");
+    $("#MailPreviewContinue").trigger("click");
+    assert.equal($("#MailPreviewNotice").length, 0);
+    assert.deepEqual(requests.sort(), ["/Discussion/?ID=1", "/Discussion/?ID=2"]);
+    assert.deepEqual(shownIds(), ["1"]);
+    assert.equal(settings.saved.mailPreviewAsked, true);
+});
+
+test("the notice counts every thread, not just the first page", () => {
+    const { $, set } = setup(mailPage([threadRow(1, "a", "A", "Me")], 1, 2), { "/Discussion/MyMail?Offset=1": mailPage([threadRow(2, "b", "B", "Me")], 2, 2) },
+        memoryStorage(), fakeSettings());
+    set("#MailWordsMode", "preview");
+    assert.match($("#MailPreviewNotice").text(), /each of your 2 mail threads/);
+});
+
+test("Turn off hides the words-in-mail option, saves it as off and deletes the stored words", () => {
+    const settings = fakeSettings();
+    const storage = memoryStorage({ "tidyUpYourDashboard.mailPreviews": JSON.stringify({ 1: "old words" }) });
+    const { $, set, requests } = setup(mailPage([threadRow(1, "a", "A", "Me")], 1, 1), {}, storage, settings);
+    set("#MailWordsMode", "preview");
+    $("#MailPreviewOff").trigger("click");
+    assert.deepEqual(requests, []);
+    assert.equal($("#MailWordsMode option[value=preview]").length, 0);
+    assert.equal($("#MailWordsMode").val(), "subject");
+    assert.match($("#MailPreviewNotice").text(), /settings menu/);
+    assert.equal(settings.saved.mailPreviewSearch, false);
+    assert.equal(storage.items["tidyUpYourDashboard.mailPreviews"], undefined);
+
+    const later = setup(mailPage([threadRow(1, "a", "A", "Me")], 1, 1), {}, memoryStorage(), settings);
+    assert.equal(later.$("#MailWordsMode option[value=preview]").length, 0, "stays off on the next visit");
 });

@@ -81,7 +81,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 ### Mail
 
 - **Filter by player** — a search box on your mail page shows only threads started or last answered by a given player. The first search loads all pages of your mail, so it covers the whole mailbox.
-- **Filter by words** — threads with all the words you type, in the subject (the default) or in the first 15 words of each thread's opening message. Searching the first words opens every thread once (about half a minute for 400 threads) and keeps those words in this browser's storage on war.app, so later searches are instant.
+- **Filter by words** — threads with all the words you type, in the subject (the default) or in the first 15 words of each thread's opening message. Searching the first words opens every thread once (about half a minute for 400 threads) and keeps those words in this browser's storage on war.app, so later searches are instant. The first time, a notice asks before reading, with a **Turn off** button; the setting "Mail: Search the First 15 Words of Each Thread" (Other) switches it back.
 - **Filter by date** — "Last post from … to …", either date optional. All the mail filters combine.
 
 ### Maps & Levels
