@@ -19,10 +19,10 @@ const CHAT = `<div id="ujs_ChatTab"><div id="ujs_Viewport_4"><div id="ujs_Conten
     + chatMessage(0, 1, "Bo", "2026-10-16 20:02:00", "See https://example.com/x now")
     + `</div></div></div>`;
 
-const FUNCTIONS = ["shownUjsElement", "chatMessages", "chatSpeechText", "speechChunks", "newChatMessages", "setupChatSpeech"];
+const FUNCTIONS = ["shownUjsElement", "chatMessages", "chatSpeechText", "speechChunks", "newChatMessages", "chatEventLabel", "chatRoomRows", "chatRoomSpeechMessages", "setupChatSpeech"];
 
-function setup(autoRead) {
-    const { dom, $ } = createDom(CHAT, "https://war.app/MultiPlayer?GameID=1");
+function setup(autoRead, html = CHAT, url = "https://war.app/MultiPlayer?GameID=1") {
+    const { dom, $ } = createDom(html, url);
     const spoken = [];
     let cancels = 0;
     const timers = [];
@@ -103,4 +103,33 @@ test("does nothing in a browser without speech", () => {
     const ctx = load(FUNCTIONS, { ...domGlobals(dom, $), addCSS: () => assert.fail("should not run") });
     ctx.setupChatSpeech();
     assert.equal($(".tuydSpeak").length, 0);
+});
+
+// Mirrors war.app's chat room rows (see chat-tools.test.js): the notice is bold italic, and one row is
+// hidden the way the script hides a muted player's.
+function roomRow(n, bottom, name, text, extra = "") {
+    return `<div class="ujsGameObject" id="ujs_ChatRoomMessageControl_${n}" style="bottom: ${bottom}px;${extra}">`
+        + `<div id="ujs_LeftCol_${n}"><div id="ujs_PlayerName_${n}"><div class="ujsInner ujsTextInner">${name}</div></div></div>`
+        + `<div id="ujs_BubbleImage_${n}"><div class="ujsInner ujsImgInner"></div><div id="ujs_Message_${n}"><div class="ujsInner ujsTextInner" style="${/Joined/.test(text) ? "font-style: italic; font-weight: bold;" : ""}">${text}</div></div></div></div>`;
+}
+
+const ROOM = `<div id="ujs_ChatRoomTab"><div id="ujs_ChatContainer">`
+    + roomRow(1, 100, "Ann", "First.") + roomRow(2, 75, "Bo", "Joined the group") + roomRow(3, 50, "Muted Guy", "spam", " display: none;")
+    + roomRow(4, 25, "Cy", "Second.") + roomRow(5, 0, "Me", "Mine.") + `</div></div>`;
+
+test("chat rooms: a 🔊 on hover reads from there to the newest, skipping notices and hidden rows", () => {
+    const { $, spoken } = setup(false, ROOM, "https://war.app/MultiPlayer?ChatRoom=1");
+    assert.equal($("#ujs_ChatRoomMessageControl_2 > .tuydSpeak").length, 0, "no button on a notice");
+    assert.ok($("#ujs_ChatRoomMessageControl_1 > .tuydSpeak").hasClass("tuydSpeakRoom"));
+    $("#ujs_ChatRoomMessageControl_1 > .tuydSpeak").trigger("click");
+    assert.deepEqual(spoken.map((u) => u.text), ["Ann: First.", "Cy: Second.", "Me: Mine."]);
+});
+
+test("chat rooms: with the setting on, only the tab you're looking at is read", async () => {
+    const html = ROOM + `<div id="ujs_ChatRoomTab_2" style="display: none"><div id="ujs_ChatContainer_2">${roomRow(9, 0, "Zed", "Old.")}</div></div>`;
+    const { $, spoken, tick } = setup(true, html, "https://war.app/MultiPlayer?ChatRoom=1");
+    $("#ujs_ChatContainer_2").append(roomRow(10, -25, "Zed", "Unseen tab."));
+    $("#ujs_ChatContainer").append(roomRow(11, -25, "Dee", "New here."));
+    await tick();
+    assert.deepEqual(spoken.map((u) => u.text), ["Dee: New here."]);
 });

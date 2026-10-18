@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.34.0
+
+- **Read aloud in the chat rooms too.** Hover a message in Global, Clan or a group chat and click 🔊: it and the messages after it are read with your browser's voice, as in game chat (3.31.0). Hidden notices and muted players are skipped. The setting, now called **Read New Chat Messages Aloud**, also reads new messages in the chat room tab you're looking at.
+
 ## 3.33.0
 
 War.app's chat rooms (Global, Clan, groups), from the chat requests on the forum:

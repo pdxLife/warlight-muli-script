@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.33.0  
+> **Version:** 3.34.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -40,7 +40,7 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 - **Notes in a game** — a **Notes** button next to war.app's Game button on a game's page (left of the Chat tab while the chat is open) opens your private notes for that game: general notes, which turns you move first on (odd or even; the panel then says "Turn 7: you move first"), and a note for each other player. Notes save as you type, only you see them, and the button shows a gold dot on games that have notes. They're kept with your settings, so Export / Import carries them.
 - **Past Games filters** — a bar above the list on Past Games: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of (surrendered, booted…), only real-time or multi-day games, and reverse the order. The bar shows "12 of 25 shown". It filters the games on the current page; war.app's "Number per page" goes up to 200.
 - **The whole chat in a game** — when a game's chat has older messages behind war.app's "Load Older Messages" or "Older Chat" button, the script presses it for you until the whole chat is there, then returns to the newest message. With war.app's App Settings → **Chat Dialog** checked, war.app loads a page at a time (the script keeps pressing, up to 20 times) and opens long chats (300+) in a dialog; unchecked, one press loads everything.
-- **Read chat aloud** — a faint 🔊 at the left of each message in a game's chat reads it and the messages after it aloud, with your browser's own voice (who wrote it, then the text; links are read as "a link" and smileys as words). Click ■ to stop. With the setting **Read New Chat Messages Aloud in Games** on, new messages from other players are read as they arrive, so you can listen while entering orders. Messages from players on your block list are never read.
+- **Read chat aloud** — a faint 🔊 at the left of each message in a game's chat reads it and the messages after it aloud, with your browser's own voice (who wrote it, then the text; links are read as "a link" and smileys as words). Click ■ to stop. With the setting **Read New Chat Messages Aloud** on, new messages from other players are read as they arrive, so you can listen while entering orders. Messages from players on your block list are never read.
 - **Private chat list** — in a game, the Private button's "select the player you'd like to chat privately with" list shows the players still in the game first, A to Z, then a gold line and the players who are out (eliminated, booted, surrendered, removed or declined), dimmed. In big games you no longer scroll past players who left long ago.
 - **Ask before committing** (setting, off by default) — pressing Commit, or Autopilot's Run+Commit, first asks "Commit your orders for this turn?", so a stray click or tap doesn't send unfinished orders.
 
@@ -95,6 +95,7 @@ On war.app's chat rooms (Global, Clan and your groups), a small bar right of the
 - **Hide events** (on by default): war.app's automatic notices — "Joined the group", "Left the group", "Removed from the group due to inactivity", clan war rewards and territories — are taken out and the messages close up. The bar says how many are hidden; untick it to see them again.
 - **Mute** a player without blocking them: hover their message and click 🔇. Their messages disappear from chat rooms and from game chats (where they become a faint "muted" line), and they never know. **Muted (N)** lists them, each with Unmute. Kept with your settings, so Export / Import carries the list.
 - **Mentions**: messages with your name (or @name) are outlined in gold, in chat rooms and game chat; a chat tab you're not looking at shows "@2" for new messages that mention you.
+- **Read aloud**: hover a message and click 🔊 to hear it and the ones after it, as in game chat; hidden notices and muted players are skipped. With **Read New Chat Messages Aloud** on, new messages in the tab you're looking at are read as they arrive.
 
 ### Mail
 
@@ -162,7 +163,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
-| Read New Chat Messages Aloud in Games | Off | Reads new chat messages from other players aloud while a game is open |
+| Read New Chat Messages Aloud | Off | Reads new chat messages from other players aloud while a game or the chat rooms are open |
 | Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
 | Load MTL Ladder and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 
