@@ -23,9 +23,11 @@ const powerRow = (name, have) => `<div id="ujs_WziTabBodyIAPRow_${have}"><div>${
 function idlePage(html, answers = []) {
     const { dom, $ } = createDom(html, "https://war.app/Idle/Play");
     const asked = [];
-    const ctx = load(["pageIsIdle", "parseIdleNumber", "idleNumberWords", "idleMarketQuestion", "setupIdleMarketCheck", "idleActionQuestion", "setupIdleActionConfirm"], {
+    const ctx = load(["pageIsIdle", "parseIdleNumber", "idleNumberWords", "idleMarketQuestion", "setupIdleMarketCheck", "idleActionQuestion", "setupIdleActionConfirm", "idleStoredArtifacts"], {
         ...domGlobals(dom, $),
         location: dom.window.location,
+        localStorage: dom.window.localStorage,
+        IDLE_STORED_KEY: "tidyUpYourDashboard.idleStoredArtifacts",
         IDLE_NUMBER_SUFFIXES,
         confirm: (question) => {
             asked.push(question);
@@ -132,8 +134,9 @@ const artifactsDialog = (equipped, others) => `<div id="ujs_WziArtifactsDialog">
 function artifactPage(html) {
     const { dom, $ } = createDom(html, "https://war.app/Idle/Play");
     const timers = [];
-    const ctx = load(["idleRarityRank", "idleArtifactCards", "idleBetterCopies", "idleArtifactListHtml", "markIdleArtifacts", "setupIdleArtifactHelpers", "htmlEscape"], {
-        ...domGlobals(dom, $), addCSS: () => {}, setTimeout: (fn) => timers.push(fn)
+    const ctx = load(["idleRarityRank", "idleArtifactCards", "idleBetterCopies", "idleArtifactListHtml", "markIdleArtifacts", "setupIdleArtifactHelpers", "htmlEscape",
+        "idleStoredArtifacts", "toggleIdleStoredArtifact"], {
+        ...domGlobals(dom, $), addCSS: () => {}, setTimeout: (fn) => timers.push(fn), localStorage: dom.window.localStorage, IDLE_STORED_KEY: "tidyUpYourDashboard.idleStoredArtifacts"
     });
     const settle = async () => {
         await new Promise((resolve) => setImmediate(resolve));
@@ -170,10 +173,10 @@ test("the List button shows every artifact, by rarity or by name, with copies co
     $("#idleArtifactListBtn").trigger("click");
     const rows = () => $("#idleArtifactList tr").map((i, tr) => $(tr).find("td").map((j, td) => $(td).text()).get().join(" | ")).get();
     assert.equal($("#idleArtifactList .idleArtifactListHead").text().split("Sort")[0], "All artifacts (4)");
-    assert.deepEqual(rows(), ["Army Cache | Epic | ", "Idle Time ×2 | Rare | ", "Idle Time ×2 | Uncommon | equipped", "Cache Boost | Common | "]);
+    assert.deepEqual(rows(), ["Army Cache | Epic |  | store", "Idle Time ×2 | Rare |  | store", "Idle Time ×2 | Uncommon | equipped | store", "Cache Boost | Common |  | store"]);
     assert.ok($("#idleArtifactList tr").eq(2).hasClass("idleArtifactLower"));
     $("#idleArtifactList [data-sort=name]").trigger("click");
-    assert.deepEqual(rows(), ["Army Cache | Epic | ", "Cache Boost | Common | ", "Idle Time ×2 | Rare | ", "Idle Time ×2 | Uncommon | equipped"]);
+    assert.deepEqual(rows(), ["Army Cache | Epic |  | store", "Cache Boost | Common |  | store", "Idle Time ×2 | Rare |  | store", "Idle Time ×2 | Uncommon | equipped | store"]);
     $("#ujs_WziArtifactsDialog").remove();
     await settle();
     assert.equal($("#idleArtifactList").length, 0, "closing war.app's window closes the list");
@@ -277,4 +280,98 @@ test("the tab title counts what Idle is waiting on you for, and a background tab
     $("#ujs_UnclaimedPowersBtn, #ujs_DailyBonusBtn, #dialog").hide();
     intervals.forEach((fn) => fn());
     assert.equal(dom.window.document.title, "Idle - War.app");
+});
+
+test("a stored artifact is dimmed and tagged, never suggested as the better copy, and its activation says so", async () => {
+    const { ctx, $, dom, settle } = artifactPage(artifactsDialog([["Idle Time", "Uncommon"]], [["Idle Time", "Rare"], ["Idle Time", "Epic"]]));
+    ctx.setupIdleArtifactHelpers();
+    await settle();
+    assert.equal($("#ujs_WziArtifactCard_1_img .tuydBetterTag").text(), "Better: Epic");
+    $("#idleArtifactListBtn").trigger("click");
+    $("#idleArtifactList .idleStoreToggle[data-artifact='Idle Time|Epic']").trigger("click");
+    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("tidyUpYourDashboard.idleStoredArtifacts")), ["Idle Time|Epic"]);
+    assert.ok($("#ujs_WziArtifactCard_11").hasClass("tuydStoredCopy"), "the whole card is dimmed");
+    assert.equal($("#ujs_dragCard_11 > .tuydStoredTag").text(), "Stored", "the tag sits beside the card, not dimmed with it");
+    assert.equal($("#ujs_WziArtifactCard_1_img .tuydBetterTag").text(), "Better: Rare", "the stored Epic isn't suggested; the Rare is");
+    assert.equal($("#idleArtifactList .idleStoreToggle[data-artifact='Idle Time|Epic']").text(), "stored");
+    $("#idleArtifactList .idleStoreToggle[data-artifact='Idle Time|Epic']").trigger("click");
+    assert.equal($(".tuydStoredTag").length, 0, "out of storage again");
+});
+
+test("a stored artifact's Activate question says it's stored", () => {
+    const { ctx, $ } = idlePage(artifactCard);
+    ctx.localStorage.setItem("tidyUpYourDashboard.idleStoredArtifacts", JSON.stringify(["Time Warp|Rare"]));
+    assert.equal(ctx.idleActionQuestion($("#ujs_ActivateBtn_2_btn")[0]), "Activate Time Warp (Rare)? You marked it as stored.");
+});
+
+// Mirrors one of Idle's pop-ups (WziBalloon: a header, then rows with a label and a close button).
+const balloon = (n, title, text, hidden) => { const k = n ? "_" + n : ""; return `<div id="ujs_WziBalloon${k}" style="${hidden ? "display: none" : ""}"><div id="ujs_HeadeContainer${k}"><div id="ujs_Header${k}"><div id="ujs_Header${k}_tmp">${title}</div></div></div>`
+    + `<div id="ujs_Content${k}"><div id="ujs_Row${k}"><div id="ujs_Label${k}"><div id="ujs_Label${k}_tmp">${text}</div><div id="ujs_GameObject${k}"><div id="ujs_CloseBtn${k}"><div>×</div></div></div></div></div></div></div>`; };
+
+test("Idle's pop-ups are listed, newest first, kept for the tab, and cleared on request", async () => {
+    const { dom, $ } = createDom(`<div id="ujs_MagnifyingButtonsContainer"></div>` + balloon(0, "Dig Site", "You found an Epic artifact!"), "https://war.app/Idle/Play");
+    const timers = [];
+    const ctx = load(["idleBalloonEntry", "idleLogEntries", "idleLogHtml", "setupIdlePopupLog", "htmlEscape"], {
+        ...domGlobals(dom, $), addCSS: () => {}, setTimeout: (fn) => timers.push(fn), WeakSet, IDLE_LOG_KEY: "tidyUpYourDashboard.idleLog"
+    });
+    const settle = async () => {
+        await new Promise((resolve) => setImmediate(resolve));
+        timers.splice(0).forEach((fn) => fn());
+    };
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.idleBalloonEntry($("#ujs_WziBalloon")[0]))), { title: "Dig Site", text: "You found an Epic artifact!" }, "the close button's × isn't part of it");
+    ctx.setupIdlePopupLog();
+    assert.equal($("#ujs_MagnifyingButtonsContainer > #idleLogBtn").text(), "Log 1", "next to the zoom buttons");
+    $("body").append(balloon(2, "Cache", "+₳5M armies", true));
+    await settle();
+    assert.equal($("#idleLogBtn").text(), "Log 1", "a hidden pop-up isn't logged yet");
+    $("#ujs_WziBalloon_2").show();
+    await settle();
+    $("#idleLogBtn").trigger("click");
+    const entries = () => $("#idleLog .idleLogEntry").map((i, e) => $(e).text().replace(/^\d\d:\d\d /, "")).get();
+    assert.deepEqual(entries(), ["Cache +₳5M armies", "Dig Site You found an Epic artifact!"]);
+    $("#ujs_WziBalloon_2").attr("data-x", "1");
+    await settle();
+    assert.equal(entries().length, 2, "the same pop-up isn't logged twice");
+    assert.equal(JSON.parse(dom.window.sessionStorage.getItem("tidyUpYourDashboard.idleLog")).length, 2, "kept for this tab");
+    $("#idleLog .idleLogClear").trigger("click");
+    assert.deepEqual(entries(), []);
+    assert.match($("#idleLog").text(), /will be listed here/);
+});
+
+test("with View only on, a tap on the map never reaches Idle, but a drag does", () => {
+    const { dom, $ } = createDom(`<div id="ujs_MagnifyingButtonsContainer"></div><div id="UjsWorldHolder"><div><canvas id="map"></canvas></div></div><div id="ui"></div>`, "https://war.app/Idle/Play");
+    const w = dom.window;
+    class PointerEvent extends w.MouseEvent {
+        constructor(type, init = {}) {
+            super(type, init);
+            this.pointerId = init.pointerId;
+            this.pointerType = init.pointerType;
+            this.isPrimary = init.isPrimary;
+        }
+    }
+    const ctx = load(["setupIdleViewOnlyMap", "showIdleViewOnlyNotice"], {
+        ...domGlobals(dom, $), addEventListener: w.addEventListener.bind(w), PointerEvent, MouseEvent: w.MouseEvent, localStorage: w.localStorage, addCSS: () => {},
+        setTimeout: () => {}, IDLE_VIEW_ONLY_KEY: "tidyUpYourDashboard.idleViewOnly"
+    });
+    // Idle reads the map's input from document.onpointerdown and friends.
+    const saw = [];
+    w.document.onpointerdown = (e) => saw.push("down@" + e.clientX);
+    w.document.onpointermove = (e) => saw.push("move@" + e.clientX);
+    w.document.onpointerup = (e) => saw.push("up@" + e.clientX);
+    ctx.setupIdleViewOnlyMap();
+    const map = w.document.getElementById("map");
+    const fire = (target, type, x) => target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: 10, pointerId: 1, pointerType: "mouse", isPrimary: true }));
+    const tap = (target) => { fire(target, "pointerdown", 100); fire(target, "pointerup", 100); };
+    tap(map);
+    assert.deepEqual(saw.splice(0), ["down@100", "up@100"], "off: Idle gets every tap");
+    $("#idleViewOnlyBtn").trigger("click");
+    assert.equal($("#idleViewOnlyBtn").text(), "View only ✓");
+    assert.equal(w.localStorage.getItem("tidyUpYourDashboard.idleViewOnly"), "1");
+    tap(map);
+    assert.deepEqual(saw.splice(0), [], "on: a tap on the map never reaches Idle");
+    assert.match($("#idleViewOnlyNotice").text(), /ignores clicks/);
+    fire(map, "pointerdown", 100); fire(map, "pointermove", 104); fire(map, "pointermove", 130); fire(map, "pointerup", 130);
+    assert.deepEqual(saw.splice(0), ["move@104", "down@100", "move@130", "up@130"], "a drag gets its press passed on, at the start, so the map pans");
+    tap(w.document.getElementById("ui"));
+    assert.deepEqual(saw.splice(0), ["down@100", "up@100"], "presses outside the map are left alone");
 });

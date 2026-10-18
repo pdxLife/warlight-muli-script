@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.27.0
+
+More Idle helpers, from the forum:
+
+- **"View only" map** (Feature Requests, 14 votes). A "View only" switch next to the map's zoom buttons. While it's on, a click or tap on the map does nothing, so a stray click can't conquer a territory and spend the armies you were saving; dragging to look around and zooming still work. A short note at the click says the map ignores clicks. Remembered in this browser.
+- **A log of Idle's pop-ups.** A "Log" button next to the zoom buttons lists the pop-ups Idle showed on the map (what you captured, digs, powers, caches), newest first, with the time: the last 100 for this tab, with Clear. Useful when pop-ups close after a few seconds.
+- **Artifact storage** (Feature Requests: "storage" for artifacts you never want used). In the artifact List, "store" marks an artifact as stored: it's dimmed and tagged "Stored" in the artifact window, it's never suggested as the "Better" copy, and activating it says you marked it as stored. Click "stored" to take it out.
+
 ## 3.26.0
 
 Player Search (Community → Player Search), whose results came in no useful order:

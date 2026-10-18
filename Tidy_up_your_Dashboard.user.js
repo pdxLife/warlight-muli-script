@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.26.0
+// @version 3.27.0
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.26.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.27.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -37,6 +37,9 @@ var MAIL_PREVIEWS_KEY = "tidyUpYourDashboard.mailPreviews";
 var MAIL_PREVIEW_WORDS = 15;
 var IDLE_VOLUME_KEY = "tidyUpYourDashboard.idleVolume";
 var PLAYER_SEARCH_KEY = "tidyUpYourDashboard.playerSearch";
+var IDLE_VIEW_ONLY_KEY = "tidyUpYourDashboard.idleViewOnly";
+var IDLE_LOG_KEY = "tidyUpYourDashboard.idleLog";
+var IDLE_STORED_KEY = "tidyUpYourDashboard.idleStoredArtifacts";
 var SITE_URL = "https://pdxlife.github.io/warlight-muli-script/";
 var REPO_URL = "https://github.com/pdxLife/warlight-muli-script";
 var MENU_SECTIONS_KEY = "tidyUpYourDashboard.menuSections";
@@ -1357,7 +1360,8 @@ function idleActionQuestion(link) {
         var card = $(link).closest("[id^='ujs_WziTabBodyAPArtifact']");
         var name = card.find("[id^='ujs_Name']").first().text().trim();
         var rarity = card.find("[id^='ujs_Rarity']").first().text().trim();
-        return "Activate " + (name || "this artifact") + (rarity ? " (" + rarity + ")" : "") + "?";
+        var stored = idleStoredArtifacts().indexOf(name + "|" + rarity) !== -1;
+        return "Activate " + (name || "this artifact") + (rarity ? " (" + rarity + ")" : "") + "?" + (stored ? " You marked it as stored." : "");
     }
     if (/^ujs_UseBtn(?:_\d+)?_btn$/.test(id)) {
         var row = $(link).closest("[id^='ujs_WziTabBodyIAPRow']");
@@ -1387,8 +1391,34 @@ function idleRarityRank(rarity) {
     return ["Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Insane"].indexOf(String(rarity || "").trim());
 }
 
+// Artifacts the player marked as never to be used, by name and rarity (cards have no id of their own).
+function idleStoredArtifacts() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(IDLE_STORED_KEY));
+        return Array.isArray(stored) ? stored : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function toggleIdleStoredArtifact(key) {
+    var stored = idleStoredArtifacts();
+    var at = stored.indexOf(key);
+    if (at === -1) {
+        stored.push(key);
+    } else {
+        stored.splice(at, 1);
+    }
+    try {
+        localStorage.setItem(IDLE_STORED_KEY, JSON.stringify(stored));
+    } catch (e) {
+    }
+    return at === -1;
+}
+
 // The cards in Idle's artifact window: the equipped row and everything else, scrolled out of view or not.
 function idleArtifactCards(dialog) {
+    var stored = idleStoredArtifacts();
     return $(dialog).find("[id^='ujs_WziArtifactCard']").filter(function () {
         return /^ujs_WziArtifactCard(?:_\d+)?$/.test(this.id);
     }).map(function () {
@@ -1399,7 +1429,8 @@ function idleArtifactCards(dialog) {
             name: card.find("[id^='ujs_Name']").first().text().trim(),
             rarity: rarity,
             rank: idleRarityRank(rarity),
-            equipped: card.closest("[id^='ujs_EquippedCard']").length > 0
+            equipped: card.closest("[id^='ujs_EquippedCard']").length > 0,
+            stored: stored.indexOf(card.find("[id^='ujs_Name']").first().text().trim() + "|" + rarity) !== -1
         };
     }).get().filter(function (card) {
         return card.name;
@@ -1412,7 +1443,7 @@ function idleBetterCopies(cards) {
         return card.equipped;
     }).map(function (card) {
         var better = cards.filter(function (other) {
-            return !other.equipped && other.name === card.name && other.rank > card.rank;
+            return !other.equipped && !other.stored && other.name === card.name && other.rank > card.rank;
         }).sort(function (a, b) {
             return b.rank - a.rank;
         })[0];
@@ -1438,14 +1469,25 @@ function idleArtifactListHtml(cards, sortBy) {
             return '<tr' + (lower.indexOf(card.element) !== -1 ? ' class="idleArtifactLower" title="A higher-rarity copy isn\'t equipped"' : "") + '>' +
                 '<td>' + htmlEscape(card.name) + (counts[card.name] > 1 ? ' <span class="idleArtifactCount">×' + counts[card.name] + '</span>' : "") + '</td>' +
                 '<td class="idleRarity' + htmlEscape(card.rarity) + '">' + htmlEscape(card.rarity) + '</td>' +
-                '<td>' + (card.equipped ? "equipped" : "") + '</td></tr>';
+                '<td>' + (card.equipped ? "equipped" : "") + '</td>' +
+                '<td><a href="#" class="idleStoreToggle' + (card.stored ? " stored" : "") + '" data-artifact="' + htmlEscape(card.name + "|" + card.rarity) + '" title="' +
+                (card.stored ? "Stored: never suggested, dimmed in the window. Click to take it out of storage." : "Mark as stored: an artifact you never want used") + '">' +
+                (card.stored ? "stored" : "store") + '</a></td></tr>';
         }).join("") + '</table>';
 }
 
 function markIdleArtifacts(dialog) {
     var cards = idleArtifactCards(dialog);
     $(dialog).find(".tuydBetterTag").remove();
-    $(dialog).find(".tuydBetterCopy, .tuydLowerCopy").removeClass("tuydBetterCopy tuydLowerCopy");
+    $(dialog).find(".tuydStoredTag").remove();
+    $(dialog).find(".tuydBetterCopy, .tuydLowerCopy, .tuydStoredCopy").removeClass("tuydBetterCopy tuydLowerCopy tuydStoredCopy");
+    cards.filter(function (card) {
+        return card.stored;
+    }).forEach(function (card) {
+        // The card's frame, picture and labels are separate elements, so the whole card is dimmed,
+        // and the tag sits beside it, in its holder, so it isn't dimmed too.
+        $(card.element).addClass("tuydStoredCopy").parent().append('<div class="tuydStoredTag" title="Marked as stored">Stored</div>');
+    });
     idleBetterCopies(cards).forEach(function (pair) {
         var image = $(pair.card.element).children("[id$='_img']").first();
         image.addClass("tuydLowerCopy").append('<div class="tuydBetterTag" title="' + htmlEscape("You have " + pair.better.rarity + " " + pair.card.name + " that isn't equipped") + '">Better: ' + htmlEscape(pair.better.rarity) + '</div>');
@@ -1456,6 +1498,30 @@ function markIdleArtifacts(dialog) {
 
 function setupIdleArtifactHelpers() {
     addCSS(`
+        .tuydStoredCopy {
+            opacity: 0.45;
+        }
+        .tuydStoredTag {
+            position: absolute;
+            left: 2px;
+            width: 69px;
+            bottom: 40px;
+            z-index: 3;
+            border-radius: 3px;
+            background: #555;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 13px;
+            text-align: center;
+        }
+        #idleArtifactList .idleStoreToggle {
+            color: #777;
+            font-size: 11px;
+        }
+        #idleArtifactList .idleStoreToggle.stored {
+            color: #e0c060;
+        }
         .tuydLowerCopy, .tuydBetterCopy {
             outline: 2px solid #e0c060;
             outline-offset: -2px;
@@ -1571,7 +1637,7 @@ function setupIdleArtifactHelpers() {
         }
         var cards = idleArtifactCards(dialog);
         var now = cards.map(function (card) {
-            return card.name + "|" + card.rarity + "|" + card.equipped;
+            return card.name + "|" + card.rarity + "|" + card.equipped + "|" + card.stored;
         }).join(";");
         // Marking changes the page too; only redo it when the cards themselves changed.
         if (now !== signature || !dialog.find(".tuydBetterTag").length !== !idleBetterCopies(cards).length) {
@@ -1597,6 +1663,11 @@ function setupIdleArtifactHelpers() {
     }).on("click", "#idleArtifactList [data-sort]", function (event) {
         event.preventDefault();
         sortBy = $(this).attr("data-sort");
+        render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
+    }).on("click", "#idleArtifactList .idleStoreToggle", function (event) {
+        event.preventDefault();
+        toggleIdleStoredArtifact($(this).attr("data-artifact"));
+        check();
         render(idleArtifactCards($("[id^='ujs_WziArtifactsDialog']").last()));
     }).on("click", "#idleArtifactList .idleArtifactListClose", function (event) {
         event.preventDefault();
@@ -2224,6 +2295,319 @@ function setupPlayerSearchShortcuts() {
         rememberPlayerSearch($(this).attr("data-query"));
         $("#ujs_SearchBtn_btn").trigger("click");
     });
+}
+
+// Idle reads the map's mouse and touch input from document.onpointerdown/move/up and decides
+// itself whether a press was a tap (select or conquer) or a drag (pan). With "View only" on, a
+// press on the map is held back: if it turns into a drag, the press is passed on and the map pans
+// as usual; if it's let go without moving, Idle never sees it, so nothing is selected or conquered.
+function setupIdleViewOnlyMap() {
+    var on = false;
+    try {
+        on = localStorage.getItem(IDLE_VIEW_ONLY_KEY) === "1";
+    } catch (e) {
+    }
+    var pending = null;
+    var replaying = false;
+    var swallow = false;
+    var onMap = function (event) {
+        return !!(event.target && event.target.closest && event.target.closest("#UjsWorldHolder"));
+    };
+    var copy = function (event) {
+        var init = { bubbles: true, cancelable: true, composed: true };
+        ["clientX", "clientY", "screenX", "screenY", "button", "buttons", "ctrlKey", "shiftKey", "altKey", "metaKey",
+            "pointerId", "pointerType", "isPrimary", "width", "height", "pressure"].forEach(function (key) {
+            init[key] = event[key];
+        });
+        return init;
+    };
+    var replay = function () {
+        var press = pending;
+        pending = null;
+        replaying = true;
+        try {
+            press.target.dispatchEvent(new PointerEvent("pointerdown", press.init));
+            if (press.init.pointerType === "mouse") {
+                press.target.dispatchEvent(new MouseEvent("mousedown", press.init));
+            }
+        } finally {
+            replaying = false;
+        }
+    };
+    var stop = function (event) {
+        event.stopImmediatePropagation();
+    };
+    window.addEventListener("pointerdown", function (event) {
+        if (replaying || !on || !onMap(event)) {
+            return;
+        }
+        if (pending) {
+            // A second finger: pinching to zoom, so the first press goes through.
+            replay();
+            return;
+        }
+        pending = { target: event.target, init: copy(event), id: event.pointerId, x: event.clientX, y: event.clientY };
+        stop(event);
+    }, true);
+    window.addEventListener("mousedown", function (event) {
+        if (!replaying && pending) {
+            stop(event);
+        }
+    }, true);
+    window.addEventListener("pointermove", function (event) {
+        if (pending && event.pointerId === pending.id && Math.abs(event.clientX - pending.x) + Math.abs(event.clientY - pending.y) > 6) {
+            replay();
+        }
+    }, true);
+    window.addEventListener("pointerup", function (event) {
+        if (pending && event.pointerId === pending.id) {
+            pending = null;
+            swallow = true;
+            stop(event);
+            showIdleViewOnlyNotice(event.clientX, event.clientY);
+        }
+    }, true);
+    window.addEventListener("pointercancel", function () {
+        pending = null;
+    }, true);
+    ["mouseup", "click"].forEach(function (type) {
+        window.addEventListener(type, function (event) {
+            if (swallow && onMap(event)) {
+                stop(event);
+            }
+            if (type === "click") {
+                swallow = false;
+            }
+        }, true);
+    });
+    addCSS(`
+        #idleViewOnlyBtn {
+            position: absolute;
+            left: -96px;
+            bottom: 0;
+            width: 90px;
+            height: 40px;
+            z-index: 3;
+            pointer-events: auto;
+            padding: 0 4px;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background: #222;
+            color: #ccc;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 15px;
+        }
+        #idleViewOnlyBtn.on {
+            border-color: #e0c060;
+            background: #3a3016;
+            color: #e0c060;
+        }
+        #idleViewOnlyNotice {
+            position: fixed;
+            z-index: 3000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(20, 20, 20, 0.9);
+            color: #e0c060;
+            font-size: 12px;
+            pointer-events: none;
+            transform: translate(-50%, -130%);
+        }
+    `);
+    var label = function () {
+        return on ? "View only ✓" : "View only";
+    };
+    var place = function () {
+        var zoom = $("[id^='ujs_MagnifyingButtonsContainer']").first();
+        if (!zoom.length || $("#idleViewOnlyBtn").length) {
+            return;
+        }
+        zoom.append($('<button type="button" id="idleViewOnlyBtn"></button>').toggleClass("on", on).text(label())
+            .attr("title", "While on, a click or tap on the map does nothing, so territories can't be conquered by accident. Dragging and zooming still work. (Muli's Userscript)"));
+    };
+    $(document).on("click", "#idleViewOnlyBtn", function () {
+        on = !on;
+        try {
+            localStorage.setItem(IDLE_VIEW_ONLY_KEY, on ? "1" : "0");
+        } catch (e) {
+        }
+        $(this).toggleClass("on", on).text(label());
+    });
+    var timer = null;
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(function () {
+                timer = null;
+                place();
+            }, 500);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+    place();
+}
+
+function showIdleViewOnlyNotice(x, y) {
+    $("#idleViewOnlyNotice").remove();
+    var notice = $('<div id="idleViewOnlyNotice">View only: the map ignores clicks</div>').css({ left: x + "px", top: y + "px" }).appendTo("body");
+    setTimeout(function () {
+        notice.remove();
+    }, 1400);
+}
+
+// A pop-up's title and message: WziBalloon > Header, and Content > Row > Label (holding a close button).
+function idleBalloonEntry(balloon) {
+    var title = $(balloon).find("[id^='ujs_Header']").first().text().trim();
+    var text = $(balloon).find("[id^='ujs_Label']").filter(function () {
+        return !/_(?:tmp|img|btn)$/.test(this.id);
+    }).map(function () {
+        return $(this).clone().find("[id^='ujs_CloseBtn']").remove().end().text().replace(/\s+/g, " ").trim();
+    }).get().filter(Boolean).join(" · ");
+    return title || text ? { title: title, text: text } : null;
+}
+
+function idleLogEntries() {
+    try {
+        var stored = JSON.parse(sessionStorage.getItem(IDLE_LOG_KEY));
+        return Array.isArray(stored) ? stored : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function idleLogHtml(entries) {
+    return '<div class="idleLogHead">Pop-ups (' + entries.length + ')<a href="#" class="idleLogClear">Clear</a><a href="#" class="idleLogClose" title="Close">×</a></div>' +
+        (entries.length ? entries.slice().reverse().map(function (entry) {
+            var time = new Date(entry.at);
+            return '<div class="idleLogEntry"><span class="idleLogTime">' + htmlEscape(("0" + time.getHours()).slice(-2) + ":" + ("0" + time.getMinutes()).slice(-2)) + '</span> ' +
+                (entry.title ? "<b>" + htmlEscape(entry.title) + "</b> " : "") + htmlEscape(entry.text) + "</div>";
+        }).join("") : '<div class="idleLogEmpty">Pop-ups shown on the map since this tab opened will be listed here.</div>');
+}
+
+// Keeps the last 100 of Idle's pop-ups (captures, digs, powers, caches) in a list, for this tab.
+function setupIdlePopupLog() {
+    addCSS(`
+        #idleLogBtn {
+            position: absolute;
+            left: -168px;
+            bottom: 0;
+            width: 66px;
+            height: 40px;
+            z-index: 3;
+            pointer-events: auto;
+            border: 2px solid #555;
+            border-radius: 5px;
+            background: #222;
+            color: #ccc;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        #idleLog {
+            position: fixed;
+            right: 12px;
+            bottom: 90px;
+            z-index: 2000;
+            width: 340px;
+            max-width: calc(100vw - 24px);
+            max-height: 50vh;
+            overflow-y: auto;
+            padding: 8px 10px;
+            border: 1px solid #555;
+            border-radius: 6px;
+            background: #1b1b1b;
+            color: #ccc;
+            font-size: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+        }
+        #idleLog .idleLogHead {
+            display: flex;
+            gap: 10px;
+            align-items: baseline;
+            margin-bottom: 6px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        #idleLog .idleLogClear {
+            margin-left: auto;
+            font-weight: normal;
+            font-size: 12px;
+        }
+        #idleLog .idleLogClose {
+            color: #aaa;
+            font-size: 18px;
+            text-decoration: none;
+        }
+        #idleLog .idleLogEntry {
+            padding: 2px 0;
+            border-top: 1px solid #2c2c2c;
+        }
+        #idleLog .idleLogTime, #idleLog .idleLogEmpty {
+            color: #777;
+        }
+    `);
+    var entries = idleLogEntries();
+    var seen = typeof WeakSet === "function" ? new WeakSet() : null;
+    var save = function () {
+        try {
+            sessionStorage.setItem(IDLE_LOG_KEY, JSON.stringify(entries));
+        } catch (e) {
+        }
+    };
+    var render = function () {
+        $("#idleLogBtn").text("Log" + (entries.length ? " " + entries.length : ""));
+        $("#idleLog").html(idleLogHtml(entries));
+    };
+    var check = function () {
+        $("[id^='ujs_WziBalloon']").filter(function () {
+            return /^ujs_WziBalloon(?:_\d+)?$/.test(this.id) && this.style.display !== "none";
+        }).each(function () {
+            var entry = idleBalloonEntry(this);
+            var key = entry && entry.title + "|" + entry.text;
+            if (!entry || (seen && seen.has(this) && this.getAttribute("data-tuyd-logged") === key)) {
+                return;
+            }
+            if (seen) {
+                seen.add(this);
+            }
+            this.setAttribute("data-tuyd-logged", key);
+            entry.at = Date.now();
+            entries.push(entry);
+            entries = entries.slice(-100);
+            save();
+            render();
+        });
+        var zoom = $("[id^='ujs_MagnifyingButtonsContainer']").first();
+        if (zoom.length && !$("#idleLogBtn").length) {
+            zoom.append('<button type="button" id="idleLogBtn" title="The pop-ups Idle showed on the map, newest first (Muli\'s Userscript)"></button>');
+            render();
+        }
+    };
+    $(document).on("click", "#idleLogBtn", function () {
+        if ($("#idleLog").length) {
+            $("#idleLog").remove();
+            return;
+        }
+        $("body").append('<div id="idleLog"></div>');
+        render();
+    }).on("click", "#idleLog .idleLogClear", function (event) {
+        event.preventDefault();
+        entries = [];
+        save();
+        render();
+    }).on("click", "#idleLog .idleLogClose", function (event) {
+        event.preventDefault();
+        $("#idleLog").remove();
+    });
+    var timer = null;
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(function () {
+                timer = null;
+                check();
+            }, 250);
+        }
+    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    check();
 }
 
 function setupClanListSearch() {
@@ -4883,6 +5267,8 @@ function pageFeatures() {
         { name: "Tags on players in search results", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchTags },
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
+        { name: "View-only switch for the Idle map", section: "Idle", match: pageIsIdle, run: setupIdleViewOnlyMap },
+        { name: "Log of Idle's pop-ups", section: "Idle", match: pageIsIdle, run: setupIdlePopupLog },
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
