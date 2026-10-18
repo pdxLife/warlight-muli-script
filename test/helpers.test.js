@@ -75,4 +75,6 @@ test("userscript header updates from this repo and versions agree", () => {
     assert.match(source, new RegExp(`GM_info\\.script\\.version : '${version.replace(/\./g, "\\.")}'`));
     const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");
     assert.match(readme, new RegExp(`\\*\\*Version:\\*\\* ${version.replace(/\./g, "\\.")}`));
+    const site = fs.readFileSync(path.join(__dirname, "..", "docs", "index.html"), "utf8");
+    assert.match(site, new RegExp(`class="version"[^>]*>v${version.replace(/\./g, "\\.")}<`), "the site shows the current version");
 });
