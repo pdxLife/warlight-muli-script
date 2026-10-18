@@ -1,0 +1,127 @@
+[b]Muli's Userscript (Tidy Up Your Dashboard): everything it does on today's war.app[/b]
+
+Many of you used Muli's "Tidy Up Your Dashboard" userscript for years. Most of it stopped working when war.app redesigned its pages. I've picked it up, fixed what broke, and added a lot since. Full credit to [b]Muli[/b] (https://war.app/Profile?p=2211733141), who created it in 2015 and kept it going for years. His original thread: https://war.app/Forum/106092
+
+Website, with the install button and a short overview: https://pdxlife.github.io/warlight-muli-script/
+
+[hr]
+[b]How to install[/b]
+[list]
+[*] Install the Tampermonkey browser extension: https://www.tampermonkey.net/ (Chrome, Edge, Firefox).
+[*] In Chrome or Edge, also open the extensions page, click Details on Tampermonkey and turn on [b]Allow User Scripts[/b]. Without it the script shows as enabled but doesn't run. Firefox doesn't need this.
+[*] Open this link and click Install: https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
+[*] Reload war.app. The settings are under your account menu → "Muli's Userscript".
+[/list]
+Updates install by themselves. When a new version is out, the small version number in the bottom-right corner of war.app turns into a gold "Update to …" link if you don't want to wait. If you still have Muli's old version, disable or remove it in Tampermonkey so the two don't run at the same time.
+
+The script is for war.app in a desktop browser. war.app's phone app can't run userscripts.
+
+[hr]
+[b]Dashboard[/b]
+[list]
+[*][b]Refresh with R[/b] or the Refresh button; both game lists and their counts update in one go. Optionally refresh when you come back to the tab.
+[*][b]Your-turn alerts[/b]: the tab title shows how many games wait for you, e.g. "(2) Multi-Player Dashboard". While the tab sits in the background it checks every 5 minutes, and can show a desktop notification.
+[*][b]Boot-time sorting[/b]: games where it's your turn are ordered by how long you have left before you're booted.
+[*][b]Event badges[/b] on My Games: "Nations Cup", "P/R League", "Titled Tuesday", "AWP Tour"…, linking to the event.
+[*][b]Chat button[/b] to open war.app's chat rooms straight from the dashboard.
+[*][b]My / Open / Past Games tabs[/b] in a fixed, scrollable layout, with bookmarks and the other sidebar boxes on the right.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-chat-refresh.png[/img]
+
+[b]Open Games filter[/b]: a Filter link in the Open Games header (dashboard and View All). Hide Auto Games, coin games, short boot times, names with words you choose, games with fewer or more seats than you want, team games (or everything but team games), and games with settings you don't like: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog, no-split and more. Games you've already joined get a green "Joined" badge.
+[img]https://pdxlife.github.io/warlight-muli-script/media/open-games-filter-more.png[/img]
+
+[hr]
+[b]In your games[/b]
+[list]
+[*][b]Notes in a game[/b]: a Notes button next to war.app's Game button. General notes, which turns you move first on (odd or even: "Turn 7: you move first"), and a note per player. Private, saved as you type; a gold dot shows which games have notes.
+[*][b]The whole chat at once[/b]: the script presses "Load Older Messages" for you until the whole chat is there.
+[*][b]Read chat aloud[/b]: a 🔊 on each message reads it and the ones after it with your browser's voice. A setting reads new messages as they arrive, so you can listen while entering orders.
+[*][b]Private chat list[/b]: players still in the game first, A to Z, then a line and the ones who are out. Handy in big diplomacy games.
+[*][b]Tag players[/b]: type @ in a chat box and pick a name from the list.
+[*][b]Ask before committing[/b] (a setting, off by default): Commit and Run+Commit ask first, against fat-finger commits.
+[*][b]Mute[/b] a player without blocking them (see Chat rooms below).
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/game-notes.png[/img]
+
+[b]Past Games[/b]: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of, real-time or multi-day, and reverse the order.
+[img]https://pdxlife.github.io/warlight-muli-script/media/past-games-filter.png[/img]
+
+[hr]
+[b]Chat rooms (Global, Clan, groups)[/b]
+[list]
+[*][b]Hide events[/b]: no more walls of "Joined the group", "Removed from the group due to inactivity" or clan war rewards; the conversation closes up. One click shows them again.
+[*][b]Search chat[/b] for a word or a player.
+[*][b]Mute[/b] a player: hover a message and click 🔇. Their messages disappear in chat rooms and game chats, and they never know. The Muted list lets you unmute.
+[*][b]Mentions[/b]: messages with your name are outlined in gold, and a tab you're not looking at shows "@1" when someone mentions you.
+[*][b]Tagging[/b] with @ and [b]read aloud[/b] work here too.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/chat-room-bar.png[/img]
+
+[hr]
+[b]Ladders, community events and leaderboards[/b]
+[list]
+[*][b]Community ladders & leagues[/b] on the Ladders page: the AWP World Tour race, P/R League, the Seasonal Ladder, Titled Tuesday (last event and the next one in your time zone), Clan League, Clan Cup and Nations Cup, each with its standings and your own place, or your clan's or country's.
+[*][b]Standings on Community Events[/b]: each card shows the current edition and its standings, and where you take part, war.app's "You can join!" becomes "You're in!", "You're signed up!" or "You took part".
+[*][b]Your rank on Quickmatch leaderboards[/b]: next to "Your rating", your place, e.g. "Rank #104 of 190,975", for Global and every template.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/ladders-panel-2.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/community-events-2.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/leaderboard-rank.png[/img]
+
+[hr]
+[b]Tournaments[/b]
+[list]
+[*][b]Player search and sort[/b] on the Players tab (by name, wins, losses).
+[*][b]Bookmark[/b] link next to "Created by", and a link to the tournament's page on custom.wl-stats.com for community series.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/tournament-players.png[/img]
+
+[b]Profiles[/b]
+[list]
+[*][b]AWP World Tour stats[/b]: race place, 12-month rank, games and win rate, tournaments, titles.
+[*][b]Community tournament stats[/b] from custom.wl-stats.com, with records in the formats a player plays most.
+[*][b]Your private notes[/b] about the player, and stat sections you can fold.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/profile-stats.png[/img]
+
+[b]Clans[/b]
+[list]
+[*][b]Clan list search[/b].
+[*][b]Community events on clan pages[/b]: the clan's place in Clan League, Clan Cup and the other community series, and its titles.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/clan-events.png[/img]
+
+[hr]
+[b]War.app Idle[/b] (helpers only inform and ask; nothing plays the game for you)
+[list]
+[*][b]What a tech is missing and its market cost[/b]: "need 5 more ≈ ₩221M", priced the way Idle's markets raise prices as you buy, and the total for everything missing.
+[*][b]Big market typos are caught[/b]: type "121p" by mistake and the script asks before Idle spends all your money.
+[*][b]Using a power or activating an artifact asks first.[/b]
+[*][b]Better artifact copies[/b] pointed out, an [b]artifact list[/b] sorted by rarity or name, and [b]artifact storage[/b] for ones you never want used.
+[*][b]Time to afford[/b] each upgrade, and the [b]best value[/b] army camp.
+[*][b]Pop-up log[/b] of everything Idle showed on the map, a [b]volume slider[/b], a [b]warning[/b] when Idle is open in two tabs, and a [b]tab-title count[/b] of what Idle needs you for.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/idle-tech-cost.png[/img]
+
+[hr]
+[b]Forum, mail and more[/b]
+[list]
+[*][b]Bookmarks[/b] in the dashboard sidebar, with quick-bookmark links on threads, tournaments and levels.
+[*][b]Forum[/b]: a formatting toolbar, hiding threads, hiding Off-topic and Idle threads, level previews in posts.
+[*][b]Mail[/b]: filter by player, by words (subject or first words of the message) and by date.
+[*][b]Player Search[/b]: best match first, by level or name, hide level 1–2 accounts, tags for you, AWP ranks and blocked players; paste a profile link to open it.
+[*][b]Also[/b]: block list search and count, map search, sortable Common Games with your head-to-head record, total points earned.
+[/list]
+
+[hr]
+[b]Settings[/b]
+Everything is in your account menu → "Muli's Userscript": every feature has its own switch, grouped by area, with a search box. Export / Import backs up your settings, bookmarks and notes.
+
+[b]Privacy and safety[/b]
+The script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. The features that use Muli's old server (MTL stats and community level records) are off by default.
+
+[b]Feedback[/b]
+If something doesn't work or you'd like a feature, reply here. Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
+
+Have fun!

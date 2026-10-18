@@ -1,0 +1,75 @@
+[b]Update: what's new since October 14[/b]
+
+The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+
+[hr]
+[b]In your games[/b]
+[list]
+[*][b]Notes in a game[/b] (the most-voted Feature Request, "Provide Space for In-Game Notes"): a Notes button next to war.app's Game button, with general notes, which turns you move first on, and a note per player.
+[*][b]The whole chat at once[/b]: no more pressing "Load Older Messages" ("Showing more posts in game chat windows").
+[*][b]Read chat aloud[/b] ("Text to speech"): a 🔊 on each message, and a setting that reads new messages as they arrive.
+[*][b]Private chat list[/b] with the players still in the game first ("Border in PMs").
+[*][b]Ask before committing[/b], a setting that's off by default ("Are you sure you want to commit your orders?").
+[*][b]Tag players[/b] by typing @ and picking a name.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/game-notes.png[/img]
+
+[b]Past Games and Open Games[/b]
+[list]
+[*][b]Past Games filters[/b] ("Search/Sort Functionality for Past Games"): search, in progress / your turn / lobby / finished / out, real-time or multi-day, reverse order.
+[*][b]More Open Games filters[/b]: seats from–to, team games only or none, and hiding games by their settings (Commerce, local deployments, cards, fog and more).
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/past-games-filter.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/open-games-filter-more.png[/img]
+
+[hr]
+[b]Chat rooms[/b]
+[list]
+[*][b]Hide events[/b]: the "Joined the group" / "Removed from the group due to inactivity" / clan war notices are hidden, so you can read the conversation.
+[*][b]Mute[/b] a player without blocking them ("Mute Button"), and a Muted list to undo it.
+[*][b]Mentions[/b] of your name are outlined in gold, with "@1" on the tab ("Tagging Players in Public Chat").
+[*][b]Search chat[/b], [b]@ tagging[/b] and [b]read aloud[/b].
+[*]A [b]Chat button[/b] on the dashboard ("Add Button to Open Chat from MP Dashboard").
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/chat-room-bar.png[/img]
+
+[hr]
+[b]Ladders, community events and leaderboards[/b]
+[list]
+[*][b]Community ladders & leagues[/b] on the Ladders page: AWP World Tour, P/R League, Seasonal Ladder, Titled Tuesday, Clan League, Clan Cup and Nations Cup, with standings and your own place.
+[*][b]Standings on Community Events[/b], and "You're in!" / "You're signed up!" / "You took part" instead of "You can join!" where you take part.
+[*][b]Your rank on Quickmatch leaderboards[/b] ("Leaderboards: Include Rank with Rating").
+[*][b]Event badges[/b] on My Games for community events and the AWP World Tour.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/ladders-panel-2.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/leaderboard-rank.png[/img]
+
+[b]Profiles, clans, tournaments[/b]
+[list]
+[*][b]AWP World Tour stats[/b] and [b]community tournament stats[/b] on profiles. This brings back the AWP integration from Muli's original script.
+[*][b]Community events on clan pages[/b], with the clan's titles.
+[*][b]custom.wl-stats.com links[/b] on community tournaments.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/profile-stats.png[/img]
+
+[hr]
+[b]War.app Idle[/b]: helpers from the Idle forum and Feature Requests
+[list]
+[*][b]What a tech is missing and what it would cost at the market[/b] ("Ability to click a tech and pay for it from market"). The script never buys for you; it shows the numbers.
+[*][b]Big market typos are caught[/b] before Idle spends all your money.
+[*][b]Confirmations[/b] before using a power or activating an artifact.
+[*][b]Better artifact copies[/b], an [b]artifact list[/b], and [b]artifact storage[/b].
+[*][b]Time to afford[/b], the [b]best value[/b] army camp, a [b]pop-up log[/b], a [b]volume slider[/b], a [b]second-tab warning[/b], and a [b]tab-title count[/b] of what Idle needs you for.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/idle-tech-cost.png[/img]
+
+[hr]
+[b]And[/b]
+[list]
+[*][b]Player Search[/b] sorted by best match, with filters and tags.
+[*][b]Mail[/b] filters by words and by date.
+[*]The [b]settings menu[/b] is split into sections with a search box.
+[*]A [b]website[/b]: https://pdxlife.github.io/warlight-muli-script/
+[/list]
+
+Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
