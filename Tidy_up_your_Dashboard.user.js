@@ -3611,7 +3611,7 @@ function setupCommunityEventsStanding() {
             return /^ujs_EventRow(?:_\d+)?$/.test(this.id);
         }).each(function () {
             var title = $(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim();
-            markJoinedEvent(this, joinedEventText(title, community));
+            markJoinedEvent(this, joinedEventLabel(title, community));
             var box = $(this).children("[id$='_img']").first();
             if (!box.length || box.children(".tuydEventStanding").length) {
                 return;
@@ -3630,27 +3630,31 @@ function setupCommunityEventsStanding() {
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
 }
 
-// war.app tells everyone "You can join!"; where you already take part, the card says so instead.
-function joinedEventText(title, community) {
+// war.app tells everyone "You can join!" in green; where you already take part, the card says so
+// instead, in its own colour.
+function joinedEventLabel(title, community) {
+    var colors = { in: "#e0c060", signedUp: "#6cc4f0", tookPart: "#babbbb" };
     if (/^AWP World Tour/i.test(title)) {
-        return community.rankings && awpStanding(community.rankings, community.playerId) ? "You're in the race!" : "";
+        return community.rankings && awpStanding(community.rankings, community.playerId) ? { text: "You're in the race!", color: colors.in } : null;
     }
     var series = community.series.filter(function (entry) {
         return entry.warapp_event && entry.current && title.toLowerCase().indexOf(String(entry.warapp_event).toLowerCase()) === 0;
     })[0];
     if (!series || !series.you) {
-        return "";
+        return null;
     }
-    return series.you.status === "signed_up" ? "You're signed up!" : series.current.status === "finished" ? "You took part" : "You're in!";
+    return series.you.status === "signed_up" ? { text: "You're signed up!", color: colors.signedUp }
+        : series.current.status === "finished" ? { text: "You took part", color: colors.tookPart }
+        : { text: "You're in!", color: colors.in };
 }
 
-function markJoinedEvent(row, text) {
-    if (!text) {
+function markJoinedEvent(row, label) {
+    if (!label) {
         return;
     }
     $(row).find("[id^='ujs_vert'] .ujsTextInner").filter(function () {
         return $(this).text().trim() === "You can join!";
-    }).text(text).css({ width: "auto", whiteSpace: "nowrap" });
+    }).text(label.text).css({ width: "auto", whiteSpace: "nowrap", color: label.color });
 }
 
 // Each card gets the event's standings beside war.app's title and player count, and your place,

@@ -18,7 +18,7 @@ const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", 
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
-    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventText", "markJoinedEvent"];
+    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
 const series = {
@@ -367,6 +367,11 @@ test("cards for events you take part in say so instead of war.app's \"You can jo
     assert.equal(join("ujs_EventRow_6").text(), "You can join!", "Titled Tuesday: not in it");
     assert.equal(join("ujs_EventRow_4").text(), "You can join!", "MTL is left alone");
     assert.equal(join("ujs_EventRow_2")[0].style.width, "auto", "war.app's fixed width doesn't cut the new text");
+    assert.equal(join("ujs_EventRow_2")[0].style.color, "rgb(224, 192, 96)", "in: gold, not war.app's green");
+    assert.equal(join("ujs_EventRow_3")[0].style.color, "rgb(224, 192, 96)");
+    assert.equal(join("ujs_EventRow_5")[0].style.color, "rgb(108, 196, 240)", "signed up: light blue");
+    assert.equal(join("ujs_EventRow")[0].style.color, "rgb(186, 187, 187)", "took part: grey");
+    assert.equal(join("ujs_EventRow_6")[0].style.color, "rgb(0, 255, 0)", "You can join! keeps war.app's green");
 
     $("#ujs_EventRow_2 [id^='ujs_vert'] .ujsTextInner").last().text("You can join!");
     $("#ujs_Rows").append("<div>redraw</div>");
