@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.35.1
+// @version 3.35.2
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.35.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -8499,7 +8499,12 @@ function setupRefreshFunction() {
     $("a:contains('Refresh (F5)')").text("Refresh (R)");
     var oldRefreshBtn = $("#RefreshBtn, #RefreshBtn2").first();
     if (oldRefreshBtn.length) {
-        oldRefreshBtn.replaceWith(oldRefreshBtn.clone().attr("id", "refreshAll").attr("value", "Refresh (R)"));
+        var refreshBtn = oldRefreshBtn.clone().attr("id", "refreshAll").attr("value", "Refresh (R)");
+        // war.app gives some dashboards a Refresh button without its button style.
+        if (!refreshBtn.hasClass("btn")) {
+            refreshBtn.addClass("btn btn-primary");
+        }
+        oldRefreshBtn.replaceWith(refreshBtn);
         $("#refreshAll").on("click", function () {
             if (new Date() - lastRefresh > 3000) {
                 lastRefresh = new Date();

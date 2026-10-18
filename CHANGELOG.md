@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.35.2
+
+- **Dashboard:** Refresh (R) is a blue button like Chat on every account. Some dashboards (seen on an account with no games) get a Refresh button from war.app without its button style, and it showed as a plain white box.
+
 ## 3.35.1
 
 - **Dashboard:** Chat and Refresh (R) moved from the top of the right column to the My / Open / Past Games row, their right edge lined up with Filter: Default below. They used to stay where war.app first puts its Refresh button, because the dashboard's layout ran before the script's Refresh button existed.
