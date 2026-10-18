@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.36.0
+
+- **Idle: the "View only" switch is gone.** It stopped clicks on the map so you couldn't conquer by accident, but it also stopped you looking at anything, and Idle has no way to show a tile's contents without taking it. The Log button moves next to the zoom buttons in its place. If View only was on, the map simply takes clicks again.
+
 ## 3.35.2
 
 - **Dashboard:** Refresh (R) is a blue button like Chat on every account. Some dashboards (seen on an account with no games) get a Refresh button from war.app without its button style, and it showed as a plain white box.
