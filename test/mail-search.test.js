@@ -3,10 +3,10 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals } = require("./harness");
 
 // Mirrors a thread row on war.app's /Discussion/MyMail page (names and ids are invented).
-function threadRow(id, subject, starter, lastPoster) {
+function threadRow(id, subject, starter, lastPoster, lastPost = "2019-07-31 22:19:38") {
     return `<tr data-threadid="${id}"> <td><a href="#" onclick="DeleteMailThread(${id}, function() {}); return false;">Delete</a></td>`
         + ` <td style="text-align:left" valign="middle"> <a href="/Discussion/?ID=${id}">${subject}</a> <br> <font class="text-muted"> by ${starter}</font> </td>`
-        + ` <td nowrap="nowrap">2</td> <td align="right"> 2019-07-31 22:19:38 <br> <span class="text-muted">by ${lastPoster}</span> </td> </tr>`;
+        + ` <td nowrap="nowrap">2</td> <td align="right"> ${lastPost} <br> <span class="text-muted">by ${lastPoster}</span> </td> </tr>`;
 }
 
 function mailPage(rows, from, total) {
@@ -15,9 +15,21 @@ function mailPage(rows, from, total) {
         + `<div><br><table class="region"><tbody><tr> <th></th> <th>Subject</th> <th>Posts</th> <th>Last&nbsp;Post</th> </tr>${rows.join("")}</tbody></table></div></td></tr></tbody></table>`;
 }
 
-const FUNCTIONS = ["mailThreadPlayers", "parseMailRange", "filterMailThreads", "loadAllMailThreads", "setupMailSearch"];
+const FUNCTIONS = ["mailThreadPlayers", "parseMailRange", "filterMailThreads", "loadAllMailThreads", "setupMailSearch", "mailThreadSubject", "mailThreadDay",
+    "mailWords", "readMailFilters", "mailPreviewText", "storedMailPreviews", "loadMailPreviews"];
 
-function setup(html, pages = {}) {
+// Mirrors a thread page on war.app: the opening message first, then the replies and the reply box.
+function threadPage(text) {
+    return `<table id="PostTbl_0" class="region"><tr><th>Subject: 2026-10-18 00:00:10</th></tr><tr><td><div id="PostForDisplay_0">${text}</div></td></tr></table>`
+        + `<table id="PostTbl_15"><tr><td><div id="PostForDisplay_15">A reply that is not searched</div></td></tr></table>`;
+}
+
+function memoryStorage(initial = {}) {
+    const items = { ...initial };
+    return { getItem: (key) => (key in items ? items[key] : null), setItem: (key, value) => { items[key] = String(value); }, items };
+}
+
+function setup(html, pages = {}, storage = memoryStorage()) {
     const { dom, $ } = createDom(html, "https://war.app/Discussion/MyMail");
     const requests = [];
     $.ajax = (options) => {
@@ -31,11 +43,19 @@ function setup(html, pages = {}) {
         DOMParser: dom.window.DOMParser,
         log: () => { },
         setTimeout: (fn) => timers.push(fn),
-        clearTimeout: () => { }
+        clearTimeout: () => { },
+        addCSS: () => { },
+        localStorage: storage,
+        MAIL_PREVIEWS_KEY: "tidyUpYourDashboard.mailPreviews",
+        MAIL_PREVIEW_WORDS: 15
     });
     ctx.setupMailSearch();
     const search = (text) => {
         $("#MailSearchInput").val(text).trigger("input");
+        timers.splice(0).forEach((fn) => fn());
+    };
+    const set = (selector, value) => {
+        $(selector).val(value).trigger(selector === "#MailWordsMode" ? "change" : "input");
         timers.splice(0).forEach((fn) => fn());
     };
     const shownIds = () => Array.from($("table.region tr[data-threadid]").filter(function () {
@@ -43,7 +63,7 @@ function setup(html, pages = {}) {
     }).map(function () {
         return $(this).attr("data-threadid");
     }).get());
-    return { ctx, $, requests, search, shownIds };
+    return { ctx, $, requests, search, set, shownIds, storage };
 }
 
 test("reads the thread starter and the last poster", () => {
@@ -104,4 +124,73 @@ test("recognizes the mail page", () => {
     assert.ok(at("https://war.app/Discussion/MyMail").pageIsMyMail());
     assert.ok(at("https://www.warzone.com/Discussion/MyMail?Offset=50").pageIsMyMail());
     assert.ok(!at("https://war.app/Discussion/?ID=380632").pageIsMyMail());
+});
+
+test("filters by words in the subject, all of them, in any order", () => {
+    const { $, set, shownIds, requests } = setup(mailPage([
+        threadRow(1, "Nations cup", "dimskef", "Me"),
+        threadRow(2, "Clan cup squads", "QiuSe", "Me"),
+        threadRow(3, "Invitation to Join Harmony Group", "Harmony", "Me")
+    ], 1, 3));
+    set("#MailWordsInput", "CUP");
+    assert.deepEqual(shownIds(), ["1", "2"]);
+    set("#MailWordsInput", "squads clan");
+    assert.deepEqual(shownIds(), ["2"]);
+    assert.equal($("#MailSearchCount").text(), "1 of 3 threads");
+    set("#MailSearchInput", "harmony");
+    assert.deepEqual(shownIds(), [], "player and words both apply");
+    assert.deepEqual(requests, [], "the subject mode reads no mail");
+});
+
+test("filters by the last post's date, from and to both included and either one optional", () => {
+    const { set, shownIds } = setup(mailPage([
+        threadRow(1, "a", "A", "Me", "2026-10-18 11:35:40"),
+        threadRow(2, "b", "B", "Me", "2026-09-10 13:39:32"),
+        threadRow(3, "c", "C", "Me", "2025-12-14 18:04:03")
+    ], 1, 3));
+    set("#MailFromInput", "2026-09-10");
+    assert.deepEqual(shownIds(), ["1", "2"]);
+    set("#MailToInput", "2026-10-17");
+    assert.deepEqual(shownIds(), ["2"]);
+    set("#MailFromInput", "");
+    assert.deepEqual(shownIds(), ["2", "3"]);
+});
+
+test("the first-15-words mode reads each opening message once and remembers it", () => {
+    const pages = {
+        "/Discussion/?ID=1": threadPage("hey huddyj,<br>Would you like to continue or restart the small P/R League? What I can offer: one, two"),
+        "/Discussion/?ID=2": threadPage("Game is ready, join please")
+    };
+    const storage = memoryStorage();
+    const first = setup(mailPage([threadRow(1, "huddyj - kknd", "KKND", "Me"), threadRow(2, "game", "Sentenza", "Me")], 1, 2), pages, storage);
+    first.set("#MailWordsMode", "preview");
+    first.set("#MailWordsInput", "restart league");
+    assert.deepEqual(first.shownIds(), ["1"]);
+    assert.deepEqual(first.requests.sort(), ["/Discussion/?ID=1", "/Discussion/?ID=2"]);
+    const stored = JSON.parse(storage.items["tidyUpYourDashboard.mailPreviews"]);
+    assert.equal(stored["1"], "hey huddyj, Would you like to continue or restart the small P/R League? What I", "15 words, a line break counting as a space");
+    first.set("#MailWordsInput", "offer");
+    assert.deepEqual(first.shownIds(), [], "word 16 and later are not searched");
+    first.set("#MailWordsInput", "reply");
+    assert.deepEqual(first.shownIds(), [], "replies are not searched");
+    first.set("#MailWordsMode", "subject");
+    first.set("#MailWordsInput", "game");
+    assert.deepEqual(first.shownIds(), ["2"], "back to subjects");
+
+    const again = setup(mailPage([threadRow(1, "huddyj - kknd", "KKND", "Me"), threadRow(2, "game", "Sentenza", "Me"), threadRow(3, "new", "Bob", "Me")], 1, 3),
+        { "/Discussion/?ID=3": threadPage("Join my game") }, storage);
+    again.set("#MailWordsMode", "preview");
+    again.set("#MailWordsInput", "join");
+    assert.deepEqual(again.requests, ["/Discussion/?ID=3"], "only the new thread is read");
+    assert.deepEqual(again.shownIds(), ["2", "3"]);
+});
+
+test("a thread that can't be read is left out of the words mode and tried again next time", () => {
+    const storage = memoryStorage();
+    const { $, set, shownIds } = setup(mailPage([threadRow(1, "a", "A", "Me"), threadRow(2, "b", "B", "Me")], 1, 2), { "/Discussion/?ID=1": threadPage("hello there") }, storage);
+    set("#MailWordsMode", "preview");
+    set("#MailWordsInput", "hello");
+    assert.deepEqual(shownIds(), ["1"]);
+    assert.match($("#MailSearchCount").text(), /^1 thread couldn't be read · 1 of 2 threads$/);
+    assert.deepEqual(Object.keys(JSON.parse(storage.items["tidyUpYourDashboard.mailPreviews"])), ["1"]);
 });

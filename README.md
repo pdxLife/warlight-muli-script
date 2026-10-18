@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.23.3  
+> **Version:** 3.24.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -81,6 +81,8 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 ### Mail
 
 - **Filter by player** — a search box on your mail page shows only threads started or last answered by a given player. The first search loads all pages of your mail, so it covers the whole mailbox.
+- **Filter by words** — threads with all the words you type, in the subject (the default) or in the first 15 words of each thread's opening message. Searching the first words opens every thread once (about half a minute for 400 threads) and keeps those words in this browser's storage on war.app, so later searches are instant.
+- **Filter by date** — "Last post from … to …", either date optional. All the mail filters combine.
 
 ### Maps & Levels
 

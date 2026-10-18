@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.24.0
+
+- **Mail filters by words and by date.** Next to "Filter by player" on your mail page:
+  - **Filter by words** finds threads with all the words you type, in any order. A menu next to it chooses where to look: **in subject** (the default) or **in first 15 words** of each thread's opening message.
+  - **Last post from … to …** keeps the threads whose last post falls in that range; either date can be left empty.
+  - The filters combine, and the count shows how many threads match.
+- The first time you search in the first 15 words, the script opens each mail thread once to read them (about half a minute for 400 threads, with progress shown) and keeps those words in this browser, so later searches are instant and only new threads are read.
+
 ## 3.23.3
 
 - **Nations Cup and Clan Cup show their stage instead of names.** On the Ladders panel, the Community Events cards and clan pages, a running cup shows the stage it's in ("Qualifiers ›", "Round 2 ›"), linking to it on custom.wl-stats.com, instead of every group leader. It appears once custom.wl-stats.com sends the stage's name.
