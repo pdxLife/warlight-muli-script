@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.29.0
+
+Two more Feature Requests:
+
+- **Your rank on Quickmatch leaderboards** ("Leaderboards: Include Rank with Rating"). On Quickmatch → Leaderboards, next to "Your rating: 1,309.8", the script now shows your place: "Rank #104 of 190,968". It works for Global and for every template category. war.app lists players 50 at a time, so the script finds your rating by halving the range each time, about a dozen requests, and remembers the answer for 10 minutes.
+- **The whole chat in a game** ("Showing more posts in game chat windows"). When a game's chat has older messages, the script presses war.app's "Load Older Messages" / "Older Chat" for you until the whole chat is loaded, then scrolls back to the newest message. Tip from the thread: with App Settings → Chat Dialog unchecked, one press loads everything.
 ## 3.28.0
 
 Three of the most-voted Feature Requests on the forum:
