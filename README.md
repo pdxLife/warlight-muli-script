@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.25.0  
+> **Version:** 3.27.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -95,6 +95,9 @@ Helpers for War.app Idle, in the settings menu's Idle section. They only inform 
 - **Artifact list**: a "List" button next to the artifact window's Sort box shows every artifact in a compact list, by rarity or name, with copies counted.
 - **Second-tab warning** when Idle is open in another tab of the same browser, since two places at once can lose progress.
 - **Time to afford** next to each upgrade you can't afford yet, and **"Best value"** on the army camp that adds the most armies per ₩.
+- **"View only" map**: a switch next to the zoom buttons; while it's on, clicks and taps on the map do nothing (no accidental conquests), and dragging and zooming still work.
+- **Pop-up log**: a "Log" button lists the last 100 pop-ups Idle showed on the map, newest first.
+- **Artifact storage**: mark artifacts you never want used in the artifact List; they're dimmed and tagged "Stored", never suggested as a better copy, and activating one says so.
 - **Tab-title count** of what Idle is waiting on you for (unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus, the coin wheel), with an optional desktop notification while the tab is in the background.
 
 ### Maps & Levels
