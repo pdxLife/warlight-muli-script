@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.27.0  
+> **Version:** 3.29.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -53,6 +53,11 @@ The script is for war.app in a desktop browser. It doesn't run in war.app's phon
 
 - **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green, in two lists: **Players** and **Clans & nations**. On a wide window it's wider than war.app's ladders and the two lists sit side by side. It shows the [AWP World Tour](https://awp.wl-stats.com) race and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (P/R League, the Seasonal Ladder, Titled Tuesday; Clan League first among the clan series, then Clan Cup and Nations Cup): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
 - **Standings on Community Events** — on war.app's Community Events page, each card for an event on [awp.wl-stats.com](https://awp.wl-stats.com) or [custom.wl-stats.com](https://custom.wl-stats.com) (AWP World Tour, Nations Cup, Clan Cup, Clan League, Titled Tuesdays) shows the current edition at the top right (running or finished, size, progress, leader or winner; the AWP race with a "Rankings: Top 16" link), and beside war.app's "You can join!" your place when you take part, or a link to the full standings or to signing up. Where you take part, "You can join!" itself becomes "You're in!", "You're signed up!", "You took part" or, on AWP World Tour, "You're in the race!". Hidden when the cards are too narrow for it.
+- **Your rank on Quickmatch leaderboards** — on Quickmatch → Leaderboards, next to war.app's "Your rating: 1,309.8", your place: "Rank #104 of 190,968", for Global and for each template you pick. war.app only lists the players 50 at a time, so the script looks your rating up page by page, halving the range each time (about a dozen requests, a few seconds), and remembers the answer for 10 minutes. "≈" means your name wasn't on the page with your rating, so the rank counts the players rated above it.
+
+### Games
+
+- **The whole chat in a game** — when a game's chat has older messages behind war.app's "Load Older Messages" or "Older Chat" button, the script presses it for you until the whole chat is there, then returns to the newest message. With war.app's App Settings → **Chat Dialog** checked, war.app loads a page at a time (the script keeps pressing, up to 20 times) and opens long chats (300+) in a dialog; unchecked, one press loads everything.
 
 ### Clans
 
