@@ -5215,7 +5215,12 @@ function renderGameChatMessages(messages, muted, limit, hasOlder) {
     }).join("");
 }
 
-var LOBBY_PACE_HOURS_KEY = "tidyUpYourDashboard.lobbyPaceHours";
+// Per kind of game: the profile's Play Speed section, which of its turn-time ranges count as slow, and the
+// limit box's unit and default.
+var LOBBY_PACE_KINDS = {
+    multiDay: { heading: /Multi-Day Games/i, slow: /1 day - 1 week|>\s*1 week/i, over: "over a day", overLong: "took over a day", unit: "h", unitHours: 1, fallback: 24, step: 1, key: "tidyUpYourDashboard.lobbyPaceHours" },
+    realTime: { heading: /Real-Time Games/i, slow: /2 - 5 mins|5 - 10 mins|>\s*10 mins/i, over: "over 2 min", overLong: "took over 2 minutes", unit: "min", unitHours: 1 / 60, fallback: 3, step: 0.5, key: "tidyUpYourDashboard.lobbyPaceMinutesRealTime" }
+};
 
 function durationHours(text) {
     var units = { day: 24, hour: 1, minute: 1 / 60, second: 1 / 3600 };
@@ -5233,66 +5238,80 @@ function shortDuration(text) {
 }
 
 // What a profile page says about a player's pace: games in progress, boot rate, and the Play Speed
-// section for multi-day games (an average, and a bar per range whose `title` is the number of turns).
+// sections for multi-day and real-time games (an average, and a bar per range whose `title` is the
+// number of turns).
 function parseProfilePace(doc) {
     var text = doc.body ? doc.body.textContent.replace(/\s+/g, " ") : "";
     var games = /Currently in ([\d,]+) multi-day games?/i.exec(text);
     var booted = /Booted [\d,]+ times? \((\d+)% of their last/i.exec(text);
-    var average = null;
-    var ranges = [];
-    var heading = $(doc).find("h5").filter(function () {
-        return /Multi-Day Games/i.test($(this).text());
-    })[0];
-    if (heading) {
-        var node = heading.nextSibling;
-        var between = "";
-        for (; node && node.nodeName !== "TABLE" && node.nodeName !== "H5"; node = node.nextSibling) {
-            between += node.textContent;
+    var section = function (kind) {
+        var average = null;
+        var ranges = [];
+        var heading = $(doc).find("h5").filter(function () {
+            return kind.heading.test($(this).text());
+        })[0];
+        if (heading) {
+            var node = heading.nextSibling;
+            var between = "";
+            for (; node && node.nodeName !== "TABLE" && node.nodeName !== "H5"; node = node.nextSibling) {
+                between += node.textContent;
+            }
+            var match = /Average:\s*(.*\S)/i.exec(between.replace(/\s+/g, " "));
+            average = match ? match[1] : null;
+            if (node && node.nodeName === "TABLE") {
+                $(node).find("tr").each(function () {
+                    var cells = $(this).children("td");
+                    var bar = cells.last().children("div[title]");
+                    if (cells.length === 2 && bar.length) {
+                        ranges.push({ label: cells.first().text().replace(/\u00a0/g, " ").trim(), turns: parseInt(bar.attr("title"), 10) || 0 });
+                    }
+                });
+            }
         }
-        var match = /Average:\s*(.*\S)/i.exec(between.replace(/\s+/g, " "));
-        average = match ? match[1] : null;
-        if (node && node.nodeName === "TABLE") {
-            $(node).find("tr").each(function () {
-                var cells = $(this).children("td");
-                var bar = cells.last().children("div[title]");
-                if (cells.length === 2 && bar.length) {
-                    ranges.push({ label: cells.first().text().replace(/ /g, " ").trim(), turns: parseInt(bar.attr("title"), 10) || 0 });
-                }
-            });
-        }
-    }
-    var turns = ranges.reduce(function (sum, range) {
-        return sum + range.turns;
-    }, 0);
-    var overADay = ranges.filter(function (range) {
-        return /1 day - 1 week|>\s*1 week/i.test(range.label);
-    }).reduce(function (sum, range) {
-        return sum + range.turns;
-    }, 0);
+        var count = function (list) {
+            return list.reduce(function (sum, range) {
+                return sum + range.turns;
+            }, 0);
+        };
+        var turns = count(ranges);
+        var slow = count(ranges.filter(function (range) {
+            return kind.slow.test(range.label);
+        }));
+        return { average: average, averageHours: durationHours(average), slowPercent: turns ? Math.round(slow / turns * 100) : null };
+    };
     return {
         games: games ? Number(games[1].replace(/,/g, "")) : null,
         bootedPercent: booted ? Number(booted[1]) : null,
-        average: average,
-        averageHours: durationHours(average),
-        overADayPercent: turns ? Math.round(overADay / turns * 100) : null
+        multiDay: section(LOBBY_PACE_KINDS.multiDay),
+        realTime: section(LOBBY_PACE_KINDS.realTime)
     };
 }
 
-function lobbyPaceText(pace, long) {
+// A real-time game's boot time is in minutes or seconds; anything an hour or longer is multi-day.
+function lobbyGameKind(bootText) {
+    var hours = durationHours(String(bootText || "").split(".")[0]);
+    return hours !== null && hours < 1 ? "realTime" : "multiDay";
+}
+
+// The multi-day games count is only shown in multi-day lobbies; real-time lobbies show real-time turns.
+function lobbyPaceText(pace, kindName, long) {
+    var kind = LOBBY_PACE_KINDS[kindName];
+    var speed = pace[kindName];
+    var label = kindName === "realTime" ? "real-time" : "multi-day";
     var parts = [];
-    if (pace.games !== null) {
+    if (kindName === "multiDay" && pace.games !== null) {
         parts.push(long ? "in " + pace.games + " multi-day game" + (pace.games === 1 ? "" : "s") + ", per their profile" : "in " + pace.games + " game" + (pace.games === 1 ? "" : "s"));
     }
-    if (pace.averageHours !== null) {
-        parts.push(long ? "average multi-day turn " + pace.average : "avg turn " + shortDuration(pace.average));
+    if (speed.averageHours !== null) {
+        parts.push(long ? "average " + label + " turn " + speed.average : "avg turn " + shortDuration(speed.average));
     }
-    if (pace.overADayPercent !== null) {
-        parts.push(pace.overADayPercent + (long ? "% of their turns took over a day" : "% over a day"));
+    if (speed.slowPercent !== null) {
+        parts.push(speed.slowPercent + "% " + (long ? "of their " + label + " turns " + kind.overLong : kind.over));
     }
     if (pace.bootedPercent !== null) {
         parts.push(long ? "booted from " + pace.bootedPercent + "% of their recent games" : "booted " + pace.bootedPercent + "%");
     }
-    return parts.length ? parts.join(" · ") : "no multi-day turns yet";
+    return parts.length ? parts.join(" · ") : "no " + label + " turns yet";
 }
 
 // war.app's game data has each player's name, ID and a 4-digit token; war.app builds profile links as
@@ -5347,12 +5366,13 @@ function lobbyProfileCandidates(root, names) {
     return found;
 }
 
-function lobbyPaceLimit() {
+function lobbyPaceLimit(kindName) {
+    var kind = LOBBY_PACE_KINDS[kindName];
     try {
-        var hours = parseFloat(localStorage.getItem(LOBBY_PACE_HOURS_KEY));
-        return isNaN(hours) ? 24 : Math.max(0, hours);
+        var value = parseFloat(localStorage.getItem(kind.key));
+        return isNaN(value) ? kind.fallback : Math.max(0, value);
     } catch (e) {
-        return 24;
+        return kind.fallback;
     }
 }
 
@@ -5393,7 +5413,8 @@ function setupLobbyPace() {
     `);
     var paces = {};
     var pending = {};
-    var limit = lobbyPaceLimit();
+    var kindName = "multiDay";
+    var chosen = {};
     var timer = null;
     var rows = function () {
         return $("[id^='ujs_PlayerRow']").filter(function () {
@@ -5441,6 +5462,12 @@ function setupLobbyPace() {
         if (!lobby.length) {
             return;
         }
+        var boot = $(".ujsTextInner").filter(function () {
+            return /^Boot time:/i.test($(this).text().trim());
+        }).first().text().trim();
+        kindName = lobbyGameKind(boot.replace(/^Boot time:\s*/i, ""));
+        var kind = LOBBY_PACE_KINDS[kindName];
+        var limit = kindName in chosen ? chosen[kindName] : lobbyPaceLimit(kindName);
         var names = lobby.map(function (row) {
             return row.name;
         });
@@ -5479,11 +5506,12 @@ function setupLobbyPace() {
             if (!line.length) {
                 line = $('<a class="tuydPace" target="_blank" rel="noopener"></a>').appendTo(row.element);
             }
-            var slow = limit > 0 && pace.averageHours !== null && pace.averageHours > limit;
+            var speed = pace[kindName];
+            var slow = limit > 0 && speed.averageHours !== null && speed.averageHours > limit * kind.unitHours;
             var left = column + 16;
             var width = right - row.element.getBoundingClientRect().left - left;
-            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace, true) + " (Muli's Userscript)" })
-                .text((slow ? "⚠ " : "") + lobbyPaceText(pace)).toggleClass("tuydPaceSlow", slow)
+            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace, kindName, true) + " (Muli's Userscript)" })
+                .text((slow ? "⚠ " : "") + lobbyPaceText(pace, kindName)).toggleClass("tuydPaceSlow", slow)
                 .css({ left: left, maxWidth: Math.max(0, width), display: width < 120 ? "none" : "" });
         });
         var heading = section.find(".ujsTextInner").filter(function () {
@@ -5491,9 +5519,14 @@ function setupLobbyPace() {
         }).first().parent();
         if (heading.length) {
             var control = heading.children(".tuydPaceLimit");
-            if (!control.length) {
-                control = $('<label class="tuydPaceLimit" title="Players whose average multi-day turn is longer are marked ⚠ (0 = off; Muli\'s Userscript)">Flag average turn over<input type="number" min="0" step="1"> h</label>').appendTo(heading);
-                control.find("input").val(limit);
+            if (control.attr("data-kind") !== kindName) {
+                control.remove();
+                control = $('<label class="tuydPaceLimit">Flag average turn over<input type="number" min="0"> <span></span></label>').attr({
+                    "data-kind": kindName,
+                    title: "Players whose average " + (kindName === "realTime" ? "real-time" : "multi-day") + " turn is longer are marked ⚠ (0 = off; Muli's Userscript)"
+                }).appendTo(heading);
+                control.find("input").attr("step", kind.step).val(limit);
+                control.find("span").text(kind.unit);
             }
             // war.app's text holders are zero-size anchors; the control goes at the right end of the heading's text box.
             var anchor = heading[0].getBoundingClientRect();
@@ -5511,9 +5544,10 @@ function setupLobbyPace() {
     };
     $(document).on("change input", ".tuydPaceLimit input", function () {
         var value = parseFloat(this.value);
-        limit = isNaN(value) ? 0 : Math.max(0, value);
+        var name = $(this).closest(".tuydPaceLimit").attr("data-kind") || kindName;
+        chosen[name] = isNaN(value) ? 0 : Math.max(0, value);
         try {
-            localStorage.setItem(LOBBY_PACE_HOURS_KEY, String(limit));
+            localStorage.setItem(LOBBY_PACE_KINDS[name].key, String(chosen[name]));
         } catch (e) {
             // A blocked localStorage only means the limit isn't remembered.
         }
@@ -9542,9 +9576,23 @@ function checkVersion() {
 }
 
 function addVersionLabel() {
-    if (!pageIsGame() && !pageIsExamineMap() && !pageIsDesignMap()) {
-        $("body").append('<div class="versionLabel" data-toggle="modal" data-target="#userscriptMenu">' + version + '</div>');
-        createSelector(".versionLabel", "z-index:101;position:fixed; right:0; bottom: 0; padding: 5px; color: bisque; font-size: 10px; cursor:pointer")
+    if (pageIsExamineMap() || pageIsDesignMap()) {
+        return;
+    }
+    $("body").append('<div class="versionLabel" data-toggle="modal" data-target="#userscriptMenu">' + version + '</div>');
+    createSelector(".versionLabel", "z-index:101;position:fixed; right:0; bottom: 0; padding: 5px; color: bisque; font-size: 10px; cursor:pointer");
+    // In a game the label would sit on the game's own buttons, so it shows only while the game is still a
+    // lobby. war.app turns a lobby into the game without loading a new page; its title says which.
+    if (pageIsGame()) {
+        createSelector("body.tuydInGame .versionLabel", "display: none !important");
+        var sync = function () {
+            $("body").toggleClass("tuydInGame", !/^Lobby\b/.test(document.title));
+        };
+        sync();
+        var title = document.querySelector("title");
+        if (title) {
+            new MutationObserver(sync).observe(title, { childList: true, characterData: true, subtree: true });
+        }
     }
 }
 function parseScriptVersion(source) {

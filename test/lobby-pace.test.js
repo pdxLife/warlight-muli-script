@@ -20,7 +20,14 @@ const PROFILE = `<html><head><title>KKND - War.app - Better than Hasbro's RISK®
         <tr><td align="right">&gt; 1 week&nbsp;</td><td><div title="274"></div></td></tr>
     </table></td></tr></table>
     <h5>Real-Time Games:</h5>&nbsp;&nbsp;<font class="text-muted">Average:</font> 2 minutes 26 seconds<br />
-    <table><tr><td><table><tr><td>&lt; 30 sec&nbsp;</td><td><div title="1540"></div></td></tr></table></td></tr></table>
+    <table><tr><td><table>
+        <tr><td>&lt; 30 sec&nbsp;</td><td><div title="1540"></div></td></tr>
+        <tr><td>30 sec - 1 min&nbsp;</td><td><div title="600"></div></td></tr>
+        <tr><td>1 - 2 mins&nbsp;</td><td><div title="460"></div></td></tr>
+        <tr><td>2 - 5 mins&nbsp;</td><td><div title="300"></div></td></tr>
+        <tr><td>5 - 10 mins&nbsp;</td><td><div title="80"></div></td></tr>
+        <tr><td>&gt; 10 mins&nbsp;</td><td><div title="20"></div></td></tr>
+    </table></td></tr></table>
     </body></html>`;
 
 test("war.app's durations become hours, and short", () => {
@@ -33,29 +40,58 @@ test("war.app's durations become hours, and short", () => {
     assert.equal(ctx.shortDuration("9 hours 5 minutes"), "9h 5m");
 });
 
-test("a profile gives games in progress, boot rate, average turn and the share of turns over a day", () => {
+const PACE_FUNCTIONS = ["parseProfilePace", "durationHours", "lobbyPaceText", "shortDuration"];
+function loadPace(globals) {
+    const { source } = require("./harness");
+    const kinds = /var LOBBY_PACE_KINDS = \{[\s\S]*?\n\};/.exec(source)[0];
+    const ctx = load(PACE_FUNCTIONS.concat(["lobbyGameKind"]), globals);
+    require("node:vm").runInContext(kinds, ctx);
+    return ctx;
+}
+
+test("a profile gives games in progress, boot rate, and multi-day and real-time pace", () => {
     const { dom, $ } = createDom(PROFILE);
-    const ctx = load(["parseProfilePace", "durationHours"], domGlobals(dom, $));
+    const ctx = loadPace(domGlobals(dom, $));
     const pace = JSON.parse(JSON.stringify(ctx.parseProfilePace(dom.window.document)));
-    assert.deepEqual(pace, { games: 7, bootedPercent: 3, average: "1 day 13 hours", averageHours: 37, overADayPercent: 40 });
+    assert.deepEqual(pace, {
+        games: 7,
+        bootedPercent: 3,
+        multiDay: { average: "1 day 13 hours", averageHours: 37, slowPercent: 40 },
+        realTime: { average: "2 minutes 26 seconds", averageHours: 2 * (1 / 60) + 26 * (1 / 3600), slowPercent: 13 }
+    });
 });
 
 test("a new player's profile without these numbers reads as such", () => {
     const { dom, $ } = createDom("<p>Joined War.app: 2026-10-01</p>");
-    const ctx = load(["parseProfilePace", "durationHours", "lobbyPaceText", "shortDuration"], domGlobals(dom, $));
+    const ctx = loadPace(domGlobals(dom, $));
     const pace = ctx.parseProfilePace(dom.window.document);
     assert.equal(pace.games, null);
-    assert.equal(pace.averageHours, null);
-    assert.equal(ctx.lobbyPaceText(pace), "no multi-day turns yet");
+    assert.equal(pace.multiDay.averageHours, null);
+    assert.equal(ctx.lobbyPaceText(pace, "multiDay"), "no multi-day turns yet");
+    assert.equal(ctx.lobbyPaceText(pace, "realTime"), "no real-time turns yet");
 });
 
-test("the lobby line", () => {
-    const ctx = load(["lobbyPaceText", "shortDuration"]);
-    assert.equal(ctx.lobbyPaceText({ games: 7, bootedPercent: 3, average: "1 day 13 hours", averageHours: 37, overADayPercent: 40 }),
-        "in 7 games · avg turn 1d 13h · 40% over a day · booted 3%");
-    assert.equal(ctx.lobbyPaceText({ games: 7, bootedPercent: 3, average: "1 day 13 hours", averageHours: 37, overADayPercent: 40 }, true),
-        "in 7 multi-day games, per their profile · average multi-day turn 1 day 13 hours · 40% of their turns took over a day · booted from 3% of their recent games");
-    assert.equal(ctx.lobbyPaceText({ games: 1, bootedPercent: null, average: null, averageHours: null, overADayPercent: null }), "in 1 game");
+test("the lobby line, for multi-day and real-time games", () => {
+    const ctx = loadPace({});
+    const pace = {
+        games: 7,
+        bootedPercent: 3,
+        multiDay: { average: "1 day 13 hours", averageHours: 37, slowPercent: 40 },
+        realTime: { average: "2 minutes 26 seconds", averageHours: 0.04, slowPercent: 13 }
+    };
+    assert.equal(ctx.lobbyPaceText(pace, "multiDay"), "in 7 games · avg turn 1d 13h · 40% over a day · booted 3%");
+    assert.equal(ctx.lobbyPaceText(pace, "multiDay", true),
+        "in 7 multi-day games, per their profile · average multi-day turn 1 day 13 hours · 40% of their multi-day turns took over a day · booted from 3% of their recent games");
+    assert.equal(ctx.lobbyPaceText(pace, "realTime"), "avg turn 2m 26s · 13% over 2 min · booted 3%", "the multi-day games count says nothing about a real-time game");
+});
+
+test("a boot time in minutes is a real-time game", () => {
+    const ctx = loadPace({});
+    assert.equal(ctx.lobbyGameKind("3 minutes"), "realTime");
+    assert.equal(ctx.lobbyGameKind("30 seconds"), "realTime");
+    assert.equal(ctx.lobbyGameKind("100 days.  100 days banked plus 1 day banked each day"), "multiDay");
+    assert.equal(ctx.lobbyGameKind("1 hour"), "multiDay");
+    assert.equal(ctx.lobbyGameKind(""), "multiDay");
 });
 
 test("profile links are built from war.app's game data, found by the players' names", () => {
@@ -73,4 +109,41 @@ test("profile links are built from war.app's game data, found by the players' na
     assert.ok(found.KKND.includes("296124"), "the level is a candidate too, and is ruled out by the profile's title");
     assert.equal(found.Dom365[0], "2715085443");
     assert.equal(found.Nobody, undefined);
+});
+
+test("the version label shows in a lobby and goes away once war.app turns it into the game", async () => {
+    const { dom, $ } = createDom("", "https://war.app/MultiPlayer?GameID=1");
+    dom.window.document.title = "Lobby - War.app";
+    const css = [];
+    const ctx = load(["addVersionLabel"], {
+        ...domGlobals(dom, $),
+        version: "3.38.1",
+        createSelector: (selector, rule) => css.push(selector + " { " + rule + " }"),
+        pageIsGame: () => true,
+        pageIsExamineMap: () => false,
+        pageIsDesignMap: () => false
+    });
+    ctx.addVersionLabel();
+    const body = dom.window.document.body;
+    assert.equal($(".versionLabel").text(), "3.38.1");
+    assert.equal(body.classList.contains("tuydInGame"), false, "shown in the lobby");
+    dom.window.document.title = "Multi-Player: Some game - War.app";
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(body.classList.contains("tuydInGame"), true, "hidden in the game");
+    assert.ok(css.some((rule) => /body\.tuydInGame \.versionLabel \{ display: none/.test(rule)));
+});
+
+test("outside games the version label always shows", () => {
+    const { dom, $ } = createDom("", "https://war.app/MultiPlayer/");
+    const ctx = load(["addVersionLabel"], {
+        ...domGlobals(dom, $),
+        version: "3.38.1",
+        createSelector: () => { },
+        pageIsGame: () => false,
+        pageIsExamineMap: () => false,
+        pageIsDesignMap: () => false
+    });
+    ctx.addVersionLabel();
+    assert.equal($(".versionLabel").length, 1);
+    assert.equal(dom.window.document.body.classList.contains("tuydInGame"), false);
 });
