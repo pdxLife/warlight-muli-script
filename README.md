@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.36.1  
+> **Version:** 3.37.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -35,6 +35,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Joined games marked** — Open Games rows where you hold a seat (or are invited) get a green **Joined** badge.
 - **Vacation banner** — displays a notice when your account is on vacation.
 - **Chat button** — a **Chat** button opens war.app's chat rooms (Global, Clan, groups) without going through a game. With the scrollable layout, Chat and **Refresh (R)** sit on the My / Open / Past Games row, lined up with the Filter button below.
+- **A game's chat from the dashboard** — **💬 Chat** on each game in My Games opens that game's Public (and Team) chat in a panel on the dashboard, where you can also write. The game loads hidden behind the dashboard, so it takes as long as opening the game, but you stay where you are.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
 - **Forum thread hiding** — right-click any forum thread on the dashboard to hide it; hidden threads persist across sessions.
 - **Sortable right-column tables** — reorder and toggle visibility of Bookmarks, Map of the Week, Forum, Clan Forum, Blog, and other sidebar blocks.
