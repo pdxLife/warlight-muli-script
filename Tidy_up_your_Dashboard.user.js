@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.41.1
+// @version 3.41.2
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5150,6 +5150,21 @@ function pageIsPointsPage() {
 var GAME_CHAT_FRAME_ID = "tuydGameChatFrame";
 var GAME_MAP_FRAME_ID = "tuydGameMapFrame";
 
+// A hidden copy of a game would otherwise play the game's sounds a second time: a chat bell for every new
+// message, the your-turn sound. war.app plays them through SoundManager 2, which uses HTML audio.
+function muteScriptFrame() {
+    window.HTMLMediaElement.prototype.play = function () {
+        return Promise.resolve();
+    };
+    var mute = function () {
+        if (window.soundManager && typeof window.soundManager.mute === "function") {
+            window.soundManager.mute();
+        }
+    };
+    mute();
+    window.setInterval(mute, 2000);
+}
+
 // The script's own hidden game frames: the dashboard's game chat, and Past Games looking up a game's map.
 function inScriptFrame() {
     try {
@@ -7808,8 +7823,9 @@ function DOM_ContentReady() {
         return;
     }
 
-    // The script's hidden game frames are driven from the page that opened them.
+    // The script's hidden game frames are driven from the page that opened them, and kept silent.
     if (inScriptFrame()) {
+        muteScriptFrame();
         return;
     }
 
