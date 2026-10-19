@@ -1,0 +1,41 @@
+[b]Feature Requests the userscript delivers[/b]
+
+These come from war.app's Feature Requests forum. The script adds them on your own computer: you see them, other players don't need it. How to use each one: https://pdxlife.github.io/warlight-muli-script/guide.html
+
+[hr]
+[b]Games and dashboard[/b]
+[list]
+[*][b]Provide Space for In-Game Notes[/b] (188 votes), 3.28.0: https://war.app/Forum/768601-provide-space-game-notes
+[*][b]Dorex's quality of life updates: Border in PMs[/b] (84 votes), 3.30.0: https://war.app/Forum/892471-dorexs-quality-life-updates-border-pms
+[*][b]Search/Sort Functionality for Past Games[/b] (51 votes), 3.28.0: https://war.app/Forum/768043-searchsort-functionality-past-games
+[*][b]Better Past Game Filtering & Sorting[/b], 3.28.0: https://war.app/Forum/888705-better-past-game-filtering-sorting
+[*][b]Dorex's quality of life updates: Text to speech[/b] (33 votes), 3.31.0, chat rooms in 3.34.0: https://war.app/Forum/815492-dorexs-quality-life-updates-text-speech
+[*][b]Are you sure you want to commit your orders?[/b] (27 votes), 3.30.0, a setting that's off by default: https://war.app/Forum/768036-sure-want-commit-orders
+[*][b]Showing more posts in game chat windows[/b], 3.29.0: https://war.app/Forum/895821-showing-more-posts-game-chat-windows
+[*][b]add more open games filters[/b], 3.28.0: https://war.app/Forum/894214-add-more-open-games-filters
+[*][b]Leaderboards: Include Rank with Rating[/b], 3.29.0: https://war.app/Forum/889390-leaderboards-include-rank-rating
+[*][b]Sort players by level in Player Search results[/b], 3.26.0: https://war.app/Forum/892642-sort-players-level-player-search-results
+[/list]
+
+[b]Chat[/b]
+[list]
+[*][b]Mute Button[/b], 3.33.0: https://war.app/Forum/807849-mute-button
+[*][b]QOL - Tagging Players in Public Chat[/b], 3.33.0 (mentions marked) and 3.35.0 (@ suggestions): https://war.app/Forum/775087-qol-tagging-players-public-chat
+[*][b]Add Button to Open Chat from MP Dashboard[/b], 3.35.0: https://war.app/Forum/767842-add-button-open-chat-mp-dashboard
+[/list]
+
+[b]War.app Idle[/b]
+[list]
+[*][b]Ability to click a tech and pay for it from market[/b] (71 votes), 3.32.0: shows what a tech is missing and what it costs at the market; you still buy it yourself: https://war.app/Forum/826813-ability-click-tech-pay-market
+[*][b]Warning when using a lower-rarity artifact[/b], 3.25.0: https://war.app/Forum/892942-warning-using-lowerrarity-artifact
+[*][b]Make "storage" section for never used WZI artis[/b], 3.27.0: https://war.app/Forum/828390-make-storage-section-never-used-wzi-artis
+[/list]
+
+[hr]
+Planned: [b]Idle: Freely resizable info panel[/b] (https://war.app/Forum/862669-idle-freely-resizable-info-panel) and [b]Add "Arenas" button[/b] (https://war.app/Forum/811149-add-arenas-button).
+Tried and taken out again: [b]Idle: view only or double tap to conquer[/b] (https://war.app/Forum/768757-idle-view-double-tap-conquer), in 3.27.0 and removed in 3.36.0, because Idle shows what's in a tile only when you take it.
+
+[hr]
+[b]A reply for each request's thread[/b] (change the feature line for each):
+
+Muli's Userscript now does this on desktop browsers: [feature in one line]. Install and details: https://war.app/Forum/897130-mulis-userscript-update · How to use it: https://pdxlife.github.io/warlight-muli-script/guide.html
