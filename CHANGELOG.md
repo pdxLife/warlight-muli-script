@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.0
+
+- **Open Games refreshes by itself** every 5 minutes while it's on screen on the dashboard, so new games show up without pressing R. It waits while your pointer is over the list or the Filter panel is open, so the list doesn't change under you, and doesn't run while another tab (My Games, Past Games) is shown or the browser tab is in the background. A refresh by R, the Refresh button or coming back to the tab starts the 5 minutes again. Change the minutes, or 0 to turn it off, at the bottom of the Open Games **Filter** panel; settings menu → Dashboard → "Refresh Open Games every few minutes" switches it off altogether.
+
 ## 3.39.0
 
 - **Past Games: filter by map and by number of players** (more from "Search/Sort Functionality for Past Games"). A second row on the Past Games bar: **Any map** lists the maps of the games on the page, by name, with how many games each ("Medium Earth (5)"); **1 v 1** or **More than 2 players**; and **Players from … to …**. Map names come from war.app's own map list, read once a week (about 1.4 MB) and matched to each game by its thumbnail; a map that isn't in war.app's list shows as "Map 74965". They're remembered with the other choices. Not possible from the Past Games page: a game's settings (No-Split, cards…) and its map's size, which the rows don't carry; and FFA versus team games, since the rows don't mark teams.
