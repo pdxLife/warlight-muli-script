@@ -9247,24 +9247,18 @@ function gamePlayerNames(self) {
     return names;
 }
 
-// The turn being played. While war.app shows the game's history ("Turn 2 of 2"), its turn label shows the
-// turn being viewed, so the turn being played is the one after the last finished turn.
+// The turn being played: the highest of war.app's turn labels. war.app keeps a label per view (playing,
+// waiting, replaying the turn that just finished), and the replay's is a turn behind; its history says
+// "Turn 2 of 2" while turn 3 is being played.
 function gameTurnNumber() {
-    var history = null;
-    $("[id^='ujs_HistoryInfoLabel']").each(function () {
-        var match = /^Turn \d+ of (\d+)$/.exec($(this).text().trim());
-        if (match && shownUjsElement(this)) {
-            history = Number(match[1]) + 1;
-        }
-    });
-    if (history) {
-        return history;
-    }
     var turn = null;
-    $("[id^='ujs_TurnNumberLabel']").each(function () {
-        var match = /^Turn (\d+)$/.exec($(this).text().trim());
-        if (match) {
-            turn = Number(match[1]);
+    $("[id^='ujs_TurnNumberLabel'], [id^='ujs_HistoryInfoLabel']").each(function () {
+        var text = $(this).text().trim();
+        var label = /^Turn (\d+)$/.exec(text);
+        var history = /^Turn \d+ of (\d+)$/.exec(text);
+        var number = label ? Number(label[1]) : history ? Number(history[1]) + 1 : null;
+        if (number !== null && (turn === null || number > turn)) {
+            turn = number;
         }
     });
     return turn;

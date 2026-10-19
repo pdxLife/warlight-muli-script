@@ -51,13 +51,16 @@ test("says who moves first this turn", () => {
     assert.equal(ctx.gameFirstMoveText("", 4), "");
 });
 
-test("while the history is open, the turn being played is the one after the last finished turn", () => {
-    const page = (historyShown) => `<div id="ujs_TurnNumberLabel"><span id="ujs_TurnNumberLabel_tmp">Turn 2</span></div>`
-        + `<div id="ujs_HistoryInfoLabel"${historyShown ? "" : ' style="display: none"'}><span id="ujs_HistoryInfoLabel_tmp">${historyShown ? "Turn 2 of 2" : "Turn x of y"}</span></div>`;
-    const viewing = createDom(page(true));
-    assert.equal(load(["shownUjsElement", "gameTurnNumber"], domGlobals(viewing.dom, viewing.$)).gameTurnNumber(), 3, "Turn 2 of 2 in the history: turn 3 is being played");
-    const closed = createDom(page(false));
-    assert.equal(load(["shownUjsElement", "gameTurnNumber"], domGlobals(closed.dom, closed.$)).gameTurnNumber(), 2, "history closed: the turn label");
+test("the turn being played is the highest of war.app's turn labels, whichever view is shown", () => {
+    const turn = (html) => {
+        const { dom, $ } = createDom(html);
+        return load(["gameTurnNumber"], domGlobals(dom, $)).gameTurnNumber();
+    };
+    const label = (id, text, hidden) => `<div id="ujs_${id}"${hidden ? ' style="display: none"' : ""}><span id="ujs_${id}_tmp">${text}</span></div>`;
+    assert.equal(turn(label("TurnNumberLabel", "Turn 3") + label("TurnNumberLabel_3", "Turn 2")), 3, "the replay of the turn that just finished is a turn behind");
+    assert.equal(turn(label("TurnNumberLabel_3", "Turn 2") + label("HistoryInfoLabel", "Turn 2 of 2")), 3, "Turn 2 of 2 in the history: turn 3 is being played");
+    assert.equal(turn(label("TurnNumberLabel", "Turn 4", true) + label("HistoryInfoLabel", "History: Game Start")), 4, "history open at the start");
+    assert.equal(turn(label("HistoryInfoLabel", "Turn x of y", true)), null);
 });
 
 test("stored notes are normalized, so bad imports fall back to empty notes", () => {
