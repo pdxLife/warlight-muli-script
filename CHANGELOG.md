@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.0
+
+- **Open Games refreshes by itself** every 5 minutes while it's on screen on the dashboard, so new games show up without pressing R. It waits while your pointer is over the list or the Filter panel is open, so the list doesn't change under you, and doesn't run while another tab (My Games, Past Games) is shown or the browser tab is in the background. A refresh by R, the Refresh button or coming back to the tab starts the 5 minutes again. Change the minutes, or 0 to turn it off, at the bottom of the Open Games **Filter** panel; settings menu → Dashboard → "Refresh Open Games every few minutes" switches it off altogether.
+
 ## 3.40.0
 
 - **Lobby: flag players who are booted often.** The limit box beside "Players" reads "Flag: avg turn > 24 h · booted > 10 %" (in a real-time lobby, "avg turn > 3 min"): a player whose boot rate on their profile is over the percentage gets the red ⚠ too, and hovering the line says why ("Flagged: booted over 10%"). 0 turns either limit off; both are remembered.
