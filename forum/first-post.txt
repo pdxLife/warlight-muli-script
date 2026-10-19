@@ -48,7 +48,7 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-game-chat-buttons.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-mention-suggest.png[/img]
 
-[b]Past Games[/b]: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of, real-time or multi-day, and reverse the order.
+[b]Past Games[/b]: search by game or player name; filter by state (in progress, your turn, lobby, finished, out), speed, map and number of players; reverse the order.
 [img]https://pdxlife.github.io/warlight-muli-script/media/past-games-filter.png[/img]
 
 [hr]

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.39.0
+
+- **Past Games: filter by map and by number of players** (more from "Search/Sort Functionality for Past Games"). A second row on the Past Games bar: **Any map** lists the maps of the games on the page, by name, with how many games each ("Medium Earth (5)"); **1 v 1** or **More than 2 players**; and **Players from … to …**. Map names come from war.app's own map list, read once a week (about 1.4 MB) and matched to each game by its thumbnail; a map that isn't in war.app's list shows as "Map 74965". They're remembered with the other choices. Not possible from the Past Games page: a game's settings (No-Split, cards…) and its map's size, which the rows don't carry; and FFA versus team games, since the rows don't mark teams.
+
 ## 3.38.1
 
 - **Real-time lobbies show real-time pace.** In a lobby whose boot time is an hour or less, each player's line now gives their real-time numbers: "avg turn 3m 20s · 59% over 2 min · booted 3%" (no multi-day games count, which says nothing about a real-time game), and the limit box reads "Flag average turn over 3 min". Multi-day and real-time limits are remembered separately.

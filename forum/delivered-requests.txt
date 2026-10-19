@@ -7,7 +7,7 @@ These come from war.app's Feature Requests forum. The script adds them on your o
 [list]
 [*][b]Provide Space for In-Game Notes[/b] (188 votes), 3.28.0: https://war.app/Forum/768601-provide-space-game-notes
 [*][b]Dorex's quality of life updates: Border in PMs[/b] (84 votes), 3.30.0: https://war.app/Forum/892471-dorexs-quality-life-updates-border-pms
-[*][b]Search/Sort Functionality for Past Games[/b] (51 votes), 3.28.0: https://war.app/Forum/768043-searchsort-functionality-past-games
+[*][b]Search/Sort Functionality for Past Games[/b] (51 votes), 3.28.0, map and number of players in 3.39.0: https://war.app/Forum/768043-searchsort-functionality-past-games
 [*][b]Better Past Game Filtering & Sorting[/b], 3.28.0: https://war.app/Forum/888705-better-past-game-filtering-sorting
 [*][b]Dorex's quality of life updates: Text to speech[/b] (33 votes), 3.31.0, chat rooms in 3.34.0: https://war.app/Forum/815492-dorexs-quality-life-updates-text-speech
 [*][b]Are you sure you want to commit your orders?[/b] (27 votes), 3.30.0, a setting that's off by default: https://war.app/Forum/768036-sure-want-commit-orders

@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.38.1  
+> **Version:** 3.39.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -43,7 +43,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 ### Games
 
 - **Notes in a game** — a **Notes** button next to war.app's Game button on a game's page (left of the Chat tab while the chat is open) opens your private notes for that game: general notes, which turns you move first on (odd or even; the panel then says "Turn 7: you move first"), and a note for each other player. Notes save as you type, only you see them, and the button shows a gold dot on games that have notes. They're kept with your settings, so Export / Import carries them.
-- **Past Games filters** — a bar above the list on Past Games: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of (surrendered, booted…), only real-time or multi-day games, and reverse the order. The bar shows "12 of 25 shown". It filters the games on the current page; war.app's "Number per page" goes up to 200.
+- **Past Games filters** — a bar above the list on Past Games: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of (surrendered, booted…), only real-time or multi-day games, by map (by name, with a count per map), 1 v 1 or more than two players, players from–to, and reverse the order. The bar shows "12 of 25 shown". It filters the games on the current page; war.app's "Number per page" goes up to 200.
 - **The whole chat in a game** — when a game's chat has older messages behind war.app's "Load Older Messages" or "Older Chat" button, the script presses it for you until the whole chat is there, then returns to the newest message. With war.app's App Settings → **Chat Dialog** checked, war.app loads a page at a time (the script keeps pressing, up to 20 times) and opens long chats (300+) in a dialog; unchecked, one press loads everything.
 - **Read chat aloud** — a faint 🔊 at the left of each message in a game's chat reads it and the messages after it aloud, with your browser's own voice (who wrote it, then the text; links are read as "a link" and smileys as words). Click ■ to stop. With the setting **Read New Chat Messages Aloud** on, new messages from other players are read as they arrive, so you can listen while entering orders. Messages from players on your block list are never read.
 - **Private chat list** — in a game, the Private button's "select the player you'd like to chat privately with" list shows the players still in the game first, A to Z, then a gold line and the players who are out (eliminated, booted, surrendered, removed or declined), dimmed. In big games you no longer scroll past players who left long ago.

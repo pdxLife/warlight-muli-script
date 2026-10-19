@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.38.1
+// @version 3.39.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.38.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.39.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -8732,12 +8732,46 @@ function pastGameSpeed(row) {
     return minutes === null ? "" : minutes <= 60 ? "realTime" : "multiDay";
 }
 
+// A game's thumbnail sits in its map's folder on war.app's CDN (Data/Thumbs/Maps/74965/41_Fogged.jpg);
+// war.app's map list uses the same folder for each map's own thumbnail, which gives the map's name.
+function pastGameMapKey(row) {
+    var match = /\/Thumbs\/Maps\/(\d+)\//.exec($(row).find("img.MyGamesGameThumbnail").attr("src") || "");
+    return match ? match[1] : "";
+}
+
+function pastGamePlayers(row) {
+    return $(row).find(".MyGamesGameBox").length;
+}
+
+// war.app's map list (Ajax/EnumerateMaps, every map at once): each map's thumbnail folder, ID and name.
+function parseMapList(html) {
+    var maps = {};
+    $(new DOMParser().parseFromString(html, "text/html")).find("img").each(function () {
+        var folder = /\/Thumbs\/Maps\/(\d+)\//.exec($(this).attr("src") || "");
+        var box = $(this).closest("div");
+        var link = /\/Map\/(\d+)/.exec(box.find("a").first().attr("href") || "");
+        var name = box.clone().children("font, a, img").remove().end().text().replace(/\s+/g, " ").trim();
+        if (folder && link && name) {
+            maps[folder[1]] = { id: link[1], name: name };
+        }
+    });
+    return maps;
+}
+
 function pastGameMatches(row, filter) {
     var state = pastGameState(row);
     if (filter.state === "running" ? state !== "running" && state !== "yourTurn" : filter.state && state !== filter.state) {
         return false;
     }
     if (filter.speed && pastGameSpeed(row) !== filter.speed) {
+        return false;
+    }
+    if (filter.map && pastGameMapKey(row) !== filter.map) {
+        return false;
+    }
+    var players = pastGamePlayers(row);
+    if ((filter.minPlayers && players < filter.minPlayers) || (filter.maxPlayers && players > filter.maxPlayers)
+        || (filter.size === "oneVsOne" && players !== 2) || (filter.size === "more" && players <= 2)) {
         return false;
     }
     var query = String(filter.query || "").trim().toLowerCase();
@@ -8754,9 +8788,17 @@ function pastGameMatches(row, filter) {
 
 function normalizePastGamesFilter(value) {
     value = value || {};
+    var count = function (number) {
+        number = parseInt(number, 10);
+        return number > 0 ? number : 0;
+    };
     return {
         state: ["running", "yourTurn", "lobby", "finished", "out"].indexOf(value.state) !== -1 ? value.state : "",
         speed: value.speed === "realTime" || value.speed === "multiDay" ? value.speed : "",
+        map: /^\d+$/.test(String(value.map || "")) ? String(value.map) : "",
+        minPlayers: count(value.minPlayers),
+        maxPlayers: count(value.maxPlayers),
+        size: value.size === "oneVsOne" || value.size === "more" ? value.size : "",
         reversed: value.reversed === true,
         query: typeof value.query === "string" ? value.query : ""
     };
@@ -8795,6 +8837,52 @@ function applyPastGamesFilter(table, filter) {
     $("#PastGamesFilterCount").text(shown.length === rows.length ? "" : shown.length + " of " + rows.length + " shown");
 }
 
+var MAP_NAMES_KEY = "tidyUpYourDashboard.mapNames";
+
+// Map names by thumbnail folder, kept for a week: the list is one request of about 1.4 MB.
+function loadMapNames(callback) {
+    try {
+        var cached = JSON.parse(localStorage.getItem(MAP_NAMES_KEY));
+        if (cached && cached.maps && Date.now() - cached.at < 7 * 24 * 60 * 60 * 1000) {
+            callback(cached.maps);
+            return;
+        }
+    } catch (e) {
+        // An unreadable cache is loaded again.
+    }
+    $.ajax({ url: "/Ajax/EnumerateMaps?Filter=__all&Sort=1&PerPage=100000&Offset=0", dataType: "text" }).done(function (html) {
+        var maps = parseMapList(html);
+        try {
+            localStorage.setItem(MAP_NAMES_KEY, JSON.stringify({ at: Date.now(), maps: maps }));
+        } catch (e) {
+            // Without storage the names are loaded again next time.
+        }
+        callback(maps);
+    }).fail(function () {
+        log("Past Games: couldn't load war.app's map list for map names");
+        callback({});
+    });
+}
+
+// The maps of the games on this page, by name, with how many games each.
+function pastGameMapOptions(rows, maps, selected) {
+    var counts = {};
+    $(rows).each(function () {
+        var key = pastGameMapKey(this);
+        if (key) {
+            counts[key] = (counts[key] || 0) + 1;
+        }
+    });
+    if (selected && !counts[selected]) {
+        counts[selected] = 0;
+    }
+    return Object.keys(counts).map(function (key) {
+        return { key: key, name: maps[key] ? maps[key].name : "Map " + key, games: counts[key] };
+    }).sort(function (a, b) {
+        return a.name.localeCompare(b.name);
+    });
+}
+
 function setupPastGamesFilter() {
     var table = $("#MyGamesTable");
     if (!table.length) {
@@ -8809,6 +8897,9 @@ function setupPastGamesFilter() {
             #PastGamesFilterCount { white-space: nowrap; }
             #PastGamesFilterBar input, #PastGamesFilterBar select { display: inline-block; width: auto; margin-right: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
             #PastGamesFilterBar input[type=search] { width: 220px; max-width: 100%; }
+            #PastGamesFilterBar input[type=number] { width: 52px; margin-right: 4px; }
+            #PastGamesFilterBar select[name=map] { max-width: 220px; }
+            #PastGamesFilterBar .tuydPastRow { margin-top: 6px; }
             #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }
             #PastGamesFilterBar input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
             #PastGamesFilterCount { color: #999; }
@@ -8830,12 +8921,34 @@ function setupPastGamesFilter() {
             </select>
             <label><input type="checkbox" name="reversed">Reverse order</label>
             <span id="PastGamesFilterCount" title="Filters the games on this page. Number per page shows up to 200."></span>
+            <div class="tuydPastRow">
+                <select name="map" title="The maps of the games on this page"><option value="">Any map</option></select>
+                <select name="size">
+                    <option value="">Any number of players</option>
+                    <option value="oneVsOne">1 v 1</option>
+                    <option value="more">More than 2 players</option>
+                </select>
+                <label>Players from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"></label>
+            </div>
         </td></tr>`);
         bar.find("[name=state]").val(filter.state);
         bar.find("[name=speed]").val(filter.speed);
         bar.find("[name=reversed]").prop("checked", filter.reversed);
+        bar.find("[name=size]").val(filter.size);
+        bar.find("[name=minPlayers]").val(filter.minPlayers || "");
+        bar.find("[name=maxPlayers]").val(filter.maxPlayers || "");
         table.children("thead").first().append(bar);
         var tbody = table.children("tbody").first();
+        var maps = {};
+        var fillMaps = function () {
+            var select = bar.find("[name=map]");
+            var options = pastGameMapOptions(tbody.children("tr.GameRow"), maps, filter.map);
+            select.children("option").not("[value='']").remove();
+            options.forEach(function (option) {
+                select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")"));
+            });
+            select.val(filter.map);
+        };
         var observer = new MutationObserver(function () {
             update();
         });
@@ -8843,6 +8956,7 @@ function setupPastGamesFilter() {
             observer.disconnect();
             orderPastGames(tbody, filter.reversed);
             applyPastGamesFilter(table, filter);
+            fillMaps();
             observer.observe(tbody[0], { childList: true });
         };
         bar.on("input change", "input, select", function (event) {
@@ -8850,14 +8964,22 @@ function setupPastGamesFilter() {
                 state: bar.find("[name=state]").val(),
                 speed: bar.find("[name=speed]").val(),
                 reversed: bar.find("[name=reversed]").prop("checked"),
-                query: bar.find("[name=query]").val()
+                query: bar.find("[name=query]").val(),
+                map: bar.find("[name=map]").val(),
+                size: bar.find("[name=size]").val(),
+                minPlayers: bar.find("[name=minPlayers]").val(),
+                maxPlayers: bar.find("[name=maxPlayers]").val()
             });
             if (event.type === "change" && event.target.name !== "query") {
-                Database.update(Database.Table.Settings, { name: "pastGamesFilter", value: { state: filter.state, speed: filter.speed, reversed: filter.reversed } }, undefined);
+                Database.update(Database.Table.Settings, { name: "pastGamesFilter", value: { state: filter.state, speed: filter.speed, reversed: filter.reversed, map: filter.map, size: filter.size, minPlayers: filter.minPlayers, maxPlayers: filter.maxPlayers } }, undefined);
             }
             update();
         });
         update();
+        loadMapNames(function (names) {
+            maps = names;
+            fillMaps();
+        });
     });
 }
 
