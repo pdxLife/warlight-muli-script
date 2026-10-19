@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.39.0
+// @version 3.40.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.39.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.40.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5562,13 +5562,6 @@ function setupLobbyPace() {
             if (title) {
                 var box = title.getBoundingClientRect();
                 control.css({ left: box.right - anchor.left - control.outerWidth() - 10, top: box.top - anchor.top + (box.height - control.outerHeight()) / 2 });
-                // In a narrow window the box would run into the centred "Players"; it moves to the line's left end instead.
-                var words = document.createRange();
-                words.selectNodeContents(title);
-                var text = words.getBoundingClientRect ? words.getBoundingClientRect() : box;
-                if (control[0].getBoundingClientRect().left < text.right + 8) {
-                    control.css({ left: box.left - anchor.left + 10 });
-                }
             }
         }
     };
