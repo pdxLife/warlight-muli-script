@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.36.0
+// @version 3.36.1
 // @author Muli (original author)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.36.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.36.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -3706,9 +3706,11 @@ function setupDashboardChatLink() {
         var group = $('<div id="tuydDashButtons"></div>').appendTo(buttonRow);
         group.append(link.addClass(refresh.attr("class") || "btn btn-primary"), refresh.detach());
         // Right edge on the Filter button's, or a little inside the table's on the other tabs.
+        // The tab not shown is moved out of the left column but still counts as visible.
         var align = function () {
-            var filter = $("#MyGamesFilterBtn").filter(":visible")[0];
-            var table = $("#MyGamesTable, #OpenGamesTable, #PastGamesTable").filter(":visible")[0];
+            var column = $(".leftColumn");
+            var filter = column.find("#MyGamesFilterBtn").filter(":visible")[0];
+            var table = column.find("#MyGamesTable, #OpenGamesTable, #PastGamesTable").filter(":visible")[0];
             var target = filter ? filter.getBoundingClientRect().right : table ? table.getBoundingClientRect().right - 7 : null;
             if (target === null) {
                 return;
@@ -3721,6 +3723,10 @@ function setupDashboardChatLink() {
         $("#switchGameRadio").on("click", "label", function () {
             setTimeout(align, 0);
         });
+        // Switching tabs can take the page's scrollbar away and widen the row.
+        if (typeof ResizeObserver === "function") {
+            new ResizeObserver(align).observe(buttonRow[0]);
+        }
     };
     // The dashboard lays itself out once the settings are read, and makes its Refresh button just after.
     var tries = 0;
@@ -6166,6 +6172,7 @@ function addCommunityLaddersStyles() {
             max-width: calc(100% - 190px);
         }
         .tuydEventLine {
+            margin-left: auto;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -6485,7 +6492,16 @@ function setupCommunityEventsStanding() {
             var title = $(this).find("[id^='ujs_vert'] .ujsTextInner").first().text().trim();
             markJoinedEvent(this, joinedEventLabel(title, community));
             var box = $(this).children("[id$='_img']").first();
-            if (!box.length || box.children(".tuydEventStanding").length) {
+            if (box.length && box.children(".tuydEventStanding").length) {
+                // Only when the card's width changed: war.app redraws the scene often.
+                var width = Math.round(box[0].getBoundingClientRect().width);
+                if (box.attr("data-tuyd-width") !== String(width)) {
+                    box.attr("data-tuyd-width", width);
+                    fitEventLines(this, box[0]);
+                }
+                return;
+            }
+            if (!box.length) {
                 return;
             }
             var html = communityEventHtml(title, community);
@@ -6495,11 +6511,48 @@ function setupCommunityEventsStanding() {
                 box.find(".tuydEventLine").each(function () {
                     this.title = this.textContent;
                 });
+                box.attr("data-tuyd-width", Math.round(box[0].getBoundingClientRect().width));
+                fitEventLines(this, box[0]);
             }
         });
     };
     check();
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
+
+// The room a line on an event card has, left of it, beside war.app's own text at the same height:
+// from the card's right edge to the end of the furthest war.app text the line sits next to.
+function eventLineRoom(line, texts, right) {
+    var furthest = texts.filter(function (text) {
+        return text.bottom > line.top + 2 && text.top < line.bottom - 2;
+    }).reduce(function (max, text) {
+        return Math.max(max, text.right);
+    }, -Infinity);
+    return furthest === -Infinity ? null : right - furthest - 16;
+}
+
+function fitEventLines(row, box) {
+    if (typeof Range === "undefined" || typeof Range.prototype.getClientRects !== "function") {
+        return;
+    }
+    var texts = [];
+    $(row).find("[id^='ujs_vert'] .ujsTextInner").each(function () {
+        var range = document.createRange();
+        range.selectNodeContents(this);
+        Array.prototype.forEach.call(range.getClientRects(), function (rect) {
+            texts.push(rect);
+        });
+    });
+    var right = box.getBoundingClientRect().right - 12;
+    $(box).find(".tuydEventLine").each(function () {
+        this.style.display = "";
+        this.style.maxWidth = "";
+        var room = eventLineRoom(this.getBoundingClientRect(), texts, right);
+        if (room !== null) {
+            this.style.maxWidth = Math.max(0, room) + "px";
+            this.style.display = room < 60 ? "none" : "";
+        }
+    });
 }
 
 // war.app tells everyone "You can join!" in green; where you already take part, the card says so
@@ -7916,7 +7969,8 @@ function setupPastGamesFilter() {
         filter.query = "";
         addCSS(`
             #MyGamesTable tr.tuyd-pastHidden { display: none; }
-            #PastGamesFilterBar td { padding: 6px 0 10px; }
+            #PastGamesFilterBar td { padding: 6px 8px 10px; }
+            #PastGamesFilterCount { white-space: nowrap; }
             #PastGamesFilterBar input, #PastGamesFilterBar select { display: inline-block; width: auto; margin-right: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
             #PastGamesFilterBar input[type=search] { width: 220px; max-width: 100%; }
             #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }

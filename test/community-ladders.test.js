@@ -18,7 +18,7 @@ const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", 
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
-    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent"];
+    "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent", "eventLineRoom", "fitEventLines"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
 const series = {
@@ -555,4 +555,16 @@ test("on a narrower page the panel keeps the dialog's width and its lists stack"
     await flush();
     assert.equal($("#communityLadders")[0].style.width, "583px");
     assert.equal($("#communityLadders")[0].style.left, "78px");
+});
+
+test("a line on an event card gets only the room beside war.app's text at its height", () => {
+    const ctx = load(["eventLineRoom"]);
+    const texts = [
+        { top: 0, bottom: 18, right: 180 },
+        { top: 18, bottom: 36, right: 140 },
+        { top: 36, bottom: 54, right: 560 }
+    ];
+    assert.equal(ctx.eventLineRoom({ top: 6, bottom: 26 }, texts, 700), 700 - 180 - 16, "beside the title and the count, the wider one counts");
+    assert.equal(ctx.eventLineRoom({ top: 26, bottom: 46 }, texts, 700), 700 - 560 - 16, "beside a long description, only what's left");
+    assert.equal(ctx.eventLineRoom({ top: 80, bottom: 100 }, texts, 700), null, "nothing beside it, no limit");
 });
