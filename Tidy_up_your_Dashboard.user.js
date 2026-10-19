@@ -5278,19 +5278,19 @@ function parseProfilePace(doc) {
     };
 }
 
-function lobbyPaceText(pace) {
+function lobbyPaceText(pace, long) {
     var parts = [];
     if (pace.games !== null) {
-        parts.push(pace.games + " multi-day game" + (pace.games === 1 ? "" : "s"));
+        parts.push(long ? "in " + pace.games + " multi-day game" + (pace.games === 1 ? "" : "s") + ", per their profile" : "in " + pace.games + " game" + (pace.games === 1 ? "" : "s"));
     }
     if (pace.averageHours !== null) {
-        parts.push("avg turn " + shortDuration(pace.average));
+        parts.push(long ? "average multi-day turn " + pace.average : "avg turn " + shortDuration(pace.average));
     }
     if (pace.overADayPercent !== null) {
-        parts.push(pace.overADayPercent + "% of turns over a day");
+        parts.push(pace.overADayPercent + (long ? "% of their turns took over a day" : "% over a day"));
     }
     if (pace.bootedPercent !== null) {
-        parts.push("booted " + pace.bootedPercent + "%");
+        parts.push(long ? "booted from " + pace.bootedPercent + "% of their recent games" : "booted " + pace.bootedPercent + "%");
     }
     return parts.length ? parts.join(" · ") : "no multi-day turns yet";
 }
@@ -5482,7 +5482,7 @@ function setupLobbyPace() {
             var slow = limit > 0 && pace.averageHours !== null && pace.averageHours > limit;
             var left = column + 16;
             var width = right - row.element.getBoundingClientRect().left - left;
-            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace) + " (from " + row.name + "'s profile; Muli's Userscript)" })
+            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace, true) + " (Muli's Userscript)" })
                 .text((slow ? "⚠ " : "") + lobbyPaceText(pace)).toggleClass("tuydPaceSlow", slow)
                 .css({ left: left, maxWidth: Math.max(0, width), display: width < 120 ? "none" : "" });
         });
