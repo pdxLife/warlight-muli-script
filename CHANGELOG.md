@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.2
+
+- **No second chat bell from the script's hidden games.** The dashboard's 💬 Chat panel and Past Games' "Find the maps" open games in a hidden frame, and war.app played its sounds there too: with the chat panel open, every new message in that game rang a second bell (and your-turn sounds played twice). Those hidden games are now silent.
+
 ## 3.41.1
 
 - **Game notes: "you move first / second" is for the turn being played.** Right after a turn ends, while war.app replays it or its history is open ("Turn 2 of 2"), the notes could name the turn that had just finished ("Turn 2: you move first" while turn 3 was being played). They now take the highest of war.app's turn numbers, which is always the turn being played.

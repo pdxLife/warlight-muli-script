@@ -106,3 +106,20 @@ test("the script knows when it runs inside the dashboard's hidden game, and does
     const top = load(["inScriptFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", GAME_MAP_FRAME_ID: "tuydGameMapFrame", frameElement: null });
     assert.equal(top.inScriptFrame(), false);
 });
+
+test("the script's hidden copy of a game plays no sounds", async () => {
+    let muted = 0;
+    function HTMLMediaElement() { }
+    HTMLMediaElement.prototype.play = () => { throw new Error("a hidden game played a sound"); };
+    const intervals = [];
+    const ctx = load(["muteScriptFrame"], {
+        HTMLMediaElement,
+        soundManager: { mute: () => muted++ },
+        setInterval: (fn) => intervals.push(fn)
+    });
+    ctx.muteScriptFrame();
+    await new HTMLMediaElement().play();
+    assert.equal(muted, 1, "war.app's sound manager is muted");
+    intervals[0]();
+    assert.equal(muted, 2, "and kept muted, in case war.app turns it back on");
+});
