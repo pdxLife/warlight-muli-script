@@ -51,6 +51,18 @@ test("says who moves first this turn", () => {
     assert.equal(ctx.gameFirstMoveText("", 4), "");
 });
 
+test("the turn being played is the highest of war.app's turn labels, whichever view is shown", () => {
+    const turn = (html) => {
+        const { dom, $ } = createDom(html);
+        return load(["gameTurnNumber"], domGlobals(dom, $)).gameTurnNumber();
+    };
+    const label = (id, text, hidden) => `<div id="ujs_${id}"${hidden ? ' style="display: none"' : ""}><span id="ujs_${id}_tmp">${text}</span></div>`;
+    assert.equal(turn(label("TurnNumberLabel", "Turn 3") + label("TurnNumberLabel_3", "Turn 2")), 3, "the replay of the turn that just finished is a turn behind");
+    assert.equal(turn(label("TurnNumberLabel_3", "Turn 2") + label("HistoryInfoLabel", "Turn 2 of 2")), 3, "Turn 2 of 2 in the history: turn 3 is being played");
+    assert.equal(turn(label("TurnNumberLabel", "Turn 4", true) + label("HistoryInfoLabel", "History: Game Start")), 4, "history open at the start");
+    assert.equal(turn(label("HistoryInfoLabel", "Turn x of y", true)), null);
+});
+
 test("stored notes are normalized, so bad imports fall back to empty notes", () => {
     const { ctx } = setup();
     const notes = JSON.parse(JSON.stringify(ctx.normalizeGameNotes({ text: 5, firstMove: "third", players: { Alice: "ally", Bob: " ", Cy: 3 } })));

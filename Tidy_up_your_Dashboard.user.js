@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.41.0
+// @version 3.41.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9247,12 +9247,18 @@ function gamePlayerNames(self) {
     return names;
 }
 
+// The turn being played: the highest of war.app's turn labels. war.app keeps a label per view (playing,
+// waiting, replaying the turn that just finished), and the replay's is a turn behind; its history says
+// "Turn 2 of 2" while turn 3 is being played.
 function gameTurnNumber() {
     var turn = null;
-    $("[id^='ujs_TurnNumberLabel']").each(function () {
-        var match = /^Turn (\d+)$/.exec($(this).text().trim());
-        if (match) {
-            turn = Number(match[1]);
+    $("[id^='ujs_TurnNumberLabel'], [id^='ujs_HistoryInfoLabel']").each(function () {
+        var text = $(this).text().trim();
+        var label = /^Turn (\d+)$/.exec(text);
+        var history = /^Turn \d+ of (\d+)$/.exec(text);
+        var number = label ? Number(label[1]) : history ? Number(history[1]) + 1 : null;
+        if (number !== null && (turn === null || number > turn)) {
+            turn = number;
         }
     });
     return turn;
