@@ -21,7 +21,7 @@ These come from war.app's Feature Requests forum. The script adds them on your o
 [list]
 [*][b]Mute Button[/b], 3.33.0: https://war.app/Forum/807849-mute-button
 [*][b]QOL - Tagging Players in Public Chat[/b], 3.33.0 (mentions marked) and 3.35.0 (@ suggestions): https://war.app/Forum/775087-qol-tagging-players-public-chat
-[*][b]Add Button to Open Chat from MP Dashboard[/b], 3.35.0: https://war.app/Forum/767842-add-button-open-chat-mp-dashboard
+[*][b]Add Button to Open Chat from MP Dashboard[/b], 3.35.0 (a Chat button for the chat rooms) and 3.37.0 (💬 Chat on each game: read and write a game's chat without leaving the dashboard): https://war.app/Forum/767842-add-button-open-chat-mp-dashboard
 [/list]
 
 [b]War.app Idle[/b]
