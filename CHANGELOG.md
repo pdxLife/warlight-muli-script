@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.1
+
+- **Game notes: "you move first / second" is for the turn being played.** Right after a turn ends, while war.app replays it or its history is open ("Turn 2 of 2"), the notes could name the turn that had just finished ("Turn 2: you move first" while turn 3 was being played). They now take the highest of war.app's turn numbers, which is always the turn being played.
+
 ## 3.41.0
 
 - **Open Games refreshes by itself** every 5 minutes while it's on screen on the dashboard, so new games show up without pressing R. It waits while your pointer is over the list or the Filter panel is open, so the list doesn't change under you, and doesn't run while another tab (My Games, Past Games) is shown or the browser tab is in the background. A refresh by R, the Refresh button or coming back to the tab starts the 5 minutes again. Change the minutes, or 0 to turn it off, at the bottom of the Open Games **Filter** panel; settings menu → Dashboard → "Refresh Open Games every few minutes" switches it off altogether.
