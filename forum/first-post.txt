@@ -112,30 +112,3 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifacts.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifact-list.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-log.png[/img]
-
-[hr]
-[b]Forum, mail and more[/b]
-[list]
-[*][b]Bookmarks[/b] in the dashboard sidebar, with quick-bookmark links on threads, tournaments and levels.
-[*][b]Forum[/b]: a formatting toolbar, hiding threads, hiding Off-topic and Idle threads, level previews in posts.
-[*][b]Mail[/b]: filter by player, by words (subject or first words of the message) and by date.
-[*][b]Player Search[/b]: best match first, by level or name, hide level 1–2 accounts, tags for you, AWP ranks and blocked players; paste a profile link to open it.
-[*][b]Also[/b]: block list search and count, map search, sortable Common Games with your head-to-head record, total points earned.
-[/list]
-[img]https://pdxlife.github.io/warlight-muli-script/media/guide-forum-toolbar.png[/img]
-[img]https://pdxlife.github.io/warlight-muli-script/media/guide-mail-filters.png[/img]
-[img]https://pdxlife.github.io/warlight-muli-script/media/guide-player-search.png[/img]
-
-[hr]
-[b]Settings[/b]
-Everything is in your account menu → "Muli's Userscript": every feature has its own switch, grouped by area, with a search box. Export / Import backs up your settings, bookmarks and notes.
-[img]https://pdxlife.github.io/warlight-muli-script/media/guide-settings-menu.png[/img]
-
-[b]Privacy and safety[/b]
-The script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. The features that use Muli's old server (MTL stats and community level records) are off by default.
-
-[b]Feedback[/b]
-How to use each feature, step by step: https://pdxlife.github.io/warlight-muli-script/guide.html
-If something doesn't work or you'd like a feature, reply here. Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
-
-Have fun!
