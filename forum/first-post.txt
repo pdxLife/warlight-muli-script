@@ -13,7 +13,7 @@ Website, with the install button and a short overview: https://pdxlife.github.io
 [*] Open this link and click Install: https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
 [*] Reload war.app. The settings are under your account menu → "Muli's Userscript".
 [/list]
-Updates install by themselves. When a new version is out, the small version number in the bottom-right corner of war.app turns into a gold "Update to …" link if you don't want to wait. If you still have Muli's old version, disable or remove it in Tampermonkey so the two don't run at the same time.
+Updates install by themselves. When a new version is out, the small version number in the bottom-right corner of war.app turns into a gold "Update to …" link if you don't want to wait. If you still have Muli's old version, turn it off in Tampermonkey.
 
 The script is for war.app in a desktop browser. war.app's phone app can't run userscripts.
 
@@ -24,10 +24,11 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Your-turn alerts[/b]: the tab title shows how many games wait for you, e.g. "(2) Multi-Player Dashboard". While the tab sits in the background it checks every 5 minutes, and can show a desktop notification.
 [*][b]Boot-time sorting[/b]: games where it's your turn are ordered by how long you have left before you're booted.
 [*][b]Event badges[/b] on My Games: "Nations Cup", "P/R League", "Titled Tuesday", "AWP Tour"…, linking to the event.
-[*][b]Chat button[/b] to open war.app's chat rooms straight from the dashboard.
+[*][b]Chat[/b]: a button for the chat rooms, and [b]💬 Chat[/b] on each game to read and write its chat on the dashboard.
 [*][b]My / Open / Past Games tabs[/b] in a fixed, scrollable layout, with bookmarks and the other sidebar boxes on the right.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-chat-refresh.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-game-chat.png[/img]
 
 [b]Open Games filter[/b]: a Filter link in the Open Games header (dashboard and View All). Hide Auto Games, coin games, short boot times, names with words you choose, games with fewer or more seats than you want, team games (or everything but team games), and games with settings you don't like: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog, no-split and more. Games you've already joined get a green "Joined" badge.
 [img]https://pdxlife.github.io/warlight-muli-script/media/open-games-filter-more.png[/img]
@@ -110,5 +111,4 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [img]https://pdxlife.github.io/warlight-muli-script/media/idle-tech-cost.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-army-camps.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifacts.png[/img]
-[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifact-list.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-log.png[/img]
