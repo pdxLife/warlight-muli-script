@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.38.1
+
+- **Real-time lobbies show real-time pace.** In a lobby whose boot time is an hour or less, each player's line now gives their real-time numbers: "avg turn 3m 20s · 59% over 2 min · booted 3%" (no multi-day games count, which says nothing about a real-time game), and the limit box reads "Flag average turn over 3 min". Multi-day and real-time limits are remembered separately.
+- **Past Games:** "Real-time" now includes games with a boot time of exactly one hour, the same rule as the lobby: up to an hour is real-time, longer is multi-day.
+- **The version number shows in lobbies.** It used to stay hidden on every game page so it doesn't cover the game's own buttons; now it's hidden only once the game has started.
+
 ## 3.38.0
 
 - **Player pace in a game's lobby** (Feature Requests: "Additional filters for joining open games"). War.app decides who may join, so the script can't keep anyone out, but in a lobby each player now gets a line from their profile: "in 7 games · avg turn 1d 13h · 40% over a day · booted 3%" (how many multi-day games they're in, their average multi-day turn, the share of their turns that took over a day, and their boot rate). Hover it for the long version; click it for the profile. **Flag average turn over 24 h**, at the right of "Players", marks slower players with a red ⚠ (0 turns it off), so the host can remove them with war.app's Add/Remove Players. The games count is war.app's own figure, which doesn't always update in time, so it's never flagged. The turn times cover all of a player's multi-day games, not each game's boot time. Settings menu → Games → "Player pace in game lobbies".
