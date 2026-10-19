@@ -90,7 +90,9 @@ test("a boot time in minutes is a real-time game", () => {
     assert.equal(ctx.lobbyGameKind("3 minutes"), "realTime");
     assert.equal(ctx.lobbyGameKind("30 seconds"), "realTime");
     assert.equal(ctx.lobbyGameKind("100 days.  100 days banked plus 1 day banked each day"), "multiDay");
-    assert.equal(ctx.lobbyGameKind("1 hour"), "multiDay");
+    assert.equal(ctx.lobbyGameKind("1 hour"), "realTime", "up to an hour is real-time");
+    assert.equal(ctx.lobbyGameKind("1 hour 30 minutes"), "multiDay");
+    assert.equal(ctx.lobbyGameKind("2 days"), "multiDay");
     assert.equal(ctx.lobbyGameKind(""), "multiDay");
 });
 

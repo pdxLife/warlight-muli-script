@@ -121,3 +121,14 @@ test("recognizes the Past Games page", () => {
     assert.ok(at("https://war.app/MultiPlayer/PastGames?Sort=1").pageIsPastGames());
     assert.ok(!at("https://war.app/MultiPlayer/").pageIsPastGames());
 });
+
+test("a boot time of up to an hour is real-time, anything longer multi-day", () => {
+    const { dom, $ } = createDom(pastGames([
+        pastGameRow("1", "a", { boot: "5 minutes" }),
+        pastGameRow("2", "b", { boot: "1 hour" }),
+        pastGameRow("3", "c", { boot: "1 hour 30 minutes" }),
+        pastGameRow("4", "d", { boot: "3 days" })
+    ]), "https://war.app/MultiPlayer/PastGames");
+    const ctx = load(["parseBootTime", "pastGameSpeed"], domGlobals(dom, $));
+    assert.deepEqual(Array.from($("tr.GameRow").get().map((row) => ctx.pastGameSpeed(row))), ["realTime", "realTime", "multiDay", "multiDay"]);
+});

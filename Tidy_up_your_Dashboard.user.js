@@ -5287,10 +5287,10 @@ function parseProfilePace(doc) {
     };
 }
 
-// A real-time game's boot time is in minutes or seconds; anything an hour or longer is multi-day.
+// A boot time of up to an hour is a real-time game; anything longer is multi-day (Past Games uses the same rule).
 function lobbyGameKind(bootText) {
     var hours = durationHours(String(bootText || "").split(".")[0]);
-    return hours !== null && hours < 1 ? "realTime" : "multiDay";
+    return hours !== null && hours <= 1 ? "realTime" : "multiDay";
 }
 
 // The multi-day games count is only shown in multi-day lobbies; real-time lobbies show real-time turns.
@@ -8729,7 +8729,7 @@ function pastGameState(row) {
 
 function pastGameSpeed(row) {
     var minutes = parseBootTime($(row).find(".BootTimeLabel").text());
-    return minutes === null ? "" : minutes < 60 ? "realTime" : "multiDay";
+    return minutes === null ? "" : minutes <= 60 ? "realTime" : "multiDay";
 }
 
 function pastGameMatches(row, filter) {
@@ -8825,7 +8825,7 @@ function setupPastGamesFilter() {
             </select>
             <select name="speed">
                 <option value="">Any speed</option>
-                <option value="realTime" title="Boot time under an hour">Real-time</option>
+                <option value="realTime" title="Boot time of an hour or less">Real-time</option>
                 <option value="multiDay">Multi-day</option>
             </select>
             <label><input type="checkbox" name="reversed">Reverse order</label>
