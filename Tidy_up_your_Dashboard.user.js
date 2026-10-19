@@ -5376,8 +5376,7 @@ function setupLobbyPace() {
         }
         .tuydPaceLimit {
             position: absolute;
-            top: 2px;
-            right: 10px;
+            white-space: nowrap;
             color: #9a9a9a;
             font-size: 12px;
             pointer-events: auto;
@@ -5490,9 +5489,19 @@ function setupLobbyPace() {
         var heading = section.find(".ujsTextInner").filter(function () {
             return $(this).text().trim() === "Players";
         }).first().parent();
-        if (heading.length && !heading.children(".tuydPaceLimit").length) {
-            $('<label class="tuydPaceLimit" title="Players whose average multi-day turn is longer are marked ⚠ (0 = off; Muli\'s Userscript)">Flag average turn over<input type="number" min="0" step="1"> h</label>')
-                .appendTo(heading).find("input").val(limit);
+        if (heading.length) {
+            var control = heading.children(".tuydPaceLimit");
+            if (!control.length) {
+                control = $('<label class="tuydPaceLimit" title="Players whose average multi-day turn is longer are marked ⚠ (0 = off; Muli\'s Userscript)">Flag average turn over<input type="number" min="0" step="1"> h</label>').appendTo(heading);
+                control.find("input").val(limit);
+            }
+            // war.app's text holders are zero-size anchors; the control goes at the right end of the heading's text box.
+            var anchor = heading[0].getBoundingClientRect();
+            var title = heading.children(".ujsTextInner")[0];
+            if (title) {
+                var box = title.getBoundingClientRect();
+                control.css({ left: box.right - anchor.left - control.outerWidth() - 10, top: box.top - anchor.top + (box.height - control.outerHeight()) / 2 });
+            }
         }
     };
     var schedule = function () {
