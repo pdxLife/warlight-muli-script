@@ -1,6 +1,6 @@
 [b]Update: what's new since October 14[/b]
 
-The script went from 3.14.5 to 3.36.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+The script went from 3.14.5 to 3.37.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
 
 [b]New: a full guide[/b] on the website, with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 
@@ -32,8 +32,9 @@ The script went from 3.14.5 to 3.36.1 in these five days. If you installed it, y
 [*][b]Mute[/b] a player without blocking them ("Mute Button"), and a Muted list to undo it.
 [*][b]Mentions[/b] of your name are outlined in gold, with "@1" on the tab ("Tagging Players in Public Chat").
 [*][b]Search chat[/b], [b]@ tagging[/b] and [b]read aloud[/b].
-[*]A [b]Chat button[/b] on the dashboard ("Add Button to Open Chat from MP Dashboard").
+[*]A [b]Chat button[/b] on the dashboard ("Add Button to Open Chat from MP Dashboard"), and [b]💬 Chat[/b] on each game in My Games: that game's chat opens in a panel on the dashboard, Public and Team, and you can write there too. It shows the last 20 messages; Show all loads the rest.
 [/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-game-chat.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/chat-room-bar.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-mention-suggest.png[/img]
 
