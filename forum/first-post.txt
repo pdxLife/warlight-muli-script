@@ -3,7 +3,7 @@
 Many of you used Muli's "Tidy Up Your Dashboard" userscript for years. Most of it stopped working when war.app redesigned its pages. I've picked it up, fixed what broke, and added a lot since. Full credit to [b]Muli[/b] (https://war.app/Profile?p=2211733141), who created it in 2015 and kept it going for years. His original thread: https://war.app/Forum/106092
 
 Website, with the install button and a short overview: https://pdxlife.github.io/warlight-muli-script/
-[b]Full guide[/b], with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
+[b]Full guide[/b], with a picture for each feature: https://pdxlife.github.io/warlight-muli-script/guide.html
 
 [hr]
 [b]How to install[/b]
@@ -13,7 +13,7 @@ Website, with the install button and a short overview: https://pdxlife.github.io
 [*] Open this link and click Install: https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js
 [*] Reload war.app. The settings are under your account menu → "Muli's Userscript".
 [/list]
-Updates install by themselves. When a new version is out, the small version number in the bottom-right corner of war.app turns into a gold "Update to …" link if you don't want to wait. If you still have Muli's old version, turn it off in Tampermonkey.
+Updates install by themselves. When one is out, the version number in war.app's bottom-right corner turns into a gold "Update to …" link if you don't want to wait. If you still have Muli's old version, turn it off in Tampermonkey.
 
 The script is for war.app in a desktop browser. war.app's phone app can't run userscripts.
 
@@ -112,3 +112,5 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-army-camps.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifacts.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-log.png[/img]
+
+[i]Part 1/2, continued in the next post.[/i]
