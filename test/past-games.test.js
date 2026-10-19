@@ -16,7 +16,7 @@ function pastGames(rows) {
         + `<tbody>${rows.join("")}</tbody></table>`;
 }
 
-const FUNCTIONS = ["parseBootTime", "pastGameState", "pastGameSpeed", "pastGameMapKey", "pastGamePlayers", "pastGameMapOptions", "pastGameMatches", "normalizePastGamesFilter", "orderPastGames", "applyPastGamesFilter", "setupPastGamesFilter"];
+const FUNCTIONS = ["parseBootTime", "pastGameState", "pastGameSpeed", "pastGameMapKey", "storedGameMaps", "gameMapFolder", "pastGamePlayers", "pastGameMapOptions", "pastGameMatches", "normalizePastGamesFilter", "orderPastGames", "applyPastGamesFilter", "setupPastGamesFilter"];
 const MAP_NAMES = { 1748: { id: "737", name: "Medium Earth" }, 74965: { id: "31916", name: "Elitist Africa 2.0" } };
 
 const ROWS = [
@@ -35,6 +35,8 @@ function setup(rows, saved) {
         ...domGlobals(dom, $),
         addCSS: () => { },
         loadMapNames: (callback) => callback(MAP_NAMES),
+        localStorage: dom.window.localStorage,
+        GAME_MAPS_KEY: "tidyUpYourDashboard.pastGameMaps",
         Database: {
             Table: { Settings: "Settings" },
             Row: { Settings: { Name: "name" } },
@@ -175,4 +177,22 @@ test("war.app's map list gives each map's thumbnail folder, ID and name", () => 
     </td></tr></table>`;
     const ctx = load(["parseMapList"], { ...domGlobals(dom, $), DOMParser: dom.window.DOMParser });
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseMapList(html))), { 95065: { id: "41539", name: "!" }, 1748: { id: "737", name: "Medium Earth" } });
+});
+
+test("a game's map is read from war.app's game data by its thumbnail folder, or by its map ID", () => {
+    const ctx = load(["gameMapFolder"]);
+    assert.equal(ctx.gameMapFolder({ a2: 1, bt: 3, ny: 737, AN: 2, aa: 1748, Xs: 3, n9: 1.0 }, MAP_NAMES), "1748", "shaped like war.app's data for a Medium Earth game");
+    assert.equal(ctx.gameMapFolder({ x: 31916, y: 2 }, MAP_NAMES), "74965", "the map ID alone is enough");
+    assert.equal(ctx.gameMapFolder({ x: 5, y: "Medium Earth" }, MAP_NAMES), null);
+    assert.equal(ctx.gameMapFolder(null, MAP_NAMES), null);
+});
+
+test("maps found earlier count for games war.app shows without their map, and the rest can be looked up", () => {
+    const { dom, $ } = createDom(pastGames(ROWS), "https://war.app/MultiPlayer/PastGames");
+    dom.window.localStorage.setItem("tidyUpYourDashboard.pastGameMaps", JSON.stringify({}));
+    const before = setup(ROWS);
+    assert.equal(before.$("#PastGamesFilterBar .tuydMapFind").text(), "Find the maps of 1 game");
+    const ctx = load(["pastGameMapKey", "pastGameMapOptions"], domGlobals(dom, $));
+    const options = JSON.parse(JSON.stringify(ctx.pastGameMapOptions($("tr.GameRow"), MAP_NAMES, "", { 6: "74965" })));
+    assert.deepEqual(options.map((o) => o.name + " " + o.games), ["Elitist Africa 2.0 2", "Medium Earth 4"], "game 6 is now on its map, and nothing is left unknown");
 });

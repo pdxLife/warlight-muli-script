@@ -5148,10 +5148,12 @@ function pageIsPointsPage() {
 }
 
 var GAME_CHAT_FRAME_ID = "tuydGameChatFrame";
+var GAME_MAP_FRAME_ID = "tuydGameMapFrame";
 
-function inGameChatFrame() {
+// The script's own hidden game frames: the dashboard's game chat, and Past Games looking up a game's map.
+function inScriptFrame() {
     try {
-        return !!window.frameElement && window.frameElement.id === GAME_CHAT_FRAME_ID;
+        return !!window.frameElement && [GAME_CHAT_FRAME_ID, GAME_MAP_FRAME_ID].indexOf(window.frameElement.id) !== -1;
     } catch (e) {
         return false;
     }
@@ -7776,8 +7778,8 @@ function DOM_ContentReady() {
         return;
     }
 
-    // The dashboard's chat panel drives its hidden game itself, older messages included.
-    if (inGameChatFrame()) {
+    // The script's hidden game frames are driven from the page that opened them.
+    if (inScriptFrame()) {
         return;
     }
 
@@ -8736,9 +8738,42 @@ function pastGameSpeed(row) {
 // war.app's map list uses the same folder for each map's own thumbnail, which gives the map's name.
 // Some games show a picture of the game instead (Data/Thumbs/Games/…/Turn7f.jpg), which says nothing
 // about the map: those count as "unknown".
-function pastGameMapKey(row) {
+function pastGameMapKey(row, known) {
     var match = /\/Thumbs\/Maps\/(\d+)\//.exec($(row).find("img.MyGamesGameThumbnail").attr("src") || "");
-    return match ? match[1] : "unknown";
+    var found = known && known[$(row).attr("gameid")];
+    return match ? match[1] : found || "unknown";
+}
+
+var GAME_MAPS_KEY = "tidyUpYourDashboard.pastGameMaps";
+
+// Maps found by opening a game, by GameID. A game's map never changes, so they're kept for good.
+function storedGameMaps() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(GAME_MAPS_KEY));
+        return stored && typeof stored === "object" ? stored : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// war.app's data for a game has its map's ID and thumbnail folder among minified fields: the folder is
+// the number war.app's map list knows as a folder, or failing that, the folder of the map with that ID.
+function gameMapFolder(map, maps) {
+    var numbers = Object.keys(map || {}).map(function (key) {
+        return map[key];
+    }).filter(function (value) {
+        return typeof value === "number" && value > 0 && Math.floor(value) === value;
+    });
+    var folder = numbers.filter(function (value) {
+        return maps[String(value)];
+    })[0];
+    if (folder) {
+        return String(folder);
+    }
+    var byId = Object.keys(maps).filter(function (key) {
+        return numbers.indexOf(Number(maps[key].id)) !== -1;
+    })[0];
+    return byId || null;
 }
 
 function pastGamePlayers(row) {
@@ -8768,7 +8803,7 @@ function pastGameMatches(row, filter) {
     if (filter.speed && pastGameSpeed(row) !== filter.speed) {
         return false;
     }
-    if (filter.map && pastGameMapKey(row) !== filter.map) {
+    if (filter.map && pastGameMapKey(row, filter.knownMaps) !== filter.map) {
         return false;
     }
     var players = pastGamePlayers(row);
@@ -8867,10 +8902,10 @@ function loadMapNames(callback) {
 }
 
 // The maps of the games on this page, by name, with how many games each.
-function pastGameMapOptions(rows, maps, selected) {
+function pastGameMapOptions(rows, maps, selected, known) {
     var counts = {};
     $(rows).each(function () {
-        var key = pastGameMapKey(this);
+        var key = pastGameMapKey(this, known);
         counts[key] = (counts[key] || 0) + 1;
     });
     if (selected && !counts[selected]) {
@@ -8900,6 +8935,7 @@ function setupPastGamesFilter() {
             #PastGamesFilterBar input[type=number] { width: 52px; margin-right: 4px; }
             #PastGamesFilterBar select[name=map] { max-width: 220px; }
             #PastGamesFilterBar .tuydPastRow { margin-top: 6px; }
+            #PastGamesFilterBar .tuydMapFind { margin-left: 4px; color: #999; white-space: nowrap; }
             #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }
             #PastGamesFilterBar input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
             #PastGamesFilterCount { color: #999; }
@@ -8929,6 +8965,7 @@ function setupPastGamesFilter() {
                     <option value="more">More than 2 players</option>
                 </select>
                 <label>Players from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"></label>
+                <span class="tuydMapFind"></span>
             </div>
         </td></tr>`);
         bar.find("[name=state]").val(filter.state);
@@ -8940,9 +8977,77 @@ function setupPastGamesFilter() {
         table.children("thead").first().append(bar);
         var tbody = table.children("tbody").first();
         var maps = {};
+        var known = storedGameMaps();
+        filter.knownMaps = known;
+        var finding = null;
+        var unknownGames = function () {
+            return tbody.children("tr.GameRow").filter(function () {
+                return pastGameMapKey(this, known) === "unknown" && !(finding && finding.tried[$(this).attr("gameid")]);
+            }).map(function () {
+                return $(this).attr("gameid");
+            }).get();
+        };
+        var showFinder = function () {
+            var place = bar.find(".tuydMapFind").empty();
+            if (finding) {
+                place.text("Finding maps: " + finding.done + " of " + finding.total + " ").append('<a href="#" class="tuydMapFindStop">Stop</a>');
+                return;
+            }
+            var missing = unknownGames().length;
+            if (missing) {
+                $('<a href="#" class="tuydMapFindStart"></a>').text("Find the maps of " + missing + " game" + (missing === 1 ? "" : "s"))
+                    .attr("title", "Opens each of these games in the background, a couple of seconds each, to read its map. Remembered in this browser.")
+                    .appendTo(place);
+            }
+        };
+        // One game at a time in a hidden frame, until war.app's data for it has its map.
+        var findNext = function () {
+            if (!finding) {
+                return;
+            }
+            var id = unknownGames()[0];
+            if (!id) {
+                finding = null;
+                update();
+                return;
+            }
+            finding.tried[id] = true;
+            var frame = $('<iframe tabindex="-1" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 1000px; height: 800px; border: 0;"></iframe>')
+                .attr({ id: GAME_MAP_FRAME_ID, src: "/MultiPlayer?GameID=" + encodeURIComponent(id) }).appendTo("body");
+            var started = Date.now();
+            finding.timer = setInterval(function () {
+                var map = null;
+                try {
+                    var hooks = frame[0].contentWindow.UJS_Hooks;
+                    map = hooks && hooks.za && hooks.za.Map;
+                } catch (e) {
+                    map = null;
+                }
+                if (!map && Date.now() - started < 30000) {
+                    return;
+                }
+                clearInterval(finding.timer);
+                frame.remove();
+                var folder = map ? gameMapFolder(map, maps) : null;
+                if (folder) {
+                    known[id] = folder;
+                    try {
+                        localStorage.setItem(GAME_MAPS_KEY, JSON.stringify(known));
+                    } catch (e) {
+                        // Without storage the maps are found again next time.
+                    }
+                } else {
+                    log("Past Games: couldn't read the map of game " + id);
+                }
+                finding.done++;
+                update();
+                findNext();
+            }, 300);
+        };
         var fillMaps = function () {
+            showFinder();
             var select = bar.find("[name=map]");
-            var options = pastGameMapOptions(tbody.children("tr.GameRow"), maps, filter.map);
+            var options = pastGameMapOptions(tbody.children("tr.GameRow"), maps, filter.map, known);
             select.children("option").not("[value='']").remove();
             options.forEach(function (option) {
                 select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")")
@@ -8971,9 +9076,24 @@ function setupPastGamesFilter() {
                 minPlayers: bar.find("[name=minPlayers]").val(),
                 maxPlayers: bar.find("[name=maxPlayers]").val()
             });
+            filter.knownMaps = known;
             if (event.type === "change" && event.target.name !== "query") {
                 Database.update(Database.Table.Settings, { name: "pastGamesFilter", value: { state: filter.state, speed: filter.speed, reversed: filter.reversed, map: filter.map, size: filter.size, minPlayers: filter.minPlayers, maxPlayers: filter.maxPlayers } }, undefined);
             }
+            update();
+        });
+        bar.on("click", ".tuydMapFindStart", function (event) {
+            event.preventDefault();
+            finding = { done: 0, total: unknownGames().length, tried: {}, timer: null };
+            showFinder();
+            findNext();
+        }).on("click", ".tuydMapFindStop", function (event) {
+            event.preventDefault();
+            if (finding) {
+                clearInterval(finding.timer);
+            }
+            $("#" + GAME_MAP_FRAME_ID).remove();
+            finding = null;
             update();
         });
         update();
