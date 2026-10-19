@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.38.0
+
+- **Player pace in a game's lobby** (Feature Requests: "Additional filters for joining open games"). War.app decides who may join, so the script can't keep anyone out, but in a lobby each player now gets a line from their profile: "in 7 games · avg turn 1d 13h · 40% over a day · booted 3%" (how many multi-day games they're in, their average multi-day turn, the share of their turns that took over a day, and their boot rate). Hover it for the long version; click it for the profile. **Flag average turn over 24 h**, at the right of "Players", marks slower players with a red ⚠ (0 turns it off), so the host can remove them with war.app's Add/Remove Players. The games count is war.app's own figure, which doesn't always update in time, so it's never flagged. The turn times cover all of a player's multi-day games, not each game's boot time. Settings menu → Games → "Player pace in game lobbies".
+
 ## 3.37.1
 
 - **A game's chat from the dashboard opens faster.** The panel now shows the last 20 messages, with "Showing the last 20 messages of 57. Show all" above them. **Show all** shows the rest, and where the game keeps older messages behind war.app's "Load Older Messages", the panel loads them too ("Loading older messages…"), keeping your place if you've scrolled up. The hidden game no longer loads the whole chat by itself first, which is what made long chats slow to appear.
