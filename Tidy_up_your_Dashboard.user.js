@@ -9247,7 +9247,19 @@ function gamePlayerNames(self) {
     return names;
 }
 
+// The turn being played. While war.app shows the game's history ("Turn 2 of 2"), its turn label shows the
+// turn being viewed, so the turn being played is the one after the last finished turn.
 function gameTurnNumber() {
+    var history = null;
+    $("[id^='ujs_HistoryInfoLabel']").each(function () {
+        var match = /^Turn \d+ of (\d+)$/.exec($(this).text().trim());
+        if (match && shownUjsElement(this)) {
+            history = Number(match[1]) + 1;
+        }
+    });
+    if (history) {
+        return history;
+    }
     var turn = null;
     $("[id^='ujs_TurnNumberLabel']").each(function () {
         var match = /^Turn (\d+)$/.exec($(this).text().trim());
