@@ -3,6 +3,7 @@
 ## 3.37.1
 
 - **A game's chat from the dashboard opens faster.** The panel now shows the last 20 messages, with "Showing the last 20 messages of 57. Show all" above them. **Show all** shows the rest, and where the game keeps older messages behind war.app's "Load Older Messages", the panel loads them too ("Loading older messages…"), keeping your place if you've scrolled up. The hidden game no longer loads the whole chat by itself first, which is what made long chats slow to appear.
+- **The game chat panel stays below war.app's header** in a short window; the header used to cover its top.
 
 ## 3.37.0
 

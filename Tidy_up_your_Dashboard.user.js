@@ -5253,12 +5253,12 @@ function setupDashboardGameChat() {
             position: fixed;
             right: 16px;
             bottom: 16px;
-            z-index: 1000;
+            z-index: 1040;
             display: flex;
             flex-direction: column;
             width: 380px;
             max-width: calc(100vw - 32px);
-            height: min(520px, calc(100vh - 32px));
+            height: min(520px, calc(100vh - 96px));
             border: 1px solid #555;
             border-radius: 6px;
             background: #1b1b1b;
