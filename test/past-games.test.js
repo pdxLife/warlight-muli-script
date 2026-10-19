@@ -179,10 +179,14 @@ test("war.app's map list gives each map's thumbnail folder, ID and name", () => 
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseMapList(html))), { 95065: { id: "41539", name: "!" }, 1748: { id: "737", name: "Medium Earth" } });
 });
 
-test("a game's map is read from war.app's game data by its thumbnail folder, or by its map ID", () => {
+test("a game's map is read from war.app's game data only when both its folder and ID are there", () => {
     const ctx = load(["gameMapFolder"]);
-    assert.equal(ctx.gameMapFolder({ a2: 1, bt: 3, ny: 737, AN: 2, aa: 1748, Xs: 3, n9: 1.0 }, MAP_NAMES), "1748", "shaped like war.app's data for a Medium Earth game");
-    assert.equal(ctx.gameMapFolder({ x: 31916, y: 2 }, MAP_NAMES), "74965", "the map ID alone is enough");
+    const maps = { ...MAP_NAMES, 1: { id: "1", name: "Bracketology" }, 2: { id: "2", name: "Small Earth" } };
+    const mediumEarth = { a2: 1, bt: 3, ny: 737, AN: 2, aa: 1748, Xs: 3, n9: 1.0 };
+    assert.equal(ctx.gameMapFolder(mediumEarth, maps), "1748", "shaped like war.app's data for a Medium Earth game; Bracketology and Small Earth match by chance");
+    assert.equal(ctx.gameMapFolder({ a2: 1, bt: 3, AN: 2, n9: 1.0 }, { 1: { id: "1", name: "Bracketology" } }), "1", "a Bracketology game itself");
+    assert.equal(ctx.gameMapFolder({ x: 31916, y: 2 }, MAP_NAMES), null, "the map ID alone isn't trusted");
+    assert.equal(ctx.gameMapFolder({ x: 1748 }, MAP_NAMES), null, "nor the folder alone");
     assert.equal(ctx.gameMapFolder({ x: 5, y: "Medium Earth" }, MAP_NAMES), null);
     assert.equal(ctx.gameMapFolder(null, MAP_NAMES), null);
 });

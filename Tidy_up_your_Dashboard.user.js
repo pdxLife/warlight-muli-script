@@ -8756,24 +8756,26 @@ function storedGameMaps() {
     }
 }
 
-// war.app's data for a game has its map's ID and thumbnail folder among minified fields: the folder is
-// the number war.app's map list knows as a folder, or failing that, the folder of the map with that ID.
+// war.app's data for a game has its map's ID and thumbnail folder in two of its minified fields (737 and
+// 1748 for Medium Earth), next to small numbers such as 1, 2 and 3 that are by chance also a map's folder
+// and ID (Bracketology is folder 1, ID 1). So a map counts only when its folder and its ID are in two
+// different fields, and the largest folder wins: a chance match is a small number.
 function gameMapFolder(map, maps) {
-    var numbers = Object.keys(map || {}).map(function (key) {
-        return map[key];
-    }).filter(function (value) {
+    var fields = Object.keys(map || {}).filter(function (key) {
+        var value = map[key];
         return typeof value === "number" && value > 0 && Math.floor(value) === value;
     });
-    var folder = numbers.filter(function (value) {
-        return maps[String(value)];
-    })[0];
-    if (folder) {
-        return String(folder);
-    }
-    var byId = Object.keys(maps).filter(function (key) {
-        return numbers.indexOf(Number(maps[key].id)) !== -1;
-    })[0];
-    return byId || null;
+    var candidates = fields.filter(function (key) {
+        var entry = maps[String(map[key])];
+        return entry && fields.some(function (other) {
+            return other !== key && map[other] === Number(entry.id);
+        });
+    }).map(function (key) {
+        return map[key];
+    }).sort(function (a, b) {
+        return b - a;
+    });
+    return candidates.length ? String(candidates[0]) : null;
 }
 
 function pastGamePlayers(row) {
