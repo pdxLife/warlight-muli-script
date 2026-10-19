@@ -101,8 +101,8 @@ test("muted players' messages become a faint line, and an empty chat says so", (
 });
 
 test("the script knows when it runs inside the dashboard's hidden game, and does nothing there", () => {
-    const framed = load(["inGameChatFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", frameElement: { id: "tuydGameChatFrame" } });
-    assert.equal(framed.inGameChatFrame(), true);
-    const top = load(["inGameChatFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", frameElement: null });
-    assert.equal(top.inGameChatFrame(), false);
+    const framed = load(["inScriptFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", GAME_MAP_FRAME_ID: "tuydGameMapFrame", frameElement: { id: "tuydGameChatFrame" } });
+    assert.equal(framed.inScriptFrame(), true);
+    const top = load(["inScriptFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", GAME_MAP_FRAME_ID: "tuydGameMapFrame", frameElement: null });
+    assert.equal(top.inScriptFrame(), false);
 });

@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 // Mirrors a row of war.app's Past Games page (names and ids are invented).
-function pastGameRow(id, name, { status = "Finished", boot = "3 days", players = ["Me", "Alice"], yourTurn = false, map = "1748" } = {}) {
-    return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="/MultiPlayer?GameID=${id}&amp;From=PastGames"><img class="MyGamesGameThumbnail" src="https://warappcdn.com/s3/Data/Thumbs/Maps/${map}/3_Fogged.jpg"></a><span class="BootTimeLabel">${boot}</span></span></td>`
+function pastGameRow(id, name, { status = "Finished", boot = "3 days", players = ["Me", "Alice"], yourTurn = false, map = "1748", picture = "" } = {}) {
+    return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="/MultiPlayer?GameID=${id}&amp;From=PastGames"><img class="MyGamesGameThumbnail" src="https://warappcdn.com/s3/Data/Thumbs/${picture || "Maps/" + map + "/3_Fogged.jpg"}"></a><span class="BootTimeLabel">${boot}</span></span></td>`
         + `<td><a style="font-size: 17px; color: white" href="/MultiPlayer?GameID=${id}&amp;From=PastGames">${name}</a><br>`
         + (yourTurn ? `<span style="color: #FFFF00">Your turn for 2 hours</span><br>` : "")
         + `<div class="MyGamesGameBoxesRow">${players.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div>`
@@ -16,7 +16,7 @@ function pastGames(rows) {
         + `<tbody>${rows.join("")}</tbody></table>`;
 }
 
-const FUNCTIONS = ["parseBootTime", "pastGameState", "pastGameSpeed", "pastGameMapKey", "pastGamePlayers", "pastGameMapOptions", "pastGameMatches", "normalizePastGamesFilter", "orderPastGames", "applyPastGamesFilter", "setupPastGamesFilter"];
+const FUNCTIONS = ["parseBootTime", "pastGameState", "pastGameSpeed", "pastGameMapKey", "storedGameMaps", "gameMapFolder", "pastGamePlayers", "pastGameMapOptions", "pastGameMatches", "normalizePastGamesFilter", "orderPastGames", "applyPastGamesFilter", "setupPastGamesFilter"];
 const MAP_NAMES = { 1748: { id: "737", name: "Medium Earth" }, 74965: { id: "31916", name: "Elitist Africa 2.0" } };
 
 const ROWS = [
@@ -25,7 +25,7 @@ const ROWS = [
     pastGameRow("3", "Seasonal", { status: "Lobby" }),
     pastGameRow("4", "Big FFA", { status: "Surrendered", players: ["Me", "Carol: This player has surrendered", "Dan", "Eve"], map: "74965" }),
     pastGameRow("5", "My move", { status: "Turn 3", yourTurn: true }),
-    pastGameRow("6", "Draft", { status: "Picking.  Waiting on Dave for 2 hours 30 minutes" })
+    pastGameRow("6", "Draft", { status: "Picking.  Waiting on Dave for 2 hours 30 minutes", picture: "Games/4542/45424572/Turn7f.jpg" })
 ];
 
 function setup(rows, saved) {
@@ -35,6 +35,8 @@ function setup(rows, saved) {
         ...domGlobals(dom, $),
         addCSS: () => { },
         loadMapNames: (callback) => callback(MAP_NAMES),
+        localStorage: dom.window.localStorage,
+        GAME_MAPS_KEY: "tidyUpYourDashboard.pastGameMaps",
         Database: {
             Table: { Settings: "Settings" },
             Row: { Settings: { Name: "name" } },
@@ -138,9 +140,11 @@ test("a boot time of up to an hour is real-time, anything longer multi-day", () 
 test("the map list names this page's maps, with how many games each, and filters by one", () => {
     const { $, choose, shownIds } = setup(ROWS);
     const options = Array.from($("#PastGamesFilterBar [name=map] option").get().map((o) => o.value + "=" + o.textContent));
-    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (5)"]);
+    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (4)", "unknown=Map not shown (1)"]);
     choose("map", "74965");
     assert.deepEqual(shownIds(), ["4"]);
+    choose("map", "unknown");
+    assert.deepEqual(shownIds(), ["6"], "games showing a picture of the game instead of the map");
 });
 
 test("filters by number of players: 1 v 1, more than two, and from–to", () => {
@@ -173,4 +177,26 @@ test("war.app's map list gives each map's thumbnail folder, ID and name", () => 
     </td></tr></table>`;
     const ctx = load(["parseMapList"], { ...domGlobals(dom, $), DOMParser: dom.window.DOMParser });
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseMapList(html))), { 95065: { id: "41539", name: "!" }, 1748: { id: "737", name: "Medium Earth" } });
+});
+
+test("a game's map is read from war.app's game data only when both its folder and ID are there", () => {
+    const ctx = load(["gameMapFolder"]);
+    const maps = { ...MAP_NAMES, 1: { id: "1", name: "Bracketology" }, 2: { id: "2", name: "Small Earth" } };
+    const mediumEarth = { a2: 1, bt: 3, ny: 737, AN: 2, aa: 1748, Xs: 3, n9: 1.0 };
+    assert.equal(ctx.gameMapFolder(mediumEarth, maps), "1748", "shaped like war.app's data for a Medium Earth game; Bracketology and Small Earth match by chance");
+    assert.equal(ctx.gameMapFolder({ a2: 1, bt: 3, AN: 2, n9: 1.0 }, { 1: { id: "1", name: "Bracketology" } }), "1", "a Bracketology game itself");
+    assert.equal(ctx.gameMapFolder({ x: 31916, y: 2 }, MAP_NAMES), null, "the map ID alone isn't trusted");
+    assert.equal(ctx.gameMapFolder({ x: 1748 }, MAP_NAMES), null, "nor the folder alone");
+    assert.equal(ctx.gameMapFolder({ x: 5, y: "Medium Earth" }, MAP_NAMES), null);
+    assert.equal(ctx.gameMapFolder(null, MAP_NAMES), null);
+});
+
+test("maps found earlier count for games war.app shows without their map, and the rest can be looked up", () => {
+    const { dom, $ } = createDom(pastGames(ROWS), "https://war.app/MultiPlayer/PastGames");
+    dom.window.localStorage.setItem("tidyUpYourDashboard.pastGameMaps", JSON.stringify({}));
+    const before = setup(ROWS);
+    assert.equal(before.$("#PastGamesFilterBar .tuydMapFind").text(), "Find the maps of 1 game");
+    const ctx = load(["pastGameMapKey", "pastGameMapOptions"], domGlobals(dom, $));
+    const options = JSON.parse(JSON.stringify(ctx.pastGameMapOptions($("tr.GameRow"), MAP_NAMES, "", { 6: "74965" })));
+    assert.deepEqual(options.map((o) => o.name + " " + o.games), ["Elitist Africa 2.0 2", "Medium Earth 4"], "game 6 is now on its map, and nothing is left unknown");
 });

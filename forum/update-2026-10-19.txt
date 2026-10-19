@@ -1,6 +1,6 @@
 [b]Update: what's new since October 14[/b]
 
-The script went from 3.14.5 to 3.39.0 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+The script went from 3.14.5 to 3.39.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
 
 [b]New: a full guide[/b] on the website, with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 

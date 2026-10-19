@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.39.1
+
+- **Past Games: the maps of all your games.** War.app shows most finished games with a picture of the game instead of the map's picture, so 3.39.0 left them out of the map list (156 of 200 games on one page). They're now counted under "Map not shown (156)", and **Find the maps of 156 games**, next to the map list, opens each of them in the background, about a second and a half each, to read its map from war.app's own data ("Finding maps: 22 of 156 · Stop"). Found maps are remembered in this browser for good, since a game's map never changes, so it's needed once per game.
+
 ## 3.39.0
 
 - **Past Games: filter by map and by number of players** (more from "Search/Sort Functionality for Past Games"). A second row on the Past Games bar: **Any map** lists the maps of the games on the page, by name, with how many games each ("Medium Earth (5)"); **1 v 1** or **More than 2 players**; and **Players from … to …**. Map names come from war.app's own map list, read once a week (about 1.4 MB) and matched to each game by its thumbnail; a map that isn't in war.app's list shows as "Map 74965". They're remembered with the other choices. Not possible from the Past Games page: a game's settings (No-Split, cards…) and its map's size, which the rows don't carry; and FFA versus team games, since the rows don't mark teams.
