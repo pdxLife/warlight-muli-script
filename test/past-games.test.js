@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 // Mirrors a row of war.app's Past Games page (names and ids are invented).
-function pastGameRow(id, name, { status = "Finished", boot = "3 days", players = ["Me", "Alice"], yourTurn = false, map = "1748" } = {}) {
-    return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="/MultiPlayer?GameID=${id}&amp;From=PastGames"><img class="MyGamesGameThumbnail" src="https://warappcdn.com/s3/Data/Thumbs/Maps/${map}/3_Fogged.jpg"></a><span class="BootTimeLabel">${boot}</span></span></td>`
+function pastGameRow(id, name, { status = "Finished", boot = "3 days", players = ["Me", "Alice"], yourTurn = false, map = "1748", picture = "" } = {}) {
+    return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="/MultiPlayer?GameID=${id}&amp;From=PastGames"><img class="MyGamesGameThumbnail" src="https://warappcdn.com/s3/Data/Thumbs/${picture || "Maps/" + map + "/3_Fogged.jpg"}"></a><span class="BootTimeLabel">${boot}</span></span></td>`
         + `<td><a style="font-size: 17px; color: white" href="/MultiPlayer?GameID=${id}&amp;From=PastGames">${name}</a><br>`
         + (yourTurn ? `<span style="color: #FFFF00">Your turn for 2 hours</span><br>` : "")
         + `<div class="MyGamesGameBoxesRow">${players.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div>`
@@ -25,7 +25,7 @@ const ROWS = [
     pastGameRow("3", "Seasonal", { status: "Lobby" }),
     pastGameRow("4", "Big FFA", { status: "Surrendered", players: ["Me", "Carol: This player has surrendered", "Dan", "Eve"], map: "74965" }),
     pastGameRow("5", "My move", { status: "Turn 3", yourTurn: true }),
-    pastGameRow("6", "Draft", { status: "Picking.  Waiting on Dave for 2 hours 30 minutes" })
+    pastGameRow("6", "Draft", { status: "Picking.  Waiting on Dave for 2 hours 30 minutes", picture: "Games/4542/45424572/Turn7f.jpg" })
 ];
 
 function setup(rows, saved) {
@@ -138,9 +138,11 @@ test("a boot time of up to an hour is real-time, anything longer multi-day", () 
 test("the map list names this page's maps, with how many games each, and filters by one", () => {
     const { $, choose, shownIds } = setup(ROWS);
     const options = Array.from($("#PastGamesFilterBar [name=map] option").get().map((o) => o.value + "=" + o.textContent));
-    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (5)"]);
+    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (4)", "unknown=Map not shown (1)"]);
     choose("map", "74965");
     assert.deepEqual(shownIds(), ["4"]);
+    choose("map", "unknown");
+    assert.deepEqual(shownIds(), ["6"], "games showing a picture of the game instead of the map");
 });
 
 test("filters by number of players: 1 v 1, more than two, and from–to", () => {

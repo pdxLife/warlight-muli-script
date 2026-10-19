@@ -8734,9 +8734,11 @@ function pastGameSpeed(row) {
 
 // A game's thumbnail sits in its map's folder on war.app's CDN (Data/Thumbs/Maps/74965/41_Fogged.jpg);
 // war.app's map list uses the same folder for each map's own thumbnail, which gives the map's name.
+// Some games show a picture of the game instead (Data/Thumbs/Games/…/Turn7f.jpg), which says nothing
+// about the map: those count as "unknown".
 function pastGameMapKey(row) {
     var match = /\/Thumbs\/Maps\/(\d+)\//.exec($(row).find("img.MyGamesGameThumbnail").attr("src") || "");
-    return match ? match[1] : "";
+    return match ? match[1] : "unknown";
 }
 
 function pastGamePlayers(row) {
@@ -8795,7 +8797,7 @@ function normalizePastGamesFilter(value) {
     return {
         state: ["running", "yourTurn", "lobby", "finished", "out"].indexOf(value.state) !== -1 ? value.state : "",
         speed: value.speed === "realTime" || value.speed === "multiDay" ? value.speed : "",
-        map: /^\d+$/.test(String(value.map || "")) ? String(value.map) : "",
+        map: /^(?:\d+|unknown)$/.test(String(value.map || "")) ? String(value.map) : "",
         minPlayers: count(value.minPlayers),
         maxPlayers: count(value.maxPlayers),
         size: value.size === "oneVsOne" || value.size === "more" ? value.size : "",
@@ -8869,17 +8871,15 @@ function pastGameMapOptions(rows, maps, selected) {
     var counts = {};
     $(rows).each(function () {
         var key = pastGameMapKey(this);
-        if (key) {
-            counts[key] = (counts[key] || 0) + 1;
-        }
+        counts[key] = (counts[key] || 0) + 1;
     });
     if (selected && !counts[selected]) {
         counts[selected] = 0;
     }
     return Object.keys(counts).map(function (key) {
-        return { key: key, name: maps[key] ? maps[key].name : "Map " + key, games: counts[key] };
+        return { key: key, name: key === "unknown" ? "Map not shown" : maps[key] ? maps[key].name : "Map " + key, games: counts[key] };
     }).sort(function (a, b) {
-        return a.name.localeCompare(b.name);
+        return (a.key === "unknown") - (b.key === "unknown") || a.name.localeCompare(b.name);
     });
 }
 
@@ -8945,7 +8945,8 @@ function setupPastGamesFilter() {
             var options = pastGameMapOptions(tbody.children("tr.GameRow"), maps, filter.map);
             select.children("option").not("[value='']").remove();
             options.forEach(function (option) {
-                select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")"));
+                select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")")
+                    .attr("title", option.key === "unknown" ? "These games show a picture of the game instead of the map, so their map isn't known" : null));
             });
             select.val(filter.map);
         };
