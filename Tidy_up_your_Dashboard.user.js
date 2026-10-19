@@ -7634,6 +7634,7 @@ function mainFeatures() {
         { name: "Community event badges on My Games", section: "Dashboard", match: pageIsDashboard, run: setupEventBadges },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
+        { name: "Refresh Open Games every few minutes", section: "Dashboard", match: pageIsDashboard, run: setupOpenGamesAutoRefresh },
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
@@ -8331,6 +8332,78 @@ function addTagInEditor(area, start, end, tag) {
 /**
  * Reloads all Games
  */
+var OPEN_GAMES_REFRESH_KEY = "tidyUpYourDashboard.openGamesRefreshMinutes";
+
+function openGamesRefreshMinutes() {
+    try {
+        var minutes = parseFloat(localStorage.getItem(OPEN_GAMES_REFRESH_KEY));
+        return isNaN(minutes) ? 5 : Math.max(0, minutes);
+    } catch (e) {
+        return 5;
+    }
+}
+
+// A refresh is due once the minutes have passed since the list was last loaded, but only while you can
+// see it and aren't in the middle of reading it (pointer over the list, or the Filter panel open).
+function openGamesRefreshDue(now, last, minutes, shown, busy) {
+    return minutes > 0 && shown && !busy && now - last >= minutes * 60 * 1000;
+}
+
+// Open Games on the dashboard refreshes by itself every few minutes while it's on screen. A refresh by
+// R, the Refresh button or coming back to the tab counts too.
+function setupOpenGamesAutoRefresh() {
+    var table = $("#OpenGamesTable");
+    if (!table.length) {
+        return;
+    }
+    var last = Date.now();
+    var minutes = openGamesRefreshMinutes();
+    $(document).on("tuyd:gamesRefreshed", function (e, selector) {
+        if (selector === "#OpenGamesTable") {
+            last = Date.now();
+        }
+    });
+    var shown = function () {
+        if (document.visibilityState === "hidden") {
+            return false;
+        }
+        var rect = table[0].getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight;
+    };
+    var busy = function () {
+        return table.is(":hover") || $("#OpenGamesFilterPanel").is(":visible");
+    };
+    window.setInterval(function () {
+        if (openGamesRefreshDue(Date.now(), last, minutes, shown(), busy())) {
+            last = Date.now();
+            log("Open Games refreshed by itself");
+            refreshOpenGames(fetchDashboard());
+        }
+    }, 15000);
+    // The choice sits in the Open Games Filter panel, which that feature draws once your filter is read.
+    var tries = 0;
+    var place = function () {
+        var panel = $("#OpenGamesFilterPanel td").first();
+        if (!panel.length) {
+            if (++tries < 50) {
+                setTimeout(place, 200);
+            }
+            return;
+        }
+        $('<label class="tuydOpenGamesRefresh">Refresh this list every <input type="number" min="0" step="1"> minutes while it\'s on screen (0 = off)</label>')
+            .appendTo(panel).find("input").val(minutes).on("change input", function () {
+                var value = parseFloat(this.value);
+                minutes = isNaN(value) ? 0 : Math.max(0, value);
+                try {
+                    localStorage.setItem(OPEN_GAMES_REFRESH_KEY, String(minutes));
+                } catch (e) {
+                    // A blocked localStorage only means the choice isn't remembered.
+                }
+            });
+    };
+    place();
+}
+
 function refreshAllGames() {
     log("Reloading Games");
     ifSettingIsEnabled('scrollGames', function () {
