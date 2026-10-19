@@ -133,7 +133,7 @@ The script's thread is https://war.app/Forum/897130-mulis-userscript-update, and
 | Update since October 14 (reply 6) | `forum/update-2026-10-19.txt` |
 | Feature Requests the script delivers, with links (to post or link from the posts) | `forum/delivered-requests.txt` |
 
-**A forum post has a character limit**, counted on the text with its BBCode tags and image URLs. A post of about 8,900 characters fits; the 10,900-character first post didn't, so it was split at "Forum, mail and more" and the rest went into the spare second post. Keep each post under about 8,500 characters, check the length before posting (`wc -m forum/first-post.txt`), and when a post grows past that, move whole sections to the second post. Each `[img]` line costs about 80 characters.
+**A forum post holds at most 9,000 characters**, counted on the text with its BBCode tags and image URLs. The 10,900-character first post didn't fit, so it was split at "Forum, mail and more" and the rest went into the spare second post. Check the length before posting with `wc -m forum/first-post.txt`, and count each line break as two characters as well, in case the browser sends them as CR LF: the first post is 8,865 characters on 116 lines, so 8,981 at most. When a post grows past that, move whole sections to the second post. Each `[img]` line costs about 80 characters.
 
 ## Adding images later
 
