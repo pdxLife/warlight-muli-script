@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.40.0
+
+- **Lobby: flag players who are booted often.** The limit box beside "Players" reads "Flag: avg turn > 24 h · booted > 10 %" (in a real-time lobby, "avg turn > 3 min"): a player whose boot rate on their profile is over the percentage gets the red ⚠ too, and hovering the line says why ("Flagged: booted over 10%"). 0 turns either limit off; both are remembered.
+
 ## 3.39.1
 
 - **Past Games: the maps of all your games.** War.app shows most finished games with a picture of the game instead of the map's picture, so 3.39.0 left them out of the map list (156 of 200 games on one page). They're now counted under "Map not shown (156)", and **Find the maps of 156 games**, next to the map list, opens each of them in the background, about a second and a half each, to read its map from war.app's own data ("Finding maps: 22 of 156 · Stop"). Found maps are remembered in this browser for good, since a game's map never changes, so it's needed once per game.
