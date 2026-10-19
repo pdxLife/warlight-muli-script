@@ -40,7 +40,7 @@ test("war.app's durations become hours, and short", () => {
     assert.equal(ctx.shortDuration("9 hours 5 minutes"), "9h 5m");
 });
 
-const PACE_FUNCTIONS = ["parseProfilePace", "durationHours", "lobbyPaceText", "shortDuration"];
+const PACE_FUNCTIONS = ["parseProfilePace", "durationHours", "lobbyPaceText", "shortDuration", "lobbyPaceFlags"];
 function loadPace(globals) {
     const { source } = require("./harness");
     const kinds = /var LOBBY_PACE_KINDS = \{[\s\S]*?\n\};/.exec(source)[0];
@@ -148,4 +148,15 @@ test("outside games the version label always shows", () => {
     ctx.addVersionLabel();
     assert.equal($(".versionLabel").length, 1);
     assert.equal(dom.window.document.body.classList.contains("tuydInGame"), false);
+});
+
+test("a player is flagged for a long average turn, for being booted often, or both", () => {
+    const ctx = loadPace({});
+    const pace = (hours, booted) => ({ games: 1, bootedPercent: booted, multiDay: { average: "", averageHours: hours, slowPercent: 0 }, realTime: { average: "", averageHours: hours / 600, slowPercent: 0 } });
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(37, 3), "multiDay", 24, 10)), ["average turn over 24 h"]);
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(9, 12), "multiDay", 24, 10)), ["booted over 10%"]);
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(37, 12), "multiDay", 24, 10)), ["average turn over 24 h", "booted over 10%"]);
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(9, 10), "multiDay", 24, 10)), [], "exactly at the limit isn't over it");
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(37, 50), "multiDay", 0, 0)), [], "0 turns both off");
+    assert.deepEqual(Array.from(ctx.lobbyPaceFlags(pace(37, null), "multiDay", 0, 10)), [], "no boot rate on the profile");
 });

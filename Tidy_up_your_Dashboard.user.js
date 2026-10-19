@@ -5366,6 +5366,31 @@ function lobbyProfileCandidates(root, names) {
     return found;
 }
 
+var LOBBY_BOOT_PERCENT_KEY = "tidyUpYourDashboard.lobbyBootPercent";
+
+function lobbyBootLimit() {
+    try {
+        var value = parseFloat(localStorage.getItem(LOBBY_BOOT_PERCENT_KEY));
+        return isNaN(value) ? 10 : Math.max(0, value);
+    } catch (e) {
+        return 10;
+    }
+}
+
+// Why a player is flagged, if at all: their average turn is over the limit, or they're booted more often.
+function lobbyPaceFlags(pace, kindName, turnLimit, bootLimit) {
+    var kind = LOBBY_PACE_KINDS[kindName];
+    var speed = pace[kindName];
+    var flags = [];
+    if (turnLimit > 0 && speed.averageHours !== null && speed.averageHours > turnLimit * kind.unitHours) {
+        flags.push("average turn over " + turnLimit + " " + kind.unit);
+    }
+    if (bootLimit > 0 && pace.bootedPercent !== null && pace.bootedPercent > bootLimit) {
+        flags.push("booted over " + bootLimit + "%");
+    }
+    return flags;
+}
+
 function lobbyPaceLimit(kindName) {
     var kind = LOBBY_PACE_KINDS[kindName];
     try {
@@ -5468,6 +5493,7 @@ function setupLobbyPace() {
         kindName = lobbyGameKind(boot.replace(/^Boot time:\s*/i, ""));
         var kind = LOBBY_PACE_KINDS[kindName];
         var limit = kindName in chosen ? chosen[kindName] : lobbyPaceLimit(kindName);
+        var bootLimit = "boot" in chosen ? chosen.boot : lobbyBootLimit();
         var names = lobby.map(function (row) {
             return row.name;
         });
@@ -5506,11 +5532,11 @@ function setupLobbyPace() {
             if (!line.length) {
                 line = $('<a class="tuydPace" target="_blank" rel="noopener"></a>').appendTo(row.element);
             }
-            var speed = pace[kindName];
-            var slow = limit > 0 && speed.averageHours !== null && speed.averageHours > limit * kind.unitHours;
+            var flags = lobbyPaceFlags(pace, kindName, limit, bootLimit);
+            var slow = flags.length > 0;
             var left = column + 16;
             var width = right - row.element.getBoundingClientRect().left - left;
-            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace, kindName, true) + " (Muli's Userscript)" })
+            line.attr({ href: "/Profile?p=" + pace.link, title: lobbyPaceText(pace, kindName, true) + (slow ? ". Flagged: " + flags.join(", ") : "") + " (Muli's Userscript)" })
                 .text((slow ? "⚠ " : "") + lobbyPaceText(pace, kindName)).toggleClass("tuydPaceSlow", slow)
                 .css({ left: left, maxWidth: Math.max(0, width), display: width < 120 ? "none" : "" });
         });
@@ -5521,11 +5547,13 @@ function setupLobbyPace() {
             var control = heading.children(".tuydPaceLimit");
             if (control.attr("data-kind") !== kindName) {
                 control.remove();
-                control = $('<label class="tuydPaceLimit">Flag average turn over<input type="number" min="0"> <span></span></label>').attr({
+                control = $('<label class="tuydPaceLimit">Flag average turn over<input type="number" min="0" data-limit="turn"> <span></span>'
+                    + ' or booted over<input type="number" min="0" step="1" data-limit="boot"> %</label>').attr({
                     "data-kind": kindName,
-                    title: "Players whose average " + (kindName === "realTime" ? "real-time" : "multi-day") + " turn is longer are marked ⚠ (0 = off; Muli's Userscript)"
+                    title: "Players whose average " + (kindName === "realTime" ? "real-time" : "multi-day") + " turn is longer, or who are booted more often, are marked ⚠ (0 = off; Muli's Userscript)"
                 }).appendTo(heading);
-                control.find("input").attr("step", kind.step).val(limit);
+                control.find("[data-limit=turn]").attr("step", kind.step).val(limit);
+                control.find("[data-limit=boot]").val(bootLimit);
                 control.find("span").text(kind.unit);
             }
             // war.app's text holders are zero-size anchors; the control goes at the right end of the heading's text box.
@@ -5544,10 +5572,11 @@ function setupLobbyPace() {
     };
     $(document).on("change input", ".tuydPaceLimit input", function () {
         var value = parseFloat(this.value);
-        var name = $(this).closest(".tuydPaceLimit").attr("data-kind") || kindName;
+        var boot = $(this).attr("data-limit") === "boot";
+        var name = boot ? "boot" : $(this).closest(".tuydPaceLimit").attr("data-kind") || kindName;
         chosen[name] = isNaN(value) ? 0 : Math.max(0, value);
         try {
-            localStorage.setItem(LOBBY_PACE_KINDS[name].key, String(chosen[name]));
+            localStorage.setItem(boot ? LOBBY_BOOT_PERCENT_KEY : LOBBY_PACE_KINDS[name].key, String(chosen[name]));
         } catch (e) {
             // A blocked localStorage only means the limit isn't remembered.
         }
