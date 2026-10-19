@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.37.1
+
+- **A game's chat from the dashboard opens faster.** The panel now shows the last 20 messages, with "Showing the last 20 messages of 57. Show all" above them. **Show all** shows the rest, and where the game keeps older messages behind war.app's "Load Older Messages", the panel loads them too ("Loading older messages…"), keeping your place if you've scrolled up. The hidden game no longer loads the whole chat by itself first, which is what made long chats slow to appear.
+
 ## 3.37.0
 
 - **A game's chat from the dashboard** (Feature Requests: "Add Button to Open Chat from MP Dashboard"; from the thread, to check whether a game's chat concerns you without going into the game). Each game in My Games has a **💬 Chat** button at its bottom right. It opens a panel on the dashboard with that game's chat, Public and, in team games, Team, and a box to write in: Enter sends (Shift+Enter for a new line), and the message goes out through the game's own Send button, as if you'd written it in the game. The game loads in a hidden frame behind the dashboard, since war.app sends a game's chat only along with the game itself, so the chat takes as long to appear as the game does to load, but you stay on the dashboard. Muted players show as a faint "muted" line; block-listed messages are left out, as in the game. Where you can't write (a finished game, or not your game), the panel says it's read only. Click the button again, ✕ or Escape to close it. Private chat stays in the game ("Open game" in the panel). Settings menu → Dashboard → "Game chat from the dashboard".
