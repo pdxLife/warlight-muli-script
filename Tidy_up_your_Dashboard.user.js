@@ -5547,8 +5547,8 @@ function setupLobbyPace() {
             var control = heading.children(".tuydPaceLimit");
             if (control.attr("data-kind") !== kindName) {
                 control.remove();
-                control = $('<label class="tuydPaceLimit">Flag average turn over<input type="number" min="0" data-limit="turn"> <span></span>'
-                    + ' or booted over<input type="number" min="0" step="1" data-limit="boot"> %</label>').attr({
+                control = $('<label class="tuydPaceLimit">Flag: avg turn &gt;<input type="number" min="0" data-limit="turn"> <span></span>'
+                    + ' · booted &gt;<input type="number" min="0" step="1" data-limit="boot"> %</label>').attr({
                     "data-kind": kindName,
                     title: "Players whose average " + (kindName === "realTime" ? "real-time" : "multi-day") + " turn is longer, or who are booted more often, are marked ⚠ (0 = off; Muli's Userscript)"
                 }).appendTo(heading);
@@ -5562,6 +5562,13 @@ function setupLobbyPace() {
             if (title) {
                 var box = title.getBoundingClientRect();
                 control.css({ left: box.right - anchor.left - control.outerWidth() - 10, top: box.top - anchor.top + (box.height - control.outerHeight()) / 2 });
+                // In a narrow window the box would run into the centred "Players"; it moves to the line's left end instead.
+                var words = document.createRange();
+                words.selectNodeContents(title);
+                var text = words.getBoundingClientRect ? words.getBoundingClientRect() : box;
+                if (control[0].getBoundingClientRect().left < text.right + 8) {
+                    control.css({ left: box.left - anchor.left + 10 });
+                }
             }
         }
     };
