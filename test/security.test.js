@@ -216,7 +216,7 @@ test("game notes escape the notes and the player names read from the page", () =
 
 test("the dashboard's game chat panel escapes names, times and messages read from the game", () => {
     const ctx = load(["renderGameChatMessages", "htmlEscape"]);
-    const container = render(ctx.renderGameChatMessages([{ name: PAYLOAD, time: PAYLOAD, text: PAYLOAD }], []));
+    const container = render(ctx.renderGameChatMessages([{ name: PAYLOAD, time: PAYLOAD, text: PAYLOAD }], [], 20, true));
     assertInert(container);
     assert.equal(container.querySelector(".tuydGameChatText").textContent, PAYLOAD);
 });

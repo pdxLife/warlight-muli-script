@@ -5177,9 +5177,13 @@ function gameChatFrameState(doc) {
     var chat = byId("ujs_Chat");
     var tab = function (suffix) {
         var element = byId("ujs_ChatTab" + suffix);
+        var older = element ? $(element).find("[id^='ujs_LoadOlderMessagesBtn'], [id^='ujs_ShowOlderChatBtn']").filter(function () {
+            return /^ujs_(?:LoadOlderMessagesBtn|ShowOlderChatBtn)(?:_\d+)?$/.test(this.id) && shownUjsElement(this);
+        })[0] : null;
         return {
             messages: element ? chatMessages(element) : [],
-            canSend: shownUjsElement(byId("ujs_SendChatContainer" + suffix))
+            canSend: shownUjsElement(byId("ujs_SendChatContainer" + suffix)),
+            older: older ? older.id : null
         };
     };
     return {
@@ -5192,11 +5196,17 @@ function gameChatFrameState(doc) {
     };
 }
 
-function renderGameChatMessages(messages, muted) {
+var GAME_CHAT_RECENT = 20;
+
+// The newest `limit` messages, and a note when there are more, in the game or not yet loaded from it.
+function renderGameChatMessages(messages, muted, limit, hasOlder) {
     if (!messages.length) {
         return '<div class="tuydGameChatNote">No messages yet.</div>';
     }
-    return messages.map(function (message) {
+    var hidden = Math.max(0, messages.length - limit);
+    var more = hidden || hasOlder ? '<div class="tuydGameChatMore">Showing the last ' + Math.min(limit, messages.length) + " messages"
+        + (hasOlder ? "" : " of " + messages.length) + '. <a href="#" class="tuydGameChatShowAll">Show all</a></div>' : "";
+    return more + messages.slice(hidden).map(function (message) {
         if (muted.indexOf(message.name) !== -1) {
             return '<div class="tuydGameChatMsg tuydGameChatMutedMsg">muted</div>';
         }
@@ -5304,6 +5314,13 @@ function setupDashboardGameChat() {
             color: #fff;
             font-weight: bold;
         }
+        #tuydGameChat .tuydGameChatMore {
+            margin: 0 0 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #333;
+            color: #8d8d8d;
+            font-size: 12px;
+        }
         #tuydGameChat .tuydGameChatTime, #tuydGameChat .tuydGameChatNote, #tuydGameChat .tuydGameChatMutedMsg {
             color: #8d8d8d;
             font-size: 11px;
@@ -5350,6 +5367,8 @@ function setupDashboardGameChat() {
     var observer = null;
     var lastHtml = "";
     var muted = [];
+    var limit = GAME_CHAT_RECENT;
+    var olderTimer = null;
     readMutedPlayers(function (names) {
         muted = names;
     });
@@ -5372,8 +5391,9 @@ function setupDashboardGameChat() {
     };
     var close = function () {
         clearInterval(waitTimer);
+        clearInterval(olderTimer);
         clearTimeout(renderTimer);
-        waitTimer = renderTimer = null;
+        waitTimer = renderTimer = olderTimer = null;
         if (observer) {
             observer.disconnect();
             observer = null;
@@ -5399,17 +5419,50 @@ function setupDashboardGameChat() {
         });
         var current = state[tabName];
         var list = panel.find(".tuydGameChatList")[0];
-        var html = renderGameChatMessages(current.messages, muted);
+        var html = renderGameChatMessages(current.messages, muted, limit, limit !== Infinity && !!current.older);
         if (html !== lastHtml) {
-            var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+            // Older messages arrive above, so a reader scrolled up keeps their place.
+            var fromBottom = list.scrollHeight - list.scrollTop - list.clientHeight;
             list.innerHTML = html;
             lastHtml = html;
-            if (toBottom || atBottom) {
-                list.scrollTop = list.scrollHeight;
-            }
+            list.scrollTop = toBottom || fromBottom < 40 ? list.scrollHeight : list.scrollHeight - list.clientHeight - fromBottom;
         }
         panel.find(".tuydGameChatForm").toggle(current.canSend);
-        status(current.canSend ? "" : state.archived ? "This game's chat is archived." : "Read only: you can't write in this chat.");
+        status(olderTimer ? "Loading older messages…" : current.canSend ? "" : state.archived ? "This game's chat is archived." : "Read only: you can't write in this chat.");
+    };
+    // war.app keeps older messages behind "Load Older Messages"; pressed until it goes away or adds nothing.
+    var showAll = function () {
+        limit = Infinity;
+        lastHtml = "";
+        clearInterval(olderTimer);
+        var presses = 0;
+        var lastSize = -1;
+        var idle = 0;
+        var stop = function () {
+            clearInterval(olderTimer);
+            olderTimer = null;
+            render(false);
+        };
+        olderTimer = setInterval(function () {
+            var doc = frameDoc();
+            var query = frameQuery();
+            if (!panel || !doc || !query) {
+                stop();
+                return;
+            }
+            var current = gameChatFrameState(doc)[tabName];
+            if (!current.older || presses >= 30) {
+                stop();
+            } else if (current.messages.length !== lastSize) {
+                lastSize = current.messages.length;
+                idle = 0;
+                presses++;
+                query("#" + current.older + "_btn").trigger("click");
+            } else if (++idle > 4) {
+                stop();
+            }
+        }, 1500);
+        render(false);
     };
     var schedule = function () {
         if (!renderTimer) {
@@ -5423,6 +5476,7 @@ function setupDashboardGameChat() {
         close();
         game = target;
         tabName = "public";
+        limit = GAME_CHAT_RECENT;
         panel = $('<div id="tuydGameChat" role="dialog" aria-label="Game chat"><div class="tuydGameChatHead"><a class="tuydGameChatTitle"></a>'
             + '<a class="tuydGameChatOpen" href="#">Open game</a><a class="tuydGameChatClose" href="#" title="Close">✕</a></div>'
             + '<div class="tuydGameChatTabs" style="display: none"><a href="#" class="tuydGameChatTab" data-tab="public">Public</a><a href="#" class="tuydGameChatTab" data-tab="team">Team</a></div>'
@@ -5545,12 +5599,18 @@ function setupDashboardGameChat() {
     }).on("click", "#tuydGameChat .tuydGameChatTab", function (event) {
         event.preventDefault();
         tabName = $(this).attr("data-tab");
+        limit = GAME_CHAT_RECENT;
+        clearInterval(olderTimer);
+        olderTimer = null;
         var query = frameQuery();
         if (query) {
             query(tabName === "team" ? "#ujs_TeamChatTab_btn" : "#ujs_PublicChatTab_btn").trigger("click");
         }
         lastHtml = "";
         render(true);
+    }).on("click", "#tuydGameChat .tuydGameChatShowAll", function (event) {
+        event.preventDefault();
+        showAll();
     }).on("click", "#tuydGameChat .tuydGameChatSend", function () {
         send();
     }).on("keydown", "#tuydGameChat .tuydGameChatInput", function (event) {
@@ -7363,9 +7423,8 @@ function DOM_ContentReady() {
         return;
     }
 
-    // In the dashboard's hidden game, only the whole-chat loader runs: the panel shows that chat.
+    // The dashboard's chat panel drives its hidden game itself, older messages included.
     if (inGameChatFrame()) {
-        runFeature("Load the whole chat in games", setupFullGameChat);
         return;
     }
 
