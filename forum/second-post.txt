@@ -11,6 +11,35 @@
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-player-search.png[/img]
 
 [hr]
+[b]Feature Requests it delivers[/b]
+From war.app's Feature Requests forum, with the request's thread:
+[b]Games and dashboard[/b]
+[list]
+[*][b]Provide Space for In-Game Notes[/b] (188 votes): Notes in a game. https://war.app/Forum/768601-provide-space-game-notes
+[*][b]Dorex's quality of life updates: Border in PMs[/b] (84 votes): Private chat list: players still in the game first. https://war.app/Forum/892471-dorexs-quality-life-updates-border-pms
+[*][b]Search/Sort Functionality for Past Games[/b] (51 votes): Past Games search and filters. https://war.app/Forum/768043-searchsort-functionality-past-games
+[*][b]Better Past Game Filtering & Sorting[/b]: Past Games search and filters. https://war.app/Forum/888705-better-past-game-filtering-sorting
+[*][b]Dorex's quality of life updates: Text to speech[/b] (33 votes): Read chat aloud, in games and chat rooms. https://war.app/Forum/815492-dorexs-quality-life-updates-text-speech
+[*][b]Are you sure you want to commit your orders?[/b] (27 votes): Ask before committing (a setting, off by default). https://war.app/Forum/768036-sure-want-commit-orders
+[*][b]Showing more posts in game chat windows[/b]: The whole chat in a game. https://war.app/Forum/895821-showing-more-posts-game-chat-windows
+[*][b]add more open games filters[/b]: Open Games filter: seats, team games, settings. https://war.app/Forum/894214-add-more-open-games-filters
+[*][b]Leaderboards: Include Rank with Rating[/b]: Your rank on Quickmatch leaderboards. https://war.app/Forum/889390-leaderboards-include-rank-rating
+[*][b]Sort players by level in Player Search results[/b]: Player Search: best match, level, filters. https://war.app/Forum/892642-sort-players-level-player-search-results
+[/list]
+[b]Chat[/b]
+[list]
+[*][b]Mute Button[/b]: Mute a player in chat rooms and game chat. https://war.app/Forum/807849-mute-button
+[*][b]QOL - Tagging Players in Public Chat[/b]: Mentions marked, and @name suggestions. https://war.app/Forum/775087-qol-tagging-players-public-chat
+[*][b]Add Button to Open Chat from MP Dashboard[/b]: A Chat button, and a game's chat on the dashboard. https://war.app/Forum/767842-add-button-open-chat-mp-dashboard
+[/list]
+[b]War.app Idle[/b]
+[list]
+[*][b]Ability to click a tech and pay for it from market[/b] (71 votes): What a tech is missing and its market cost (you still buy it yourself). https://war.app/Forum/826813-ability-click-tech-pay-market
+[*][b]Warning when using a lower-rarity artifact[/b]: Better artifact copies pointed out. https://war.app/Forum/892942-warning-using-lowerrarity-artifact
+[*][b]Make "storage" section for never used WZI artis[/b]: Artifact storage marks. https://war.app/Forum/828390-make-storage-section-never-used-wzi-artis
+[/list]
+
+[hr]
 [b]Settings[/b]
 Everything is in your account menu → "Muli's Userscript": every feature has its own switch, grouped by area, with a search box. Export / Import backs up your settings, bookmarks and notes.
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-settings-menu.png[/img]
@@ -23,3 +52,5 @@ How to use each feature, step by step: https://pdxlife.github.io/warlight-muli-s
 If something doesn't work or you'd like a feature, reply here. Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
 
 Have fun!
+
+[i]Part 2/2[/i]
