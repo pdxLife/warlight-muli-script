@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.3
+
+- **Chat buttons stay behind war.app's popups.** In the chat rooms and game chat, the 🔊 read-aloud and 🔇 mute buttons of the messages behind war.app's player card (opened by clicking a name) showed through it. They now stay under the card and any other war.app popup over the chat, and work as before on the messages.
+
 ## 3.41.2
 
 - **No second chat bell from the script's hidden games.** The dashboard's 💬 Chat panel and Past Games' "Find the maps" open games in a hidden frame, and war.app played its sounds there too: with the chat panel open, every new message in that game rang a second bell (and your-turn sounds played twice). Those hidden games are now silent.

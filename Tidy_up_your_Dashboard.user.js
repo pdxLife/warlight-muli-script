@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.41.2
+// @version 3.41.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2942,7 +2942,12 @@ function setupChatSpeech() {
     if (!window.speechSynthesis || typeof SpeechSynthesisUtterance !== "function") {
         return;
     }
+    // The message gets its own stacking context so the button's z-index can't lift it over war.app's
+    // popups (the player card), which have no z-index of their own.
     addCSS(`
+        .ujsGameObject:has(> .tuydSpeak) {
+            isolation: isolate;
+        }
         .tuydSpeak {
             position: absolute;
             left: 4px;
@@ -3166,6 +3171,9 @@ function saveMutedPlayers(names) {
 
 function chatToolsCss() {
     addCSS(`
+        .ujsGameObject:has(> .tuydMute) {
+            isolation: isolate;
+        }
         .tuydMute {
             position: absolute;
             z-index: 2;
