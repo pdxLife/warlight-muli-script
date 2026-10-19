@@ -183,6 +183,19 @@
     <img src="media/guide-mention-suggest.png" width="420" height="130" alt="A chat box with "well played @Ro" typed and a list of names starting with Ro above it">
     <figcaption>Type @ and the first letters of a name, then pick it (example names).</figcaption>
   </figure>
+  <h3>Player pace in a lobby</h3>
+  <figure>
+    <img src="media/lobby-pace.png" width="650" height="158" alt="A lobby's Players box: next to each player a line such as in 7 games, avg turn 1d 13h, 40% over a day, booted 3%, two of them in red with a warning sign, and Flag average turn over 24 h at the top right">
+    <figcaption>Each player's pace from their profile; slower than your limit in red (other players' names blurred).</figcaption>
+  </figure>
+  <p>War.app decides who may join a game, so the script can't keep anyone out. In a game's lobby it shows each player's pace instead, read from their profile:</p>
+  <ul>
+    <li><strong>in 7 games</strong>: how many multi-day games they're in, as their profile says. War.app doesn't always update this in time, so it's never flagged.</li>
+    <li><strong>avg turn 1d 13h</strong>: their average multi-day turn.</li>
+    <li><strong>40% over a day</strong>: the share of their multi-day turns that took more than a day. It covers all their games, not this game's boot time.</li>
+    <li><strong>booted 3%</strong>: how often they were booted in their recent games.</li>
+  </ul>
+  <p>Hover a line for the long version, click it for the profile. <strong>Flag average turn over 24 h</strong>, at the right of "Players", marks players with a longer average turn in red with ⚠ (0 = off); as the host, remove them with war.app's <strong>Add/Remove Players</strong>. <span class="setting">Player pace in game lobbies</span> (on; settings → Games).</p>
   <h3>Ask before committing</h3>
   <p><span class="setting">Ask Before Committing Orders</span> (off; settings → Games): Commit and Autopilot's Run+Commit ask "Commit your orders for this turn?" first, against accidental commits. The question is your browser's own dialog: OK commits, Cancel goes back to your orders.</p>
 
@@ -398,6 +411,7 @@
     <li><a href="https://war.app/Forum/894214-add-more-open-games-filters">add more open games filters</a>: Open Games filter: seats, team games, settings. <a href="#open-games">How to use it</a></li>
     <li><a href="https://war.app/Forum/889390-leaderboards-include-rank-rating">Leaderboards: Include Rank with Rating</a>: Your rank on Quickmatch leaderboards. <a href="#ladders">How to use it</a></li>
     <li><a href="https://war.app/Forum/892642-sort-players-level-player-search-results">Sort players by level in Player Search results</a>: Player Search: best match, level, filters. <a href="#more">How to use it</a></li>
+    <li><a href="https://war.app/Forum/895824-additional-filters-joining-open-games">Additional filters for joining open games</a>: each player's pace in a lobby, to remove slow players yourself (war.app decides who may join). <a href="#games">How to use it</a></li>
   </ul>
   <h3>Chat</h3>
   <ul>

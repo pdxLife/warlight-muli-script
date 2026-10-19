@@ -1,6 +1,6 @@
 [b]Update: what's new since October 14[/b]
 
-The script went from 3.14.5 to 3.37.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+The script went from 3.14.5 to 3.38.0 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
 
 [b]New: a full guide[/b] on the website, with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 
@@ -13,8 +13,10 @@ The script went from 3.14.5 to 3.37.1 in these five days. If you installed it, y
 [*][b]Private chat list[/b] with the players still in the game first ("Border in PMs").
 [*][b]Ask before committing[/b], a setting that's off by default ("Are you sure you want to commit your orders?").
 [*][b]Tag players[/b] by typing @ and picking a name.
+[*][b]Player pace in a lobby[/b] ("Additional filters for joining open games"): each player's games in progress, average turn and boot rate from their profile, with slow players marked, so you can remove them.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/game-notes.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/lobby-pace.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-game-chat-buttons.png[/img]
 
 [b]Past Games and Open Games[/b]
