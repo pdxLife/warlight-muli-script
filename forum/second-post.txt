@@ -17,7 +17,7 @@ From war.app's Feature Requests forum, with the request's thread:
 [list]
 [*][b]Provide Space for In-Game Notes[/b] (188 votes): Notes in a game. https://war.app/Forum/768601-provide-space-game-notes
 [*][b]Dorex's quality of life updates: Border in PMs[/b] (84 votes): Private chat list: players still in the game first. https://war.app/Forum/892471-dorexs-quality-life-updates-border-pms
-[*][b]Search/Sort Functionality for Past Games[/b] (51 votes): Past Games search and filters. https://war.app/Forum/768043-searchsort-functionality-past-games
+[*][b]Search/Sort Functionality for Past Games[/b] (51 votes): Past Games search and filters, by map and number of players too. https://war.app/Forum/768043-searchsort-functionality-past-games
 [*][b]Better Past Game Filtering & Sorting[/b]: Past Games search and filters. https://war.app/Forum/888705-better-past-game-filtering-sorting
 [*][b]Dorex's quality of life updates: Text to speech[/b] (33 votes): Read chat aloud, in games and chat rooms. https://war.app/Forum/815492-dorexs-quality-life-updates-text-speech
 [*][b]Are you sure you want to commit your orders?[/b] (27 votes): Ask before committing (a setting, off by default). https://war.app/Forum/768036-sure-want-commit-orders

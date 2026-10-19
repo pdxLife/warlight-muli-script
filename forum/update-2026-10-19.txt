@@ -1,6 +1,6 @@
 [b]Update: what's new since October 14[/b]
 
-The script went from 3.14.5 to 3.38.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+The script went from 3.14.5 to 3.39.0 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
 
 [b]New: a full guide[/b] on the website, with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 
@@ -21,7 +21,7 @@ The script went from 3.14.5 to 3.38.1 in these five days. If you installed it, y
 
 [b]Past Games and Open Games[/b]
 [list]
-[*][b]Past Games filters[/b] ("Search/Sort Functionality for Past Games"): search, in progress / your turn / lobby / finished / out, real-time or multi-day, reverse order.
+[*][b]Past Games filters[/b] ("Search/Sort Functionality for Past Games"): search, in progress / your turn / lobby / finished / out, real-time or multi-day, map, number of players (1 v 1, more, from–to), reverse order.
 [*][b]More Open Games filters[/b]: seats from–to, team games only or none, and hiding games by their settings (Commerce, local deployments, cards, fog and more).
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/past-games-filter.png[/img]
