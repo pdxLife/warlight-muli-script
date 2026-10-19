@@ -1,6 +1,8 @@
 [b]Update: what's new since October 14[/b]
 
-The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+The script went from 3.14.5 to 3.36.1 in these five days. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). The first post now lists everything the script does; here is what's new.
+
+[b]New: a full guide[/b] on the website, with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 
 [hr]
 [b]In your games[/b]
@@ -13,6 +15,7 @@ The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, y
 [*][b]Tag players[/b] by typing @ and picking a name.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/game-notes.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-game-chat-buttons.png[/img]
 
 [b]Past Games and Open Games[/b]
 [list]
@@ -32,6 +35,7 @@ The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, y
 [*]A [b]Chat button[/b] on the dashboard ("Add Button to Open Chat from MP Dashboard").
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/chat-room-bar.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-mention-suggest.png[/img]
 
 [hr]
 [b]Ladders, community events and leaderboards[/b]
@@ -62,6 +66,8 @@ The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, y
 [*][b]Time to afford[/b], the [b]best value[/b] army camp, a [b]pop-up log[/b], a [b]volume slider[/b], a [b]second-tab warning[/b], and a [b]tab-title count[/b] of what Idle needs you for.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/idle-tech-cost.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-army-camps.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifacts.png[/img]
 
 [hr]
 [b]And[/b]
@@ -69,7 +75,7 @@ The script went from 3.14.5 to 3.36.0 in these five days. If you installed it, y
 [*][b]Player Search[/b] sorted by best match, with filters and tags.
 [*][b]Mail[/b] filters by words and by date.
 [*]The [b]settings menu[/b] is split into sections with a search box.
-[*]A [b]website[/b]: https://pdxlife.github.io/warlight-muli-script/
+[*]A [b]website[/b]: https://pdxlife.github.io/warlight-muli-script/ and the [b]guide[/b]: https://pdxlife.github.io/warlight-muli-script/guide.html
 [/list]
 
 Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md

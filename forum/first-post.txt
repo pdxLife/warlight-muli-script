@@ -3,6 +3,7 @@
 Many of you used Muli's "Tidy Up Your Dashboard" userscript for years. Most of it stopped working when war.app redesigned its pages. I've picked it up, fixed what broke, and added a lot since. Full credit to [b]Muli[/b] (https://war.app/Profile?p=2211733141), who created it in 2015 and kept it going for years. His original thread: https://war.app/Forum/106092
 
 Website, with the install button and a short overview: https://pdxlife.github.io/warlight-muli-script/
+[b]Full guide[/b], with a picture for each feature, where to find it and which setting controls it: https://pdxlife.github.io/warlight-muli-script/guide.html
 
 [hr]
 [b]How to install[/b]
@@ -43,6 +44,8 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Mute[/b] a player without blocking them (see Chat rooms below).
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/game-notes.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-game-chat-buttons.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-mention-suggest.png[/img]
 
 [b]Past Games[/b]: search by game or player name, show only games in progress, your turn, lobbies, finished games or games you're out of, real-time or multi-day, and reverse the order.
 [img]https://pdxlife.github.io/warlight-muli-script/media/past-games-filter.png[/img]
@@ -57,6 +60,7 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Tagging[/b] with @ and [b]read aloud[/b] work here too.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/chat-room-bar.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-chat-mute.png[/img]
 
 [hr]
 [b]Ladders, community events and leaderboards[/b]
@@ -83,13 +87,14 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Community tournament stats[/b] from custom.wl-stats.com, with records in the formats a player plays most.
 [*][b]Your private notes[/b] about the player, and stat sections you can fold.
 [/list]
-[img]https://pdxlife.github.io/warlight-muli-script/media/profile-stats.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-profile.png[/img]
 
 [b]Clans[/b]
 [list]
 [*][b]Clan list search[/b].
 [*][b]Community events on clan pages[/b]: the clan's place in Clan League, Clan Cup and the other community series, and its titles.
 [/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-search.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/clan-events.png[/img]
 
 [hr]
@@ -103,6 +108,10 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Pop-up log[/b] of everything Idle showed on the map, a [b]volume slider[/b], a [b]warning[/b] when Idle is open in two tabs, and a [b]tab-title count[/b] of what Idle needs you for.
 [/list]
 [img]https://pdxlife.github.io/warlight-muli-script/media/idle-tech-cost.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-army-camps.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifacts.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-artifact-list.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-idle-log.png[/img]
 
 [hr]
 [b]Forum, mail and more[/b]
@@ -113,15 +122,20 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [*][b]Player Search[/b]: best match first, by level or name, hide level 1–2 accounts, tags for you, AWP ranks and blocked players; paste a profile link to open it.
 [*][b]Also[/b]: block list search and count, map search, sortable Common Games with your head-to-head record, total points earned.
 [/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-forum-toolbar.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-mail-filters.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-player-search.png[/img]
 
 [hr]
 [b]Settings[/b]
 Everything is in your account menu → "Muli's Userscript": every feature has its own switch, grouped by area, with a search box. Export / Import backs up your settings, bookmarks and notes.
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-settings-menu.png[/img]
 
 [b]Privacy and safety[/b]
 The script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. The features that use Muli's old server (MTL stats and community level records) are off by default.
 
 [b]Feedback[/b]
+How to use each feature, step by step: https://pdxlife.github.io/warlight-muli-script/guide.html
 If something doesn't work or you'd like a feature, reply here. Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
 
 Have fun!
