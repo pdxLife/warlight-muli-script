@@ -49,7 +49,7 @@ The script doesn't send your username anywhere. Community stats come from awp.wl
 
 [b]Feedback[/b]
 How to use each feature, step by step: https://pdxlife.github.io/warlight-muli-script/guide.html
-If something doesn't work or you'd like a feature, reply here. Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
+If something doesn't work or you'd like a feature, reply here or mail [b]KKND[/b], the script's maintainer (Muli is its original creator). Please include the page and, if you can, what the script's log says (press Ctrl+Shift+2 on any war.app page). Everything that changed is in the changelog: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md. The code is open: https://github.com/pdxLife/warlight-muli-script
 
 Have fun!
 

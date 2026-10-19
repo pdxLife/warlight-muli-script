@@ -79,4 +79,4 @@ The script went from 3.14.5 to 3.37.1 in these five days. If you installed it, y
 [*]A [b]website[/b]: https://pdxlife.github.io/warlight-muli-script/ and the [b]guide[/b]: https://pdxlife.github.io/warlight-muli-script/guide.html
 [/list]
 
-Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
+Something broken? Tell me (KKND), the script's maintainer, here. Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md

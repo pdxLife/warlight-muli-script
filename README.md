@@ -8,7 +8,7 @@ A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that
 
 ## Credits
 
-Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141), who first released it in April 2015 and maintained it for years. This repository is a fork that keeps it working on today's war.app. The original script and its history are in [Muli's forum thread](https://war.app/Forum/106092).
+Tidy Up Your Dashboard was created by [Muli](https://war.app/Profile?p=2211733141), its original creator, who first released it in April 2015 and maintained it for years. This version is maintained by [KKND](https://war.app/Profile?p=2921525624): it keeps the script working on today's war.app and adds to it. If something breaks, tell KKND (in the [forum thread](https://war.app/Forum/897130-mulis-userscript-update), a war.app mail, or a [GitHub issue](https://github.com/pdxLife/warlight-muli-script/issues)), not Muli. The original script and its history are in [Muli's forum thread](https://war.app/Forum/106092).
 
 ## Installation
 

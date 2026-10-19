@@ -6,7 +6,7 @@
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
 // @version 3.37.1
-// @author Muli (original author)
+// @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
 // @supportURL https://github.com/pdxLife/warlight-muli-script/issues
