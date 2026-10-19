@@ -5301,14 +5301,14 @@ function lobbyPaceText(pace) {
 // is tried largest ID first (the level is a small number too).
 function lobbyProfileCandidates(root, names) {
     var found = {};
-    var seen = [];
+    var seen = new Set();
     var queue = [root];
     for (var visited = 0; queue.length && visited < 5000; visited++) {
         var object = queue.shift();
-        if (!object || typeof object !== "object" || seen.indexOf(object) !== -1) {
+        if (!object || typeof object !== "object" || seen.has(object)) {
             continue;
         }
-        seen.push(object);
+        seen.add(object);
         var keys = Object.keys(object);
         if (keys.length > 2000) {
             continue;
