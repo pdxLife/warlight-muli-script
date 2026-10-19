@@ -49,12 +49,16 @@
   .steps .note { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
   h2 { margin: 48px 0 12px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  .card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; color: inherit; text-decoration: none; }
+  .card:hover, .card:focus-visible { border-color: var(--link); }
   .card h3 { margin: 0 0 6px; font-size: 16px; color: #fff; }
+  .card h3::after { content: " →"; color: var(--link); font-weight: normal; opacity: 0; transition: opacity 0.15s; }
+  .card:hover h3::after, .card:focus-visible h3::after { opacity: 1; }
   .card p { margin: 0; font-size: 14px; color: var(--text); }
   figure { margin: 16px 0 0; }
   figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
   figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .look-pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; align-items: start; }
   .guide-link { margin: 18px 0 0; font-size: 15px; }
   .h2-link { float: right; margin-top: 6px; font-size: 14px; font-weight: normal; }
   footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
@@ -78,20 +82,34 @@
 
   <h2>What it adds <a class="h2-link" href="guide.html">How to use it →</a></h2>
   <div class="grid">
-    <div class="card"><h3>Dashboard</h3><p>Press R to refresh. Your-turn count in the tab title. Your-turn games sorted by time left before boot. Open Games filter by seats, team games and settings, "Joined" badges, and badges for community event games.</p></div>
-    <div class="card"><h3>Games</h3><p>Private notes inside a game, with a note per opponent and who moves first. Search and filters on Past Games. A game's whole chat at once. Players still in the game first in private chat. An optional question before Commit. Chat read aloud.</p></div>
-    <div class="card"><h3>Tournaments</h3><p>Search and sort a tournament's players. Bookmark tournaments. A link to the tournament's page on custom.wl-stats.com.</p></div>
-    <div class="card"><h3>Ladders &amp; community events</h3><p>AWP World Tour, P/R League, Nations Cup, Clan Cup and more on the Ladders page, with your own place. Standings on Community Events. Your rank on Quickmatch leaderboards.</p></div>
-    <div class="card"><h3>Profiles</h3><p>Your private notes, AWP World Tour stats and community tournament stats on a player's profile.</p></div>
-    <div class="card"><h3>Clans</h3><p>Clan list search, and a clan's squads in the current community events on its page.</p></div>
-    <div class="card"><h3>Idle</h3><p>A check before a market typo spends all your money, confirmations before using powers, time to afford, what a tech is missing and its market cost, the best army camp, better artifact copies, a volume slider and more.</p></div>
-    <div class="card"><h3>Forum, mail &amp; more</h3><p>Bookmarks, a formatting toolbar, hiding threads, player search sorted by best match, mail search by player, words and date, block list search, map search. Chat rooms without join/leave notices, with search, mute, @name suggestions, your mentions marked and read-aloud.</p></div>
+    <a class="card" href="guide.html#dashboard"><h3>Dashboard</h3><p>Press R to refresh. Your-turn count in the tab title. Your-turn games sorted by time left before boot. Open Games filter by seats, team games and settings, "Joined" badges, and badges for community event games.</p></a>
+    <a class="card" href="guide.html#games"><h3>Games</h3><p>Private notes inside a game, with a note per opponent and who moves first. Search and filters on Past Games. A game's whole chat at once. Players still in the game first in private chat. An optional question before Commit. Chat read aloud.</p></a>
+    <a class="card" href="guide.html#tournaments"><h3>Tournaments</h3><p>Search and sort a tournament's players. Bookmark tournaments. A link to the tournament's page on custom.wl-stats.com.</p></a>
+    <a class="card" href="guide.html#ladders"><h3>Ladders &amp; community events</h3><p>AWP World Tour, P/R League, Nations Cup, Clan Cup and more on the Ladders page, with your own place. Standings on Community Events. Your rank on Quickmatch leaderboards.</p></a>
+    <a class="card" href="guide.html#profiles"><h3>Profiles</h3><p>Your private notes, AWP World Tour stats and community tournament stats on a player's profile.</p></a>
+    <a class="card" href="guide.html#clans"><h3>Clans</h3><p>Clan list search, and a clan's squads in the current community events on its page.</p></a>
+    <a class="card" href="guide.html#idle"><h3>Idle</h3><p>A check before a market typo spends all your money, confirmations before using powers, time to afford, what a tech is missing and its market cost, the best army camp, better artifact copies, a volume slider and more.</p></a>
+    <a class="card" href="guide.html#more"><h3>Forum, mail &amp; more</h3><p>Bookmarks, a formatting toolbar, hiding threads, player search sorted by best match, mail search by player, words and date, block list search, map search. Chat rooms without join/leave notices, with search, mute, @name suggestions, your mentions marked and read-aloud.</p></a>
   </div>
 
-  <h2>A look</h2>
+  <h2>A look <a class="h2-link" href="guide.html">More in the guide →</a></h2>
   <figure>
-    <img src="media/ladders-awp.png" width="432" height="144" alt="The Community ladders and leagues panel on war.app's Ladders page, with an AWP World Tour row: 2026 race, 226 players, You: #144, 55 points">
-    <figcaption>Community ladders &amp; leagues on the Ladders page, drawn in war.app's own style with blue buttons.</figcaption>
+    <a href="guide.html#dashboard"><img src="media/dashboard-chat-refresh.png" width="700" height="334" alt="The dashboard's My Games, Open Games and Past Games tabs with Chat and Refresh buttons, and two games with AWP Tour and Nations Cup badges"></a>
+    <figcaption>The dashboard: tabs, Chat and Refresh, and badges for community event games.</figcaption>
+  </figure>
+  <div class="look-pair">
+    <figure>
+      <a href="guide.html#games"><img src="media/game-notes.png" width="336" height="310" alt="The Notes panel in a game: general notes, I move first on even turns, Turn 2: you move first, and a note about the other player"></a>
+      <figcaption>Private notes inside a game.</figcaption>
+    </figure>
+    <figure>
+      <a href="guide.html#idle"><img src="media/guide-idle-army-camps.png" width="500" height="236" alt="Idle's Army Camps with the time to afford each upgrade and Best value on the best camp"></a>
+      <figcaption>Idle: time to afford, and the best army camp for the money.</figcaption>
+    </figure>
+  </div>
+  <figure>
+    <a href="guide.html#ladders"><img src="media/community-events-2.png" width="716" height="270" alt="Community Events cards for Clan League 19, Nations Cup 2026 (You're in!) and AWP World Tour (You're in the race!), each with standings at the top right"></a>
+    <figcaption>Standings on Community Events, and where you take part.</figcaption>
   </figure>
 
   <footer>
