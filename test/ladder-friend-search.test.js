@@ -36,9 +36,10 @@ function friendsAnswer(friends) {
     const text = (s) => { const b = Array.from(Buffer.from(s, "utf8")); return [1, b.length, ...b]; };
     const date = [0x00, 0x60, 0x69, 0xAD, 0xD1, 0x9D, 0x68, 0x42];
     const none = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xEF, 0xFF];
+    const farPast = [0x00, 0x00, 0x80, 0xF5, 0x59, 0x8D, 0x6B, 0xC2];
     let bytes = [0xF2, 0x80, 0x39, 0xF1, 0x47, 0x5A, 0x04, 0x00, ...int(friends.length)];
     friends.forEach((f, i) => {
-        bytes = bytes.concat(int(150000 + i), [1], int(33), ...(f.clan ? [text(f.clan)] : [[0]]), int(31), [1, 1, 1, 0], date, int(f.level), text(f.name), f.seen === false ? none : date, int(8670), [0x0B, 0, 0, 1]);
+        bytes = bytes.concat(int(150000 + i), [1], int(33), ...(f.clan ? [text(f.clan)] : [[0]]), int(31), [1, 1, 1, 0], date, int(f.level), text(f.name), f.seen === false ? none : f.seen === "never" ? farPast : date, int(8670), [0x0B, 0, 0, 1]);
     });
     return hex(bytes);
 }
@@ -47,7 +48,7 @@ test("war.app's friend list answer gives every friend's name and level, in war.a
     const ctx = load(["parseFriendsList"], { TextDecoder });
     const answer = friendsAnswer([
         { name: "Alpha", level: 64, clan: "Some Clan" }, { name: "Bravo Two", level: 57 }, { name: "Çharlie ☆", level: 3, seen: false },
-        { name: "(deleted)", level: 59 }, { name: "Echo", level: 100, clan: "Echo Clan" }
+        { name: "(deleted)", level: 59, seen: "never" }, { name: "Echo", level: 100, clan: "Echo Clan" }
     ]);
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseFriendsList(answer))), [
         { name: "Alpha", level: 64 }, { name: "Bravo Two", level: 57 }, { name: "Çharlie ☆", level: 3 }, { name: "(deleted)", level: 59 }, { name: "Echo", level: 100 }

@@ -6853,8 +6853,8 @@ function ladderFriendsPagerState(text) {
 
 // war.app's GetFriends answer (hex, in war.app's binary format), as the friends in the order war.app
 // lists them. Each friend's level and name sit between two dates: a date ending in byte 0x42, the level
-// as a 4-byte number, 0x01 and the name with its length, then another date (or -MaxValue when there's
-// none). Nothing else in the answer looks like that; if war.app changes its format, this finds nobody
+// as a 4-byte number, 0x01 and the name with its length, then another date (or, when there's none,
+// -MaxValue or a far-past date, ending in 0xC1 or 0xC2). Nothing else in the answer looks like that; if war.app changes its format, this finds nobody
 // and the search reads war.app's pages instead.
 function parseFriendsList(hex) {
     hex = String(hex || "").trim();
@@ -6873,7 +6873,7 @@ function parseFriendsList(hex) {
         var none = [255, 255, 255, 255, 255, 255, 239, 255].every(function (value, k) {
             return bytes[p + k] === value;
         });
-        return none || bytes[p + 7] === 0x41 || bytes[p + 7] === 0x42;
+        return none || [0x41, 0x42, 0xC1, 0xC2].indexOf(bytes[p + 7]) !== -1;
     };
     var friends = [];
     for (var p = 8; p + 6 < bytes.length; p++) {
