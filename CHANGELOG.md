@@ -2,8 +2,8 @@
 
 ## 3.43.0
 
-- **Drag bookmarks to reorder them.** Hover a bookmark in the dashboard's Bookmarks box and a ⋮⋮ grip appears at its right end; drag it up or down and drop it where you want it. The new order is saved at once. The right-click menu (Edit, Move up, Move down) still works too.
-- **Fix:** a bookmark at the very top of the list (order 0, as the default one is) had no right-click menu, so it couldn't be moved or edited from there.
+- **Reorder bookmarks two ways.** Hover a bookmark in the dashboard's Bookmarks box and ▲ ▼ and a ⋮⋮ grip appear at its right end: click ▲ or ▼ to move it one place, or drag the grip and drop it where you want it. The new order is saved at once. The right-click menu (Edit, Move up, Move down) still works too.
+- **Fix:** a bookmark at the very top of the list (order 0, as the default one is) had no right-click menu, so it couldn't be moved or edited from there, and moving the second bookmark to the top could fail without a word.
 
 ## 3.42.3
 
