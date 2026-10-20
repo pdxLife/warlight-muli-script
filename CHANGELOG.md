@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.42.0
+
+- **Search your friends when proposing a ladder team.** On a team ladder (2v2, 3v3) → Join Ladder → Join with Team, war.app lists your friends 40 at a time, with no search. A **Search your friends** box now sits at the right of "Friends": type part of a name and it lists every match across all pages, best match first, with its level and page ("L59 A slice of pie · page 3", "locked" for friends who haven't unlocked the ladder). Click one to go to its page, where its name turns gold and its Select button is outlined; Select it as usual. The first search reads your friends by stepping through war.app's own pager (under a second for 98 friends) and puts the list back on the page you were on; the proposal itself is unchanged and is only sent by war.app's own button.
+
 ## 3.41.5
 
 - **Ladders: the Community ladders panel no longer covers a ladder you open.** Opening one of war.app's own ladders (Seasonal, 1v1, 2v2, 3v3) from the Ladders page left the panel on top of it, because war.app switches to the ladder without loading a new page. The panel now goes away when you open a ladder and comes back when you return to Ladders, without loading the standings again.
