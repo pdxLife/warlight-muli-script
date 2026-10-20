@@ -6826,9 +6826,23 @@ function signedInPlayerId() {
 function setupCommunityLadders() {
     var rows = null;
     var community = null;
+    var observer = null;
+    // Opening one of war.app's ladders hides the Ladders view and changes the address (/LadderSeasons)
+    // without loading a page; the panel, which sits outside that view, goes with it and comes back after.
+    var hide = function () {
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        $("#communityLadders").remove();
+    };
     var show = function () {
         var scene = pageIsLadders() && ujsElement("LaddersScene");
-        if (!scene || !community) {
+        if (!scene || !shownUjsElement(scene)) {
+            hide();
+            return;
+        }
+        if (!community) {
             return;
         }
         addCommunityLaddersStyles();
@@ -6848,7 +6862,7 @@ function setupCommunityLadders() {
         fitCommunityLadders(panel, dialog);
         // war.app re-lays out the dialog shortly after a resize, so follow the dialog and the page area.
         if (window.ResizeObserver) {
-            var observer = new ResizeObserver(function () {
+            observer = new ResizeObserver(function () {
                 fitCommunityLadders(panel, dialog);
             });
             observer.observe(dialog[0]);

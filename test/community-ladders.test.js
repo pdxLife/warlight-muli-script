@@ -14,7 +14,7 @@ const CUSTOM_SITE = "https://custom.wl-stats.com";
 const RANKINGS_URL = `${AWP_SITE}/api/v1/rankings`;
 const seriesUrl = (playerId) => `${CUSTOM_SITE}/api/v1/series${playerId ? `?player=${playerId}` : ""}`;
 
-const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
+const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "shownUjsElement", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
@@ -127,6 +127,25 @@ test("war.app redrawing the scene brings the panel back once, without another re
     await flush();
     assert.equal($("#communityLadders").length, 1);
     assert.equal(requests.length, 2);
+});
+
+test("opening one of war.app's ladders takes the panel away, and coming back brings it back", async () => {
+    const { ctx, dom, $, requests } = laddersPage();
+    ctx.setupCommunityLadders();
+    await flush();
+    assert.equal($("#communityLadders").length, 1);
+    // war.app hides the Ladders view and changes the address, without loading a page.
+    dom.window.history.pushState({}, "", "/LadderSeasons");
+    $("#ujs_LaddersScene").hide();
+    $("body").append('<div id="ujs_LadderSeasonsScene"></div>');
+    await flush();
+    assert.equal($("#communityLadders").length, 0, "gone on the ladder");
+    dom.window.history.pushState({}, "", "/Ladders");
+    $("#ujs_LaddersScene").show();
+    $("#ujs_LadderSeasonsScene").remove();
+    await flush();
+    assert.equal($("#communityLadders").length, 1, "back on the Ladders page");
+    assert.equal(requests.length, 2, "without loading the standings again");
 });
 
 test("other pages get no panel and send no request", async () => {
