@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.41.3  
+> **Version:** 3.41.4  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -115,8 +115,8 @@ On war.app's chat rooms (Global, Clan and your groups), a small bar right of the
 
 ### Player Search
 
-- **Sorted results**: best match first (exact names, then names starting with what you typed, each by level), or by level, by name, or war.app's own order.
-- **Filters**: hide level 1–2 accounts, only players in a clan, a minimum level.
+- **Sorted results**: best match first (exact names, then names starting with what you typed, then the rest, each by level, with L1–2 accounts last; a tag like "[ BTF] " at the start of a name is skipped), or by level, by name, or war.app's own order.
+- **Filters**: hide level 1–2 accounts (on at first), only players in a clan, a minimum level.
 - **Tags**: "You", the AWP World Tour rank ("AWP #1"), and "Blocked" for players on your block list.
 - **Paste a profile link** or a player ID to open that profile; an empty search box offers your recent searches.
 
