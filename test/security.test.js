@@ -60,7 +60,7 @@ test("community level cards escape API data", () => {
 
 test("bookmarks render stored names and URLs safely", () => {
     const { dom, $ } = createDom(`<table id="BookmarkTable"></table>`);
-    const ctx = load(["refreshBookmarks", "htmlEscape", "safeUrl", "siteRelativeUrl"], {
+    const ctx = load(["refreshBookmarks", "makeBookmarksSortable", "htmlEscape", "safeUrl", "siteRelativeUrl"], {
         SITE_HOSTS: ["war.app", "warzone.com", "warlight.net"],
         ...domGlobals(dom, $),
         log: () => { },

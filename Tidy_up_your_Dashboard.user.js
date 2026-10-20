@@ -4170,10 +4170,11 @@ function refreshBookmarks() {
         $.each(bookmarks, function (key, bookmark) {
             data += '<tr data-bookmarkId="' + htmlEscape(bookmark.id) + '" data-order="' + htmlEscape(bookmark.order) + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + htmlEscape(safeUrl(siteRelativeUrl(bookmark.url))) + '">' + htmlEscape(bookmark.name) + '</a>';
             data += '<a onclick="deleteBookmark(' + Number(bookmark.id) + ')" style="display:inline-block;float:right; opacity: 0.6;cursor: pointer;margin-right:5px">';
-            data += '<span class="ui-icon ui-icon-trash"></span></a></td></tr>';
+            data += '<span class="ui-icon ui-icon-trash"></span></a><span class="tuydBookmarkGrip" title="Drag to move this bookmark">⋮⋮</span></td></tr>';
         });
 
         $("#BookmarkTable").append(data + '</tbody>');
+        makeBookmarksSortable();
         wljs_WaitDialogJS.Stop();
 
         $(".loader").fadeOut("fast", function () {
@@ -4209,6 +4210,69 @@ window.editBookmark = function () {
     })
 
 };
+
+// The order for a bookmark dropped between two others (either can be missing at the ends). Orders are
+// numbers sorted ascending; a new one goes halfway between its neighbours, as Move up / Move Down do.
+function bookmarkOrderBetween(before, after) {
+    if (before !== null && after !== null) {
+        return (before + after) / 2;
+    }
+    if (before !== null) {
+        return before + 1;
+    }
+    return after !== null ? after / 2 : 1;
+}
+
+// Bookmarks can be dragged into a new order by the grip that shows on hover; the right-click menu's Move
+// up / Move Down still work. jQuery UI's sortable comes with the script's own jQuery ($$$).
+function makeBookmarksSortable() {
+    if (typeof $$$ === "undefined" || !$$$.fn.sortable) {
+        return;
+    }
+    addCSS(`
+        #BookmarkTable .tuydBookmarkGrip {
+            float: right;
+            margin-right: 6px;
+            color: #888;
+            cursor: grab;
+            visibility: hidden;
+            user-select: none;
+        }
+        #BookmarkTable tbody tr:hover .tuydBookmarkGrip {
+            visibility: visible;
+        }
+        #BookmarkTable .tuydBookmarkDropSpot {
+            height: 30px;
+            background: rgba(224, 192, 96, 0.15);
+        }
+    `);
+    $$$("#BookmarkTable tbody").sortable({
+        handle: ".tuydBookmarkGrip",
+        axis: "y",
+        placeholder: "tuydBookmarkDropSpot",
+        update: function (event, ui) {
+            var row = ui.item;
+            var order = function (element) {
+                var value = element.length ? Number(element.attr("data-order")) : NaN;
+                return isNaN(value) ? null : value;
+            };
+            var id = Number(row.attr("data-bookmarkid"));
+            var next = bookmarkOrderBetween(order(row.prev("tr")), order(row.next("tr")));
+            Database.readAll(Database.Table.Bookmarks, function (bookmarks) {
+                var bookmark = bookmarks.filter(function (candidate) {
+                    return candidate.id === id;
+                })[0];
+                if (!bookmark) {
+                    return;
+                }
+                bookmark.order = next;
+                Database.update(Database.Table.Bookmarks, bookmark, bookmark.id, function () {
+                    refreshBookmarks();
+                });
+            });
+        }
+    });
+}
 
 function moveBookmark(bookmark, previousBookmark1, previousBookmark2) {
     bookmark.order = (previousBookmark1.order + previousBookmark2.order) / 2;
