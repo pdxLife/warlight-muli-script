@@ -122,6 +122,8 @@ Check two things:
 
 `docs/guide.html` is the site's how-to page: one section per area, saying where each feature is, how to use it and which setting controls it, with the images from `docs/media/`. When a feature is added, changed or removed, update its section there too; setting names are written as they appear in the settings menu.
 
+The search box at the top filters the guide as you type: each paragraph, list item or picture that has every word (in its own text, its headings or a picture's description) stays, under its section's heading, with the words highlighted. A search can be linked, which suits forum replies: `https://pdxlife.github.io/warlight-muli-script/guide.html?q=notes` opens the guide already searched for "notes". Keep new content as paragraphs, lists, tips and figures directly under `<main>`, as the rest of the page is: that's what the search goes through.
+
 ## The forum thread
 
 The script's thread is https://war.app/Forum/897130-mulis-userscript-update, and the text of its posts is kept in `forum/`:
