@@ -7019,8 +7019,12 @@ function setupLadderFriendSearch() {
             return friend ? $.extend(friend, { element: element }) : null;
         }).filter(Boolean);
     };
+    // Only the pager's label: its page buttons ("1 2 3") would otherwise run into the count ("of 98123").
     var pagerState = function (found) {
-        return ladderFriendsPagerState(found.pager.text());
+        var label = found.pager.find(".ujsTextInner").filter(function () {
+            return /\bof\s+\d+\s*$/.test($(this).text());
+        }).first();
+        return ladderFriendsPagerState(label.text());
     };
     // Clicks the pager button with this label, then waits until war.app shows the new page.
     var press = function (found, label) {
