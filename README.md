@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.43.0  
+> **Version:** 3.44.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -31,7 +31,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Auto-refresh on tab focus** — optionally reload games when returning to the tab after 30+ seconds of inactivity.
 - **Community event badges** — My Games rows that belong to a community event get a small badge in their top-right corner with the series' name, linking to that event: blue for [custom.wl-stats.com](https://custom.wl-stats.com) events ("Nations Cup", "P/R League", "Titled Tuesday"), gold for the [AWP World Tour](https://awp.wl-stats.com) ("AWP Tour"). Hover a badge for the details, e.g. "Nations Cup 2026 · Group C".
 - **Your-turn alerts** — the tab title shows how many games are waiting for you, e.g. `(2) Multi-Player Dashboard`. While the dashboard tab is open but not in focus, it re-checks your games every 5 minutes, and can show a desktop notification when a game becomes your turn (opt-in setting).
-- **Open Games filter** — a **Filter** link in the Open Games header (dashboard and View All page) hides Auto Games, coin games, games with a boot time under a number of hours you set, games whose name contains any of your keywords (whole words, comma-separated), games with fewer or more seats than you set, team games (or everything but team games), and games with settings you pick from a list (Commerce, local deployments, manual distribution, cards, wastelands, fog, no-split and more, read from the game's setting icons). The header shows how many games are hidden.
+- **Open Games filter** — a **Filter** link in the Open Games header (dashboard and View All page) hides Auto Games, coin games, games with a boot time under a number of hours you set, games whose name contains any of your keywords (whole words, comma-separated), games with fewer or more seats than you set, team games or FFA games (or keep only those), and games with settings you pick from a list (Commerce, local deployments, manual distribution, cards, wastelands, fog, no-split and more, read from the game's setting icons). The header shows how many games are hidden.
 - **Boot-time sorting** — games where it's your turn are ordered by time left before you're booted (boot time plus bank, minus how long it's been your turn), most urgent first. Other games keep their place.
 - **Joined games marked** — Open Games rows where you hold a seat (or are invited) get a green **Joined** badge.
 - **Vacation banner** — displays a notice when your account is on vacation.

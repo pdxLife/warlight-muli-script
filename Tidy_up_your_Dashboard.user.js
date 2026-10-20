@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.43.0
+// @version 3.44.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.43.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.44.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9113,7 +9113,7 @@ function normalizeOpenGamesFilter(value) {
         keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : [],
         minPlayers: Math.max(0, Math.floor(Number(value.minPlayers)) || 0),
         maxPlayers: Math.max(0, Math.floor(Number(value.maxPlayers)) || 0),
-        teamGames: value.teamGames === "only" || value.teamGames === "none" ? value.teamGames : "",
+        teamGames: ["only", "none", "ffa", "noffa"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
         hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (icon) {
             return openGameSettingIcons().some(function (known) {
                 return known[0] === icon;
@@ -9166,6 +9166,11 @@ function openGameIsFiltered(row, filter) {
     var icons = openGameIcons(row);
     var teamGame = icons.indexOf("Teams.png") !== -1;
     if ((filter.teamGames === "only" && !teamGame) || (filter.teamGames === "none" && teamGame)) {
+        return true;
+    }
+    // Free-for-all: three or more seats and no teams. Without seat boxes there's no telling, so it stays.
+    var ffa = seats >= 3 && !teamGame;
+    if (seats > 0 && ((filter.teamGames === "ffa" && !ffa) || (filter.teamGames === "noffa" && ffa))) {
         return true;
     }
     if (filter.hideSettings.some(function (icon) {
@@ -9237,7 +9242,7 @@ function setupOpenGamesFilter() {
                 <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours (0 = off)</label>
                 <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
                 <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
-                <label>Team games: <select name="teamGames"><option value="">show</option><option value="only">show only team games</option><option value="none">hide</option></select></label>
+                <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
                 <div>Hide games with:</div>
                 <div class="tuydFilterSettings">${openGameSettingIcons().map(function (icon) {
                     return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(icon[0]) + '"> ' + htmlEscape(icon[1]) + '</label>';

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.44.0
+
+- **Open Games filter: FFA games.** The filter's "Team games" choice is now **Game type**, with two more options: **show only FFA** (free-for-all: three or more seats and no teams) and **hide FFA**. Show only team games and hide team games are as before, and a saved choice is kept. 1 v 1 games are neither, so "Players: from 2 to 2" still picks those.
+
 ## 3.43.0
 
 - **Reorder bookmarks two ways.** Hover a bookmark in the dashboard's Bookmarks box and ▲ ▼ and a ⋮⋮ grip appear at its right end: click ▲ or ▼ to move it one place, or drag the grip and drop it where you want it. The new order is saved at once. The right-click menu (Edit, Move up, Move down) still works too.
