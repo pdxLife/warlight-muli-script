@@ -6990,14 +6990,17 @@ function setupLadderFriendSearch() {
             return { total: state ? state.total : friends.length, friends: friends };
         });
     };
+    // war.app's heading is a zero-size anchor and its text box only as wide as "Friends"; the box goes at the
+    // right end of the Friends panel, level with the heading.
     var place = function (found, box) {
         var title = found.heading.children(".ujsTextInner")[0];
-        if (!title) {
+        var panel = $(found.scene).find("[id^='ujs_FriendsSection'] [id^='ujs_DialogBackgroundForDropShadow'][id$='_img']")[0];
+        if (!title || !panel) {
             return;
         }
         var anchor = found.heading[0].getBoundingClientRect();
         var rect = title.getBoundingClientRect();
-        box.css({ left: rect.right - anchor.left - box.outerWidth() - 8, top: rect.top - anchor.top + (rect.height - box.children("input").outerHeight()) / 2 });
+        box.css({ left: panel.getBoundingClientRect().right - anchor.left - box.outerWidth() - 12, top: rect.top - anchor.top + (rect.height - box.children("input").outerHeight()) / 2 });
     };
     var show = function (found, box) {
         var list = box.children(".tuydFriendResults").empty();
