@@ -4220,7 +4220,10 @@ function bookmarkOrderBetween(before, after) {
     if (before !== null) {
         return before + 1;
     }
-    return after !== null ? after / 2 : 1;
+    if (after !== null) {
+        return after > 0 ? after / 2 : after - 1;
+    }
+    return 1;
 }
 
 // Bookmarks can be dragged into a new order by the grip that shows on hover; the right-click menu's Move
@@ -4435,7 +4438,8 @@ function bindBookmarkTable() {
         window.bookmarkId = Number(row.attr("data-bookmarkid"));
         window.bookmarkOrder = Number(row.attr("data-order"));
 
-        if (bookmarkId && bookmarkOrder) {
+        // A bookmark's order can be 0 (the first one saved), so only a missing one rules the menu out.
+        if (bookmarkId && !isNaN(bookmarkOrder)) {
             event.preventDefault();
             row.addClass("highlightedBookmark");
             // Show contextmenu
