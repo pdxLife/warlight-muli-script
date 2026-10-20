@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.43.0
+
+- **Reorder bookmarks two ways.** Hover a bookmark in the dashboard's Bookmarks box and ▲ ▼ and a ⋮⋮ grip appear at its right end: click ▲ or ▼ to move it one place, or drag the grip and drop it where you want it. The new order is saved at once. The right-click menu (Edit, Move up, Move down) still works too.
+- **Fix:** a bookmark at the very top of the list (order 0, as the default one is) had no right-click menu, so it couldn't be moved or edited from there, and moving the second bookmark to the top could fail without a word.
+
 ## 3.42.3
 
 - **Ladder team proposals: the friend search is instant, even with thousands of friends.** It now reads the friend list war.app already downloads when the proposal opens, instead of stepping through war.app's pages one by one, which took about two minutes for 3,000 friends and started over each time. Nothing is stored: the list is kept only while the page is open, as war.app keeps its own. If war.app's list can't be read, the search still reads the pages as before.

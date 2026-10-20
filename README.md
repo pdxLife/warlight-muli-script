@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.42.3  
+> **Version:** 3.43.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -54,7 +54,8 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 ### Bookmarks
 
 - **Custom bookmark table** in the dashboard sidebar.
-- **Add / edit / delete / reorder** bookmarks with a modal dialog.
+- **Add / edit / delete** bookmarks with a modal dialog.
+- **Reorder:** hover a bookmark and click ▲ / ▼ to move it one place, or drag its ⋮⋮ grip; the right-click menu also has Move up / Move down.
 - **Quick-bookmark** forum threads, tournaments, and community levels directly from their pages.
 - **Open in new window** option per bookmark.
 
