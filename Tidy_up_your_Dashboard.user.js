@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.41.4
+// @version 3.41.5
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.5';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6826,9 +6826,23 @@ function signedInPlayerId() {
 function setupCommunityLadders() {
     var rows = null;
     var community = null;
+    var observer = null;
+    // Opening one of war.app's ladders hides the Ladders view and changes the address (/LadderSeasons)
+    // without loading a page; the panel, which sits outside that view, goes with it and comes back after.
+    var hide = function () {
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        $("#communityLadders").remove();
+    };
     var show = function () {
         var scene = pageIsLadders() && ujsElement("LaddersScene");
-        if (!scene || !community) {
+        if (!scene || !shownUjsElement(scene)) {
+            hide();
+            return;
+        }
+        if (!community) {
             return;
         }
         addCommunityLaddersStyles();
@@ -6848,7 +6862,7 @@ function setupCommunityLadders() {
         fitCommunityLadders(panel, dialog);
         // war.app re-lays out the dialog shortly after a resize, so follow the dialog and the page area.
         if (window.ResizeObserver) {
-            var observer = new ResizeObserver(function () {
+            observer = new ResizeObserver(function () {
                 fitCommunityLadders(panel, dialog);
             });
             observer.observe(dialog[0]);
