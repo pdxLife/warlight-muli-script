@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.42.3
+
+- **Ladder team proposals: the friend search is instant, even with thousands of friends.** It now reads the friend list war.app already downloads when the proposal opens, instead of stepping through war.app's pages one by one, which took about two minutes for 3,000 friends and started over each time. Nothing is stored: the list is kept only while the page is open, as war.app keeps its own. If war.app's list can't be read, the search still reads the pages as before.
+- **Fix:** the search misread war.app's pager ("Friends 1 - 40 of 98" ran into the page buttons "1 2 3" as "of 98123") and so went on stepping through pages long after the last one.
+
 ## 3.42.2
 
 - **Settings menu:** the footer says "Maintained by KKND · Forum thread", linking KKND's profile and the script's current thread ([Muli's Userscript update](https://war.app/Forum/897130-mulis-userscript-update)), where problems and ideas go. Muli, the original creator, stays in the credits in the README, on the website and in the guide.
