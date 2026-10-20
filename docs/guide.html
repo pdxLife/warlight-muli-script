@@ -522,11 +522,14 @@
       parent.normalize();
     });
   };
-  var escapeRegExp = function (text) {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // A word as a pattern that also matches it with apostrophes, as fold() ignores them ("dont" finds "don't").
+  var wordPattern = function (word) {
+    return word.split("").map(function (char) {
+      return char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join("[\u2018\u2019']?");
   };
   var mark = function (root, words) {
-    var pattern = new RegExp("(" + words.map(escapeRegExp).join("|") + ")", "gi");
+    var pattern = new RegExp("(" + words.map(wordPattern).join("|") + ")", "gi");
     var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     var nodes = [];
     while (walker.nextNode()) {
