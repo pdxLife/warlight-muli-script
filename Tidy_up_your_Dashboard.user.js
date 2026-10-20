@@ -4170,7 +4170,9 @@ function refreshBookmarks() {
         $.each(bookmarks, function (key, bookmark) {
             data += '<tr data-bookmarkId="' + htmlEscape(bookmark.id) + '" data-order="' + htmlEscape(bookmark.order) + '"><td><a ' + (bookmark.newWindow ? 'target="_blank"' : "") + ' href="' + htmlEscape(safeUrl(siteRelativeUrl(bookmark.url))) + '">' + htmlEscape(bookmark.name) + '</a>';
             data += '<a onclick="deleteBookmark(' + Number(bookmark.id) + ')" style="display:inline-block;float:right; opacity: 0.6;cursor: pointer;margin-right:5px">';
-            data += '<span class="ui-icon ui-icon-trash"></span></a><span class="tuydBookmarkGrip" title="Drag to move this bookmark">⋮⋮</span></td></tr>';
+            data += '<span class="ui-icon ui-icon-trash"></span></a><span class="tuydBookmarkGrip" title="Drag to move this bookmark">⋮⋮</span>';
+            data += '<a class="tuydBookmarkStep tuydBookmarkDown" title="Move down" onclick="moveBookmarkStep(' + Number(bookmark.id) + ', 1)">▼</a>';
+            data += '<a class="tuydBookmarkStep tuydBookmarkUp" title="Move up" onclick="moveBookmarkStep(' + Number(bookmark.id) + ', -1)">▲</a></td></tr>';
         });
 
         $("#BookmarkTable").append(data + '</tbody>');
@@ -4226,29 +4228,47 @@ function bookmarkOrderBetween(before, after) {
     return 1;
 }
 
-// Bookmarks can be dragged into a new order by the grip that shows on hover; the right-click menu's Move
-// up / Move Down still work. jQuery UI's sortable comes with the script's own jQuery ($$$).
+// Bookmarks can be dragged into a new order by the grip that shows on hover, or moved one place with its
+// ▲ ▼; the right-click menu's Move up / Move Down still work. jQuery UI's sortable comes with the script's
+// own jQuery ($$$), so without it only the arrows and the menu are left.
 function makeBookmarksSortable() {
-    if (typeof $$$ === "undefined" || !$$$.fn.sortable) {
-        return;
-    }
     addCSS(`
-        #BookmarkTable .tuydBookmarkGrip {
+        #BookmarkTable .tuydBookmarkGrip,
+        #BookmarkTable .tuydBookmarkStep {
             float: right;
             margin-right: 6px;
             color: #888;
-            cursor: grab;
             visibility: hidden;
             user-select: none;
         }
-        #BookmarkTable tbody tr:hover .tuydBookmarkGrip {
+        #BookmarkTable .tuydBookmarkGrip {
+            cursor: grab;
+        }
+        #BookmarkTable .tuydBookmarkStep {
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 20px;
+            text-decoration: none;
+        }
+        #BookmarkTable .tuydBookmarkStep:hover {
+            color: #e0c060;
+        }
+        #BookmarkTable tbody tr:hover .tuydBookmarkGrip,
+        #BookmarkTable tbody tr:hover .tuydBookmarkStep {
             visibility: visible;
+        }
+        #BookmarkTable tbody tr:first-child .tuydBookmarkUp,
+        #BookmarkTable tbody tr:last-child .tuydBookmarkDown {
+            display: none;
         }
         #BookmarkTable .tuydBookmarkDropSpot {
             height: 30px;
             background: rgba(224, 192, 96, 0.15);
         }
     `);
+    if (typeof $$$ === "undefined" || !$$$.fn.sortable) {
+        return;
+    }
     $$$("#BookmarkTable tbody").sortable({
         handle: ".tuydBookmarkGrip",
         axis: "y",
@@ -4277,55 +4297,49 @@ function makeBookmarksSortable() {
     });
 }
 
-function moveBookmark(bookmark, previousBookmark1, previousBookmark2) {
-    bookmark.order = (previousBookmark1.order + previousBookmark2.order) / 2;
-
-    Database.update(Database.Table.Bookmarks, bookmark, bookmark.id, function () {
-        $("#bookmarkURL").val('');
-        $("#bookmarkName").val('');
-        $("#bookmarkNewWindow").prop('checked', false);
-        refreshBookmarks();
-    })
+// The order for a bookmark moved one place up (step -1) or down (1): between its new neighbours, so only
+// that row is written (orders are a unique index, so swapping two would collide). null at either end.
+function bookmarkStepOrder(bookmarks, id, step) {
+    var orders = bookmarks.slice().sort(function (a, b) {
+        return a.order - b.order;
+    });
+    var index = orders.map(function (bookmark) {
+        return bookmark.id;
+    }).indexOf(id);
+    orders = orders.map(function (bookmark) {
+        return bookmark.order;
+    });
+    var to = index + step;
+    if (index < 0 || to < 0 || to >= orders.length) {
+        return null;
+    }
+    var neighbour = function (at) {
+        return at >= 0 && at < orders.length ? orders[at] : null;
+    };
+    return step < 0 ? bookmarkOrderBetween(neighbour(to - 1), orders[to]) : bookmarkOrderBetween(orders[to], neighbour(to + 1));
 }
 
-window.moveBookmarkUp = function () {
+window.moveBookmarkStep = function (id, step) {
     Database.readAll(Database.Table.Bookmarks, function (bookmarks) {
-        var bookmark = undefined;
-        $.each(bookmarks, function (key, bm) {
-            if (bookmarkId === bm.id) {
-                bookmark = bm
-            }
-        });
-        bookmarks.sort(function (a, b) {
-            return a.order - b.order
-        });
-        var previousBookmark1 = bookmarks[bookmarks.indexOf(bookmark) - 1];
-        var previousBookmark2 = bookmarks[bookmarks.indexOf(bookmark) - 2] || { order: 0 };
-        if (previousBookmark1) {
-            moveBookmark(bookmark, previousBookmark1, previousBookmark2);
+        var order = bookmarkStepOrder(bookmarks, id, step);
+        var bookmark = bookmarks.filter(function (candidate) {
+            return candidate.id === id;
+        })[0];
+        if (order === null || !bookmark) {
+            return;
         }
-    })
+        bookmark.order = order;
+        Database.update(Database.Table.Bookmarks, bookmark, bookmark.id, refreshBookmarks);
+    });
+};
+
+window.moveBookmarkUp = function () {
+    moveBookmarkStep(bookmarkId, -1);
 };
 
 window.moveBookmarkDown = function () {
-    Database.readAll(Database.Table.Bookmarks, function (bookmarks) {
-        var bookmark = undefined;
-        $.each(bookmarks, function (key, bm) {
-            if (bookmarkId === bm.id) {
-                bookmark = bm
-            }
-        });
-        bookmarks.sort(function (a, b) {
-            return a.order - b.order
-        });
-        var nextBookmark1 = bookmarks[bookmarks.indexOf(bookmark) + 1];
-        var nextBookmark2 = bookmarks[bookmarks.indexOf(bookmark) + 2] || { order: 100000 };
-        if (nextBookmark1) {
-            moveBookmark(bookmark, nextBookmark1, nextBookmark2);
-        }
-    })
+    moveBookmarkStep(bookmarkId, 1);
 };
-
 
 window.deleteBookmark = function (id) {
     Database.delete(Database.Table.Bookmarks, id, function () {

@@ -64,6 +64,7 @@ test("bookmarks render stored names and URLs safely", () => {
         SITE_HOSTS: ["war.app", "warzone.com", "warlight.net"],
         ...domGlobals(dom, $),
         log: () => { },
+        addCSS: () => { },
         wljs_WaitDialogJS: { Stop() { } },
         Database: {
             Table: { Bookmarks: "Bookmarks" },
