@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.42.2
+
+- **Settings menu:** the footer says "Maintained by KKND · Forum thread", linking KKND's profile and the script's current thread ([Muli's Userscript update](https://war.app/Forum/897130-mulis-userscript-update)), where problems and ideas go. Muli, the original creator, stays in the credits in the README, on the website and in the guide.
+
 ## 3.42.1
 
 - **Game notes: the Notes button is in the game's title bar**, right after the name and setting icons, and the notes open just below it. It used to sit by war.app's Game button, moving beside the Chat tab while the chat was open, and in a game you aren't in (where war.app shows the chat differently) it stayed put and covered the chat. Where the title bar has no room (a long name in a narrow window), it falls back to its old place.
