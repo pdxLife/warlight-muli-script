@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -157,4 +157,15 @@ test("a closed chat doesn't move the button", () => {
     $("body").append('<div id="ujs_Chat" style="display: none"><div id="ujs_ChatTab"></div></div><div id="ujs_ChatCollapseButton"><a id="ujs_ChatCollapseButton_btn"></a></div>');
     assert.equal(ctx.openGameChatTabRect(), null);
     assert.equal($("#tuydGameNotesBtn").hasClass("tuydOnChat"), false);
+});
+
+test("the Notes button goes in the title bar after the setting icons, when there's room", () => {
+    const ctx = load(["gameNotesTitleSpot"]);
+    const bar = { left: 0, top: 72, right: 1024, bottom: 102, width: 1024, height: 30 };
+    const icons = { left: 225, right: 354 };
+    // Measured on a finished NC 26 game, October 2026: name to 223px, icons to 354px.
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.gameNotesTitleSpot(bar, icons, [3, 36, 225, 240], 52, 18))), { left: 364, top: 78, barBottom: 102 });
+    assert.equal(ctx.gameNotesTitleSpot(bar, icons, [400], 52, 18), null, "war.app's clock or buttons right after the icons leave no room");
+    assert.equal(ctx.gameNotesTitleSpot({ ...bar, right: 400, width: 400 }, icons, [], 52, 18), null, "a narrow window");
+    assert.equal(ctx.gameNotesTitleSpot(null, icons, [], 52, 18), null, "no title bar (a lobby)");
 });
