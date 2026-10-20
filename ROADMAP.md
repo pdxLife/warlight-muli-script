@@ -232,6 +232,7 @@ Three more places where custom.wl-stats.com's data helps on war.app. All follow 
   - [x] Tested an animated PNG (`media/test/test-apng.png`): it moves in browsers and shows as a still (its first frame) in war.app's phone app. Motion in posts is APNG, made with `tools/make_apng.py`, with a first frame that makes sense on its own.
   - [ ] Capture the stills and step strips on the maintainer's account, with other players' names blurred where they aren't public standings; MP4s for the site.
   - A line that it's a fan project, not affiliated with war.app; recordings made on the maintainer's account, with other players' names cropped where they aren't public.
+  - [x] **Search on the guide** (October 2026): a box pinned at the top of `docs/guide.html` filters paragraphs, list items and pictures as you type, keeps each under its section heading, highlights the words, and links as `guide.html?q=…` for forum replies. Plain script in the page, no library.
 - [ ] **The forum post**, in BBCode with the hosted images, once the media is ready.
 
 ## Phase 12 — A browser extension

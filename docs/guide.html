@@ -32,8 +32,8 @@
   nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 32px; }
   nav.toc li { margin: 3px 0; break-inside: avoid; }
   @media (max-width: 560px) { nav.toc ol { columns: 1; } }
-  h2 { margin: 48px 0 8px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; scroll-margin-top: 16px; }
-  h3 { margin: 24px 0 4px; font-size: 17px; color: #fff; scroll-margin-top: 16px; }
+  h2 { margin: 48px 0 8px; font-size: 22px; color: #fff; border-bottom: 1px solid var(--line); padding-bottom: 6px; scroll-margin-top: 100px; }
+  h3 { margin: 24px 0 4px; font-size: 17px; color: #fff; scroll-margin-top: 100px; }
   p { margin: 6px 0; }
   ul, ol { margin: 6px 0; padding-left: 22px; }
   li { margin: 4px 0; }
@@ -44,6 +44,15 @@
   figure { margin: 14px 0 6px; }
   figure img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
   figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .search { position: sticky; top: 0; z-index: 2; margin: 0 -16px 16px; padding: 10px 16px; background: var(--bg); }
+  .search-box { display: flex; gap: 8px; }
+  .search input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: #fff; font: inherit; }
+  .search input:focus { outline: none; border-color: var(--link); }
+  .search button { padding: 0 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+  .search button:hover { border-color: var(--link); }
+  .search-status { margin-top: 4px; min-height: 1.4em; color: var(--muted); font-size: 13px; }
+  mark.hit { background: rgba(224, 192, 96, 0.35); color: inherit; border-radius: 2px; }
+  [hidden] { display: none !important; }
   footer { margin-top: 56px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
 </style>
 </head>
@@ -52,6 +61,14 @@
   <a class="back" href="./">← Tidy Up Your Dashboard</a>
   <h1>Guide</h1>
   <p class="lead">How to use each feature, where to find it, and which setting controls it.</p>
+
+  <div class="search" role="search">
+    <div class="search-box">
+      <input type="search" id="guide-search" placeholder="Search the guide: notes, filter, bookmarks, Idle…" aria-label="Search the guide" autocomplete="off">
+      <button type="button" id="guide-search-clear" hidden>Clear</button>
+    </div>
+    <div class="search-status" id="guide-search-status" aria-live="polite"></div>
+  </div>
 
   <nav class="toc" aria-label="Contents">
     <ol>
@@ -449,5 +466,184 @@
     Tidy Up Your Dashboard was created by <a href="https://war.app/Profile?p=2211733141">Muli</a> in 2015 and is maintained by <a href="https://war.app/Profile?p=2921525624">KKND</a>. A fan project, not affiliated with war.app.
   </footer>
 </main>
+<script>
+(function () {
+  var input = document.getElementById("guide-search");
+  var clear = document.getElementById("guide-search-clear");
+  var status = document.getElementById("guide-search-status");
+  var main = document.querySelector("main");
+  var toc = document.querySelector("nav.toc");
+  var footer = main.querySelector("footer");
+  var fold = function (text) {
+    return text.toLowerCase().replace(/[\u2018\u2019']/g, "");
+  };
+  var textOf = function (element) {
+    var alts = Array.prototype.map.call(element.querySelectorAll("img[alt]"), function (img) {
+      return img.alt;
+    });
+    return element.textContent + " " + alts.join(" ");
+  };
+
+  // Each searchable unit (a paragraph, tip, picture or list item) with the headings it sits under.
+  var units = [];
+  var lists = [];
+  var headings = [];
+  var h2 = null;
+  var h3 = null;
+  for (var element = toc.nextElementSibling; element && element !== footer; element = element.nextElementSibling) {
+    if (element.tagName === "H2") {
+      h2 = { element: element, h2: null };
+      h3 = null;
+      headings.push(h2);
+    } else if (element.tagName === "H3") {
+      h3 = { element: element, h2: h2 };
+      headings.push(h3);
+    } else if (element.tagName === "UL" || element.tagName === "OL") {
+      var items = Array.prototype.filter.call(element.children, function (child) {
+        return child.tagName === "LI";
+      });
+      lists.push({ element: element, items: items });
+      items.forEach(function (item) {
+        units.push({ element: item, h2: h2, h3: h3 });
+      });
+    } else {
+      units.push({ element: element, h2: h2, h3: h3 });
+    }
+  }
+  units.forEach(function (unit) {
+    var context = (unit.h2 ? unit.h2.element.textContent : "") + " " + (unit.h3 ? unit.h3.element.textContent : "");
+    unit.text = fold(textOf(unit.element) + " " + context);
+  });
+
+  var unmark = function () {
+    Array.prototype.forEach.call(main.querySelectorAll("mark.hit"), function (mark) {
+      var parent = mark.parentNode;
+      parent.replaceChild(document.createTextNode(mark.textContent), mark);
+      parent.normalize();
+    });
+  };
+  // A word as a pattern that also matches it with apostrophes, as fold() ignores them ("dont" finds "don't").
+  var wordPattern = function (word) {
+    return word.split("").map(function (char) {
+      return char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }).join("[\u2018\u2019']?");
+  };
+  var mark = function (root, words) {
+    var pattern = new RegExp("(" + words.map(wordPattern).join("|") + ")", "gi");
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    var nodes = [];
+    while (walker.nextNode()) {
+      nodes.push(walker.currentNode);
+    }
+    nodes.forEach(function (node) {
+      if (!pattern.test(node.nodeValue)) {
+        return;
+      }
+      pattern.lastIndex = 0;
+      var fragment = document.createDocumentFragment();
+      node.nodeValue.split(pattern).forEach(function (part, i) {
+        if (i % 2) {
+          var hit = document.createElement("mark");
+          hit.className = "hit";
+          hit.textContent = part;
+          fragment.appendChild(hit);
+        } else if (part) {
+          fragment.appendChild(document.createTextNode(part));
+        }
+      });
+      node.parentNode.replaceChild(fragment, node);
+    });
+  };
+
+  var search = function () {
+    var query = input.value.trim();
+    var words = fold(query).split(/\s+/).filter(Boolean);
+    var active = query.length >= 2;
+    unmark();
+    clear.hidden = !query;
+    toc.hidden = active;
+    var shownHeadings = [];
+    var sections = [];
+    var count = 0;
+    units.forEach(function (unit) {
+      var match = !active || words.every(function (word) {
+        return unit.text.indexOf(word) !== -1;
+      });
+      unit.element.hidden = !match;
+      if (match && active) {
+        count++;
+        mark(unit.element, words);
+        [unit.h2, unit.h3].forEach(function (heading) {
+          if (heading && shownHeadings.indexOf(heading) === -1) {
+            shownHeadings.push(heading);
+          }
+        });
+        if (unit.h2 && sections.indexOf(unit.h2) === -1) {
+          sections.push(unit.h2);
+        }
+      }
+    });
+    lists.forEach(function (list) {
+      list.element.hidden = active && list.items.every(function (item) {
+        return item.hidden;
+      });
+    });
+    headings.forEach(function (heading) {
+      heading.element.hidden = active && shownHeadings.indexOf(heading) === -1;
+      if (active && !heading.element.hidden) {
+        mark(heading.element, words);
+      }
+    });
+    status.textContent = !active ? "" : count
+      ? count + (count === 1 ? " match" : " matches") + " in " + sections.length + (sections.length === 1 ? " section" : " sections")
+      : "Nothing found for \u201c" + query + "\u201d. Try fewer or shorter words.";
+    try {
+      var url = new URL(location.href);
+      if (active) {
+        url.searchParams.set("q", query);
+      } else {
+        url.searchParams.delete("q");
+      }
+      history.replaceState(null, "", url);
+    } catch (e) {}
+  };
+
+  var timer = null;
+  input.addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(search, 150);
+  });
+  input.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+      input.value = "";
+      search();
+    }
+  });
+  clear.addEventListener("click", function () {
+    input.value = "";
+    search();
+    input.focus();
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "/" && document.activeElement !== input && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      input.focus();
+    }
+  });
+  // A link into the guide (a section, or a search from a forum post) still lands where it points.
+  main.addEventListener("click", function (event) {
+    var link = event.target.closest && event.target.closest("a[href^='#']");
+    if (link && input.value) {
+      input.value = "";
+      search();
+    }
+  });
+  var initial = new URLSearchParams(location.search).get("q");
+  if (initial) {
+    input.value = initial;
+    search();
+  }
+})();
+</script>
 </body>
 </html>
