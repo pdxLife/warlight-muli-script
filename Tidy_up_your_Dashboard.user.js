@@ -9894,7 +9894,7 @@ function setupGameNotes() {
             }, 100);
         }
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-    // war.app can move to another game without loading a page, and lays out the title bar a moment after
+    // war.app can move to another game without loading a page, and lays out the title bar shortly after
     // the button is first placed.
     setInterval(function () {
         load();
