@@ -6902,7 +6902,12 @@ function setupLadderFriendSearch() {
         .tuydFriendSearch .tuydFriendPage {
             margin-left: auto;
         }
-        .tuydFriendFound {
+        /* war.app's row is a zero-size anchor, so its name and Select button are what light up. */
+        .tuydFriendFound .ujsTextInner {
+            color: #e0c060 !important;
+            font-weight: bold;
+        }
+        .tuydFriendFound .ujsBtnInner {
             outline: 2px solid #e0c060;
             outline-offset: 1px;
         }
