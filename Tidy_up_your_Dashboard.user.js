@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.42.2
+// @version 3.42.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.42.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.42.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6851,6 +6851,81 @@ function ladderFriendsPagerState(text) {
     return match ? { first: Number(match[1]), last: Number(match[2]), total: Number(match[3]) } : null;
 }
 
+// war.app's GetFriends answer (hex, in war.app's binary format), as the friends in the order war.app
+// lists them. Each friend's level and name sit between two dates: a date ending in byte 0x42, the level
+// as a 4-byte number, 0x01 and the name with its length, then another date (or, when there's none,
+// -MaxValue or a far-past date, ending in 0xC1 or 0xC2). Nothing else in the answer looks like that; if war.app changes its format, this finds nobody
+// and the search reads war.app's pages instead.
+function parseFriendsList(hex) {
+    hex = String(hex || "").trim();
+    if (!/^(?:[0-9a-f]{2})+$/i.test(hex)) {
+        return [];
+    }
+    var bytes = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    var decoder = new TextDecoder("utf-8", { fatal: true });
+    var date = function (p) {
+        if (p + 8 > bytes.length) {
+            return false;
+        }
+        var none = [255, 255, 255, 255, 255, 255, 239, 255].every(function (value, k) {
+            return bytes[p + k] === value;
+        });
+        return none || [0x41, 0x42, 0xC1, 0xC2].indexOf(bytes[p + 7]) !== -1;
+    };
+    var friends = [];
+    for (var p = 8; p + 6 < bytes.length; p++) {
+        var level = bytes[p] | bytes[p + 1] << 8 | bytes[p + 2] << 16 | bytes[p + 3] << 24;
+        if (bytes[p - 1] !== 0x42 || level < 1 || level > 100 || bytes[p + 4] !== 1) {
+            continue;
+        }
+        var length = bytes[p + 5];
+        var start = p + 6;
+        if (length < 1 || length > 60 || start + length > bytes.length || !date(start + length)) {
+            continue;
+        }
+        var name;
+        try {
+            name = decoder.decode(bytes.subarray(start, start + length));
+        } catch (e) {
+            continue;
+        }
+        friends.push({ name: name, level: level });
+        p = start + length + 7;
+    }
+    return friends;
+}
+
+// Calls back with the text of each answer war.app gets from one of its services (Services?m=Name).
+function watchServiceAnswers(service, callback) {
+    var open = XMLHttpRequest.prototype.open;
+    var pattern = new RegExp("[?&]m=" + service + "\\b");
+    XMLHttpRequest.prototype.open = function (method, url) {
+        if (pattern.test(String(url))) {
+            this.addEventListener("load", function () {
+                try {
+                    callback(this.responseText);
+                } catch (e) {
+                    log(service + ": " + e);
+                }
+            });
+        }
+        return open.apply(this, arguments);
+    };
+}
+
+// The friends a proposal lists, with their pages: war.app's list without you and anyone already in the
+// proposal, 40 a page.
+function ladderFriendsFromList(list, me, selected) {
+    return list.filter(function (friend) {
+        return friend.name !== me && selected.indexOf(friend.name) === -1;
+    }).map(function (friend, i) {
+        return { name: friend.name, level: friend.level, locked: false, page: Math.floor(i / LADDER_FRIENDS_PER_PAGE) + 1 };
+    });
+}
+
 // war.app's team ladder proposal shows your friends 40 at a time. A search box beside "Friends" reads
 // every page once, by stepping through war.app's own pager, lists the matches, and opens a match's page;
 // its Select is war.app's own Select button, which only adds the friend to the proposal.
@@ -6914,6 +6989,18 @@ function setupLadderFriendSearch() {
     var index = null;
     var reading = false;
     var timer = null;
+    // war.app downloads your whole friend list when the proposal opens; the search reads that answer, so
+    // it doesn't have to step through the pages. Kept only while this page is open.
+    var friendList = [];
+    var me = "";
+    watchServiceAnswers("GetFriends", function (text) {
+        friendList = parseFriendsList(text);
+    });
+    if (window.playerDataReady) {
+        playerDataReady.done(function (player) {
+            me = player && player.Name || "";
+        });
+    }
     var parts = function () {
         var scene = ujsElement("CreateLadderProposalScene");
         if (!scene || !shownUjsElement(scene)) {
@@ -6932,8 +7019,12 @@ function setupLadderFriendSearch() {
             return friend ? $.extend(friend, { element: element }) : null;
         }).filter(Boolean);
     };
+    // Only the pager's label: its page buttons ("1 2 3") would otherwise run into the count ("of 98123").
     var pagerState = function (found) {
-        return ladderFriendsPagerState(found.pager.text());
+        var label = found.pager.find(".ujsTextInner").filter(function () {
+            return /\bof\s+\d+\s*$/.test($(this).text());
+        }).first();
+        return ladderFriendsPagerState(label.text());
     };
     // Clicks the pager button with this label, then waits until war.app shows the new page.
     var press = function (found, label) {
@@ -7016,6 +7107,17 @@ function setupLadderFriendSearch() {
         var state = pagerState(found);
         if (index && state && index.total !== state.total) {
             index = null;
+        }
+        // From war.app's list when it matches what the pager counts; otherwise by reading the pages.
+        if (!index && friendList.length && state) {
+            var selected = $(found.scene).find("[id^='ujs_SelectedPlayersContainer']").children().get().map(function (element) {
+                var match = /L\d+\s+(.+)$/.exec($(element).text().replace(/\s+/g, " ").trim());
+                return match ? match[1] : "";
+            });
+            var fromList = ladderFriendsFromList(friendList, me, selected);
+            if (fromList.length === state.total) {
+                index = { total: state.total, friends: fromList };
+            }
         }
         if (!index) {
             if (!reading) {
