@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.42.1
+
+- **Game notes: the Notes button is in the game's title bar**, right after the name and setting icons, and the notes open just below it. It used to sit by war.app's Game button, moving beside the Chat tab while the chat was open, and in a game you aren't in (where war.app shows the chat differently) it stayed put and covered the chat. Where the title bar has no room (a long name in a narrow window), it falls back to its old place.
+
 ## 3.42.0
 
 - **Search your friends when proposing a ladder team.** On a team ladder (2v2, 3v3) → Join Ladder → Join with Team, war.app lists your friends 40 at a time, with no search. A **Search your friends** box now sits at the right of "Friends": type part of a name and it lists every match across all pages, best match first, with its level and page ("L59 A slice of pie · page 3", "locked" for friends who haven't unlocked the ladder). Click one to go to its page, where its name turns gold and its Select button is outlined; Select it as usual. The first search reads your friends by stepping through war.app's own pager (under a second for 98 friends) and puts the list back on the page you were on; the proposal itself is unchanged and is only sent by war.app's own button.
