@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.41.5
+
+- **Ladders: the Community ladders panel no longer covers a ladder you open.** Opening one of war.app's own ladders (Seasonal, 1v1, 2v2, 3v3) from the Ladders page left the panel on top of it, because war.app switches to the ladder without loading a new page. The panel now goes away when you open a ladder and comes back when you return to Ladders, without loading the standings again.
+
 ## 3.41.4
 
 - **Player Search: a better best match.** New accounts (L1–2) now come after everyone else, so an L1 with exactly the name you typed no longer comes before an L66 whose name starts with it. A tag at the start of a name ("[ BTF] consequence777") no longer stops it counting as starting with what you typed. Searching "conseq" now lists CONSEQUENCER (L66), [ BTF] consequence777 (L47), consequences, Consequence7777, then the L1–2 accounts.
