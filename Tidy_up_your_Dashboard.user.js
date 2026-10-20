@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.41.3
+// @version 3.41.4
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.41.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2164,8 +2164,9 @@ function playerSearchRows() {
     }).get();
 }
 
+// A tag at the start of a name ("[ BTF] consequence777") doesn't count, so the name still starts with the search.
 function playerSearchMatch(name, query) {
-    var a = String(name || "").toLowerCase();
+    var a = String(name || "").replace(/^\s*[\[(][^\])]*[\])]\s*/, "").toLowerCase();
     var b = String(query || "").trim().toLowerCase();
     return !b ? 3 : a === b ? 0 : a.indexOf(b) === 0 ? 1 : a.indexOf(b) !== -1 ? 2 : 3;
 }
@@ -2180,8 +2181,9 @@ function sortPlayerSearchRows(rows, sortBy, query) {
         if (sortBy === "name") {
             return a.row.name.localeCompare(b.row.name) || b.row.level - a.row.level || a.i - b.i;
         }
+        // New accounts (L1–2) come after every other match: an exact name is rarely the one you want there.
         if (sortBy === "match") {
-            return playerSearchMatch(a.row.name, query) - playerSearchMatch(b.row.name, query) || b.row.level - a.row.level || a.i - b.i;
+            return (a.row.level <= 2) - (b.row.level <= 2) || playerSearchMatch(a.row.name, query) - playerSearchMatch(b.row.name, query) || b.row.level - a.row.level || a.i - b.i;
         }
         return a.i - b.i;
     }).map(function (entry) {
@@ -2196,9 +2198,13 @@ function playerSearchFilter(row, filters) {
 function readPlayerSearchPrefs() {
     try {
         var stored = JSON.parse(localStorage.getItem(PLAYER_SEARCH_KEY));
-        return stored && typeof stored === "object" ? stored : {};
+        stored = stored && typeof stored === "object" ? stored : {};
+        if (typeof stored.hideLow !== "boolean") {
+            stored.hideLow = true;
+        }
+        return stored;
     } catch (e) {
-        return {};
+        return { hideLow: true };
     }
 }
 

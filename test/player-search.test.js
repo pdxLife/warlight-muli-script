@@ -43,16 +43,33 @@ test("reads each result's id, level, name and clan", () => {
     assert.ok(ctx.pageIsPlayerSearch());
 });
 
-test("best match puts exact names first, then names starting with the search, each by level", async () => {
+test("best match: exact names, then names starting with the search, then the rest, each by level, new accounts last", async () => {
     const { ctx, $, order, settle } = searchPage();
     ctx.setupPlayerSearchSort();
     await settle();
-    assert.deepEqual(order(), ["L65 tornado", "L26 Tornado", "L2 tornado", "L2 Tornado", "L8 tornado king", "L1 Tornadodex", "L17 Tommy Tornado"]);
+    assert.equal($("#playerSearchTools [name=hideLow]").prop("checked"), true, "Hide L1–2 is on until you change it");
+    assert.deepEqual(order(), ["L65 tornado", "L26 Tornado", "L8 tornado king", "L17 Tommy Tornado"]);
     assert.ok($("#ujs_ResultsContainer > #playerSearchTools").length, "the controls sit on war.app's results line");
+    $("#playerSearchTools [name=hideLow]").prop("checked", false).trigger("change");
+    assert.deepEqual(order(), ["L65 tornado", "L26 Tornado", "L8 tornado king", "L17 Tommy Tornado", "L2 tornado", "L2 Tornado", "L1 Tornadodex"]);
     $("#playerSearchTools [name=sortBy]").val("level").trigger("change");
     assert.deepEqual(order(), ["L65 tornado", "L26 Tornado", "L17 Tommy Tornado", "L8 tornado king", "L2 tornado", "L2 Tornado", "L1 Tornadodex"]);
     $("#playerSearchTools [name=sortBy]").val("warapp").trigger("change");
     assert.deepEqual(order(), ["L2 tornado", "L65 tornado", "L2 Tornado", "L26 Tornado", "L17 Tommy Tornado", "L8 tornado king", "L1 Tornadodex"], "war.app's own order is kept as a choice");
+});
+
+test("a tag at the start of a name doesn't stop it starting with the search", () => {
+    const ctx = load(["playerSearchMatch", "sortPlayerSearchRows"]);
+    assert.equal(ctx.playerSearchMatch("[ BTF] consequence777", "conseq"), 1);
+    assert.equal(ctx.playerSearchMatch("(NL) Conseq", "conseq"), 0);
+    assert.equal(ctx.playerSearchMatch("UnforeseenConsequences", "conseq"), 2);
+    const rows = [
+        { name: "Conseq", level: 1 }, { name: "CONSEQUENCER", level: 66 }, { name: "consequences", level: 4 }, { name: "Consequence7777", level: 3 },
+        { name: "consequentialist", level: 2 }, { name: "[ BTF] consequence777", level: 47 }, { name: "UnforeseenConsequences", level: 2 }, { name: "Political Consequences", level: 1 }
+    ];
+    const sorted = Array.from(ctx.sortPlayerSearchRows(rows, "match", "conseq").map((row) => "L" + row.level + " " + row.name));
+    assert.deepEqual(sorted, ["L66 CONSEQUENCER", "L47 [ BTF] consequence777", "L4 consequences", "L3 Consequence7777",
+        "L1 Conseq", "L2 consequentialist", "L2 UnforeseenConsequences", "L1 Political Consequences"], "the search from the forum, October 2026");
 });
 
 test("filters hide low levels, players without a clan, or below a minimum level, and the count says so", async () => {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.41.4
+
+- **Player Search: a better best match.** New accounts (L1–2) now come after everyone else, so an L1 with exactly the name you typed no longer comes before an L66 whose name starts with it. A tag at the start of a name ("[ BTF] consequence777") no longer stops it counting as starting with what you typed. Searching "conseq" now lists CONSEQUENCER (L66), [ BTF] consequence777 (L47), consequences, Consequence7777, then the L1–2 accounts.
+- **Player Search: "Hide L1–2" is on at first.** Untick it to see new accounts; your choice is remembered as before.
+
 ## 3.41.3
 
 - **Chat buttons stay behind war.app's popups.** In the chat rooms and game chat, the 🔊 read-aloud and 🔇 mute buttons of the messages behind war.app's player card (opened by clicking a name) showed through it. They now stay under the card and any other war.app popup over the chat, and work as before on the messages.
