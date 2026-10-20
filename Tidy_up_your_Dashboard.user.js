@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.42.0
+// @version 3.42.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.42.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.42.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9627,6 +9627,50 @@ function gameNotesButtonSpot(chatTabRect, viewportHeight, buttonWidth) {
     return { left: Math.max(8, chatTabRect.left - 8 - buttonWidth), bottom: Math.max(0, viewportHeight - chatTabRect.bottom), onChat: true };
 }
 
+// The Notes button's place in the game's title bar, after the name and setting icons, or null when the
+// bar isn't there or a long name leaves no room before what war.app shows on the bar's right.
+function gameNotesTitleSpot(bar, after, obstacles, width, height) {
+    if (!bar || !after || bar.width <= 0 || bar.height <= 0) {
+        return null;
+    }
+    var left = after.right + 10;
+    var limit = obstacles.filter(function (edge) {
+        return edge > after.right + 2;
+    }).reduce(function (lowest, edge) {
+        return Math.min(lowest, edge);
+    }, bar.right);
+    if (left + width > limit - 8) {
+        return null;
+    }
+    return { left: Math.round(left), top: Math.round(bar.top + (bar.height - height) / 2), barBottom: Math.round(bar.bottom) };
+}
+
+// The title bar, what the button follows (the setting icons, or the name), and the left edges of what
+// else war.app shows on the bar.
+function gameTitleBarRects() {
+    var bar = $("[id^='ujs_TopBar'][id$='_img']").filter(function () {
+        return /^ujs_TopBar(?:_\d+)?_img$/.test(this.id) && shownUjsElement(this);
+    })[0];
+    var name = $("[id^='ujs_GameNameLabel'][id$='_tmp']").filter(function () {
+        return shownUjsElement(this);
+    })[0];
+    if (!bar || !name) {
+        return null;
+    }
+    var icons = $("[id^='ujs_SettingsIconsContainer'][id$='_img']").filter(function () {
+        return shownUjsElement(this) && this.getBoundingClientRect().width > 0;
+    })[0];
+    var after = (icons || name).getBoundingClientRect();
+    var barRect = bar.getBoundingClientRect();
+    var obstacles = $(bar).parent().find("*").not("#tuydGameNotesBtn").get().filter(function (element) {
+        var rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.width < barRect.width * 0.8 && rect.top < barRect.bottom && rect.bottom > barRect.top;
+    }).map(function (element) {
+        return element.getBoundingClientRect().left;
+    });
+    return { bar: barRect, after: after, obstacles: obstacles };
+}
+
 function openGameChatTabRect() {
     var chat = $("[id^='ujs_Chat']").filter(function () {
         return /^ujs_Chat(?:_\d+)?$/.test(this.id);
@@ -9746,17 +9790,28 @@ function setupGameNotes() {
         button.toggleClass("tuydHasNotes", !gameNotesEmpty(notes));
     };
     var spot = null;
+    // In the title bar the button is never in the chat's or war.app's way; without room there it sits by
+    // the Game button, or left of the Chat tab while the chat is open.
     var place = function () {
-        var tab = openGameChatTabRect();
-        button.toggleClass("tuydOnChat", !!tab);
-        var next = gameNotesButtonSpot(tab, window.innerHeight, button.outerWidth());
+        var rects = gameTitleBarRects();
+        button.addClass("tuydOnChat");
+        var title = rects ? gameNotesTitleSpot(rects.bar, rects.after, rects.obstacles, button.outerWidth(), button.outerHeight()) : null;
         var panel = $("#tuydGameNotes");
-        if (spot && next.left === spot.left && next.bottom === spot.bottom && panel.attr("data-placed")) {
+        var next;
+        if (title) {
+            next = { key: "title:" + title.left + ":" + title.top, button: { left: title.left, top: title.top, bottom: "auto" }, panel: { left: Math.max(8, title.left - 160), top: title.barBottom + 6, bottom: "auto" } };
+        } else {
+            var tab = openGameChatTabRect();
+            button.toggleClass("tuydOnChat", !!tab);
+            var corner = gameNotesButtonSpot(tab, window.innerHeight, button.outerWidth());
+            next = { key: "corner:" + corner.left + ":" + corner.bottom, button: { left: corner.left, bottom: corner.bottom, top: "auto" }, panel: { left: corner.onChat ? Math.max(8, corner.left - 160) : 8, bottom: corner.bottom + (corner.onChat ? 24 : 46), top: "auto" } };
+        }
+        if (spot === next.key && panel.attr("data-placed")) {
             return;
         }
-        spot = next;
-        button.css({ left: spot.left, bottom: spot.bottom });
-        panel.attr("data-placed", "1").css({ left: spot.onChat ? Math.max(8, spot.left - 160) : 8, bottom: spot.bottom + (spot.onChat ? 24 : 46) });
+        spot = next.key;
+        button.css(next.button);
+        panel.attr("data-placed", "1").css(next.panel);
     };
     var placing = null;
     var showTurn = function () {
@@ -9839,10 +9894,12 @@ function setupGameNotes() {
             }, 100);
         }
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-    // war.app can move to another game without loading a page.
+    // war.app can move to another game without loading a page, and lays out the title bar shortly after
+    // the button is first placed.
     setInterval(function () {
         load();
         showTurn();
+        place();
     }, 1000);
 }
 
