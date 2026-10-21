@@ -1,6 +1,6 @@
 [b]Muli's Userscript (Tidy Up Your Dashboard): everything it does on today's war.app[/b]
 
-Many of you used Muli's "Tidy Up Your Dashboard" userscript for years. Most of it stopped working when war.app redesigned its pages. I'm [b]KKND[/b] and I maintain it now: I picked it up, fixed what broke, and added a lot since. [b]If something breaks, tell me, not Muli.[/b] Full credit to [b]Muli[/b] (https://war.app/Profile?p=2211733141), its original creator, who made it in 2015 and ran it for years. His original thread: https://war.app/Forum/106092
+Many of you used Muli's "Tidy Up Your Dashboard" userscript for years. Most of it stopped working when war.app redesigned its pages. I'm [b]KKND[/b] and I maintain it now: I fixed what broke and added a lot since. [b]If something breaks, tell me here or on Discord (https://discord.gg/sc99xHNuE), not Muli.[/b] Full credit to [b]Muli[/b] (https://war.app/Profile?p=2211733141), its original creator, who made it in 2015. His original thread: https://war.app/Forum/106092
 
 Website, with the install button: https://pdxlife.github.io/warlight-muli-script/
 [b]Full guide[/b], with a picture for each feature: https://pdxlife.github.io/warlight-muli-script/guide.html

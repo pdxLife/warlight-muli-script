@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.46.3
+
+- **Settings menu:** the footer now reads "Maintained by KKND · Forum thread · Discord". The Discord link (https://discord.gg/sc99xHNuE) is the other place to tell KKND when something breaks, and the website, guide and README list it too.
+
 ## 3.46.2
 
 - **Fix: the Notes button no longer shows up over the game's name.** When a game opened, the button appeared at once and then slid up to the title bar (war.app animates its buttons), sometimes to a spot that war.app's name and setting icons hadn't reached yet. It now stays hidden for a moment, until war.app has laid out the title bar, and then appears straight in its place after the setting icons, without sliding.

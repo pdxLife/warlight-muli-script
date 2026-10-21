@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.46.2
+// @version 3.46.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -4776,7 +4776,7 @@ function setupUserscriptMenu() {
                 ${inputs}
               </div>
               <div class="modal-footer">
-                <span class="mr-auto text-muted" style="font-size: 13px">Maintained by <a href="/Profile?p=2921525624" target="_blank" rel="noopener">KKND</a> · <a href="/Forum/897130-mulis-userscript-update" target="_blank" rel="noopener">Forum thread</a></span>
+                <span class="mr-auto text-muted" style="font-size: 13px">Maintained by <a href="/Profile?p=2921525624" target="_blank" rel="noopener">KKND</a> · <a href="/Forum/897130-mulis-userscript-update" target="_blank" rel="noopener">Forum thread</a> · <a href="https://discord.gg/sc99xHNuE" target="_blank" rel="noopener">Discord</a></span>
                 <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary close-userscript" data-dismiss="modal">Close & Refresh</button>
               </div>
