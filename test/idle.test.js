@@ -217,7 +217,7 @@ const campRow = (n, name, cost, output) => `<div id="ujs_WziTabBodyArmyCampRow${
 
 function upgradePage(html) {
     const { dom, $ } = createDom(html, "https://war.app/Idle/Play");
-    const ctx = load(["formatIdleWait", "parseIdleMoney", "parseIdleNumber", "idleUpgradeRows", "idleBestCamp", "showIdleUpgradeHints"], { ...domGlobals(dom, $), IDLE_NUMBER_SUFFIXES });
+    const ctx = load(["formatIdleWait", "parseIdleMoney", "parseIdleNumber", "idleUpgradeRows", "idleBestCamp", "idlePanelRight", "showIdleUpgradeHints"], { ...domGlobals(dom, $), IDLE_NUMBER_SUFFIXES });
     return { ctx, $ };
 }
 
@@ -247,6 +247,20 @@ test("upgrades you can't afford yet say when you can, and the best army camp for
     $("#ujs_ArmiesPerSecondLabel_3_tmp").html("<span>₳4.7K</span> / sec");
     ctx.showIdleUpgradeHints();
     assert.equal(hint(3).text(), "in 12h 23m · Best value", "war.app rewriting its label leaves the hint, which sits beside it");
+});
+
+// Mirrors a Mines row: two ores side by side, each with its own "/s" label (recorded on Fort Harbor).
+const mineRow = (n, cost, outputs) => `<div id="ujs_WziTabBodyMineRow_${n}"><div id="ujs_NameLabel_${n}"><div id="ujs_NameLabel_${n}_tmp">Neutinoclar</div></div>`
+    + `<div id="ujs_UpgradeBtnContainer_${n}"><div id="ujs_UpgradeBtn_${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_UpgradeBtn_${n}_btn" href="#"></a><div id="ujs_Text_5${n}"><div id="ujs_Text_5${n}_tmp">Upgrade ￦${cost}</div></div></div></div>`
+    + outputs.map((output, i) => `<div id="ujs_Rate_${n}_${i}"><div id="ujs_Rate_${n}_${i}_tmp">${output}/s</div></div>`).join("") + `</div>`;
+
+test("a mine making several ores gets its hint after the last one, not over the second", () => {
+    const { ctx, $ } = upgradePage(moneyCounter("￦7.65B (318K/sec)") + mineRow(7, "18B", ["1.04", "1.04"]));
+    $("#ujs_Rate_7_0").append('<span class="idleUpgradeHint">in 9h 2m</span>');
+    ctx.showIdleUpgradeHints();
+    assert.equal($(".idleUpgradeHint").length, 1);
+    assert.equal($("#ujs_Rate_7_1 > .idleUpgradeHint").text(), "in 9h 3m", "(18B − 7.65B) ÷ 318K/sec, beside the second ore");
+    assert.equal($("#ujs_Rate_7_0 > .idleUpgradeHint").length, 0, "a hint left over the first ore is moved");
 });
 
 test("the tab title counts what Idle is waiting on you for, and a background tab gets a notification", async () => {

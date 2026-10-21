@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.43.1
+
+- **Fix: Idle's Mines tab, "time to afford" over the ore rates.** A mine that makes two or three ores shows a rate for each, side by side, and the script put its "in 9h 34m" right after the first one, on top of the second. It now goes after the last rate, or on a small line just under the rates when there's no room beside them. Army camps and hospitals, with one rate, are unchanged.
+
 ## 3.43.0
 
 - **Reorder bookmarks two ways.** Hover a bookmark in the dashboard's Bookmarks box and ▲ ▼ and a ⋮⋮ grip appear at its right end: click ▲ or ▼ to move it one place, or drag the grip and drop it where you want it. The new order is saved at once. The right-click menu (Edit, Move up, Move down) still works too.
