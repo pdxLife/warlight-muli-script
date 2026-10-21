@@ -9397,8 +9397,13 @@ function setupOpenGamesFilter() {
             #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text], #OpenGamesFilterPanel select { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
             #OpenGamesFilterPanel .tuydFilterSettings { display: flex; flex-wrap: wrap; gap: 0 16px; margin: 2px 0 6px 18px; }
             #OpenGamesFilterPanel .tuydFilterSettings label { margin-bottom: 2px; }
+            #OpenGamesFilterPanel details { margin: 0 0 6px; }
+            #OpenGamesFilterPanel summary { cursor: pointer; width: max-content; }
+            #OpenGamesFilterPanel summary .tuydFilterTicked { color: #e0c060; margin-left: 4px; }
+            #OpenGamesFilterLink .tuydFilterArrow { display: inline-block; margin-left: 3px; font-size: 10px; transition: transform 0.15s; }
+            #OpenGamesFilterLink.tuydFilterOpen .tuydFilterArrow { transform: rotate(90deg); }
         `);
-        var filterLink = ` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`;
+        var filterLink = ` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px" aria-expanded="false">Filter<span class="tuydFilterArrow">▶</span></a><span id="OpenGamesFilterCount"></span>`;
         var codeLink = table.find("thead a[href*='GameInviteCode']").first();
         if (codeLink.length) {
             codeLink.after(filterLink);
@@ -9422,10 +9427,10 @@ function setupOpenGamesFilter() {
                 <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
                 <label>Team size: <select name="teamSize"><option value="">any</option><option value="2">show only teams of 2 (2v2, 2v2v2…)</option><option value="3">show only teams of 3</option><option value="4">show only teams of 4 or more</option></select></label>
                 <label><input type="checkbox" name="hideMuted"> Hide games with a player you muted</label>
-                <div>Hide games with:</div>
-                <div class="tuydFilterSettings">${checkboxes(openGameSettingIcons())}</div>
-                <div>Hide games with any of these cards:</div>
-                <div class="tuydFilterSettings">${checkboxes(openGameCards())}</div>
+                <details data-group="settings"><summary>Hide games with these settings<span class="tuydFilterTicked"></span></summary>
+                    <div class="tuydFilterSettings">${checkboxes(openGameSettingIcons())}</div></details>
+                <details data-group="cards"><summary>Hide games with any of these cards<span class="tuydFilterTicked"></span></summary>
+                    <div class="tuydFilterSettings">${checkboxes(openGameCards())}</div></details>
             </td></tr>`);
         panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
         panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
@@ -9443,12 +9448,22 @@ function setupOpenGamesFilter() {
         panel.find("[name=hideSetting]").each(function () {
             this.checked = filter.hideSettings.indexOf(this.value) !== -1;
         });
+        // A folded group says how many of its boxes are ticked, so nothing hidden by it goes unnoticed.
+        var countTicked = function () {
+            panel.find("details").each(function () {
+                var ticked = $(this).find("[name=hideSetting]:checked").length;
+                $(this).find(".tuydFilterTicked").text(ticked ? "(" + ticked + " ticked)" : "");
+            });
+        };
+        countTicked();
         table.find("thead").first().append(panel);
         $("#OpenGamesFilterLink").on("click", function (e) {
             e.preventDefault();
             panel.toggle();
+            $(this).toggleClass("tuydFilterOpen", panel.is(":visible")).attr("aria-expanded", String(panel.is(":visible")));
         });
         panel.find("input, select").on("change", function () {
+            countTicked();
             filter = readOpenGamesFilterForm(panel);
             Database.update(Database.Table.Settings, { name: "openGamesFilter", value: filter }, undefined);
             apply();

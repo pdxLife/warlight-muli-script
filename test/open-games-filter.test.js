@@ -308,3 +308,23 @@ test("the new choices are kept, checked and restored", () => {
     assert.equal(writes[writes.length - 1].value.teamSize, "");
     assert.equal(writes[writes.length - 1].value.maxBootHours, 12);
 });
+
+test("the setting and card groups fold, say how many are ticked, and the Filter link's arrow follows the panel", () => {
+    const { $ } = setup([openGameRow("1", "Game")], { hideSettings: ["Commerce.png", "Fog.png#less", "card:Bomb"] });
+    const panel = $("#OpenGamesFilterPanel");
+    const ticked = (group) => panel.find(`details[data-group=${group}] .tuydFilterTicked`).text();
+    assert.equal(panel.find("details").length, 2);
+    assert.equal(panel.find("details[open]").length, 0, "folded at first");
+    assert.equal(ticked("settings"), "(2 ticked)");
+    assert.equal(ticked("cards"), "(1 ticked)");
+    panel.find("[value='card:Bomb']").prop("checked", false).trigger("change");
+    assert.equal(ticked("cards"), "");
+    const link = $("#OpenGamesFilterLink");
+    assert.equal(link.find(".tuydFilterArrow").length, 1);
+    assert.ok(!link.hasClass("tuydFilterOpen"));
+    link.trigger("click");
+    assert.ok(link.hasClass("tuydFilterOpen"));
+    assert.equal(link.attr("aria-expanded"), "true");
+    link.trigger("click");
+    assert.ok(!link.hasClass("tuydFilterOpen"));
+});
