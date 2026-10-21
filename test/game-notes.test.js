@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -18,6 +18,8 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123") {
         ...domGlobals(dom, $),
         location: dom.window.location,
         innerHeight: 768,
+        GAME_NOTES_SETTLE_MS: 500,
+        GAME_NOTES_SETTLE_MAX_MS: 3000,
         addCSS: () => { },
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: () => { },
@@ -168,4 +170,22 @@ test("the Notes button goes in the title bar after the setting icons, when there
     assert.equal(ctx.gameNotesTitleSpot(bar, icons, [400], 52, 18), null, "war.app's clock or buttons right after the icons leave no room");
     assert.equal(ctx.gameNotesTitleSpot({ ...bar, right: 400, width: 400 }, icons, [], 52, 18), null, "a narrow window");
     assert.equal(ctx.gameNotesTitleSpot(null, icons, [], 52, 18), null, "no title bar (a lobby)");
+});
+
+test("the Notes button waits, hidden, until war.app has laid out the title bar", () => {
+    const ctx = load(["gameNotesButtonSettled"], { GAME_NOTES_SETTLE_MS: 500 });
+    const waiting = { key: null, since: 0, until: 3000 };
+    assert.equal(ctx.gameNotesButtonSettled(waiting, "title:120:80", true, 0), false, "a first spot isn't trusted");
+    assert.equal(ctx.gameNotesButtonSettled(waiting, "title:364:80", true, 300), false, "the name and icons grew: a new spot");
+    assert.equal(ctx.gameNotesButtonSettled(waiting, "title:364:80", true, 700), false);
+    assert.equal(ctx.gameNotesButtonSettled(waiting, "title:364:80", true, 850), true, "the same spot for half a second");
+    const icons = { key: null, since: 0, until: 3000 };
+    assert.equal(ctx.gameNotesButtonSettled(icons, "title:120:80", false, 0), false);
+    assert.equal(ctx.gameNotesButtonSettled(icons, "title:120:80", false, 1500), false, "setting icons not drawn yet: keep waiting");
+    assert.equal(ctx.gameNotesButtonSettled(icons, "title:120:80", false, 3000), true, "but never more than a few seconds");
+});
+
+test("the Notes button starts hidden on a game page", () => {
+    const { $ } = setup();
+    assert.ok($("#tuydGameNotesBtn").hasClass("tuydNotesWaiting"));
 });
