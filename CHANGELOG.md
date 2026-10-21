@@ -10,6 +10,7 @@
   - **Hide games with a player you muted** (the script's Muted list from the chat tools), including players invited but not yet joined.
   - **More settings to hide**: less fog than normal (no or light fog) or more (dense, heavy, complete) besides "fog other than normal"; changed luck or rounding, changed kill rates, changed minimum armies per turn, extra armies per territory, army cap, commanders, multi-attack, mods, custom scenarios and practice games.
   - **Hide games with any of these cards**: each of war.app's 13 cards on its own, so a game with Blockade cards can go while one with only Reinforcement stays.
+  - The settings and cards lists **fold**, and say how many boxes are ticked while folded ("(2 ticked)"). The **Filter** link has an arrow that turns down while the panel is open.
 
 ## 3.44.0
 
