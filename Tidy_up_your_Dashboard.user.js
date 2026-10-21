@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.46.1
+// @version 3.46.2
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10071,8 +10071,11 @@ function gameTitleBarRects() {
     if (!bar || !name) {
         return null;
     }
-    var icons = $("[id^='ujs_SettingsIconsContainer'][id$='_img']").filter(function () {
-        return shownUjsElement(this) && this.getBoundingClientRect().width > 0;
+    var shownIcons = $("[id^='ujs_SettingsIconsContainer'][id$='_img']").filter(function () {
+        return shownUjsElement(this);
+    });
+    var icons = shownIcons.filter(function () {
+        return this.getBoundingClientRect().width > 0;
     })[0];
     var after = (icons || name).getBoundingClientRect();
     var barRect = bar.getBoundingClientRect();
@@ -10082,7 +10085,22 @@ function gameTitleBarRects() {
     }).map(function (element) {
         return element.getBoundingClientRect().left;
     });
-    return { bar: barRect, after: after, obstacles: obstacles };
+    // Setting icons that are there but not drawn yet mean war.app is still laying the bar out.
+    return { bar: barRect, after: after, obstacles: obstacles, ready: !shownIcons.length || !!icons };
+}
+
+var GAME_NOTES_SETTLE_MS = 500;
+var GAME_NOTES_SETTLE_MAX_MS = 3000;
+
+// While a game loads, war.app lays out its title bar over a short while, so the Notes button's first spot can
+// be over the name. The button shows once its spot has stayed the same for a while with the bar laid out,
+// or after a few seconds whatever happens. waiting: { key, since, until }, kept between checks.
+function gameNotesButtonSettled(waiting, key, ready, now) {
+    if (key !== waiting.key) {
+        waiting.key = key;
+        waiting.since = now;
+    }
+    return now >= waiting.until || (ready && now - waiting.since >= GAME_NOTES_SETTLE_MS);
 }
 
 function openGameChatTabRect() {
@@ -10105,6 +10123,11 @@ function setupGameNotes() {
             bottom: 10px;
             z-index: 50;
             pointer-events: auto;
+            /* war.app's .btn animates every change, which would slide the button across the game to its spot. */
+            transition: none;
+        }
+        #tuydGameNotesBtn.tuydNotesWaiting {
+            visibility: hidden;
         }
         #tuydGameNotesBtn.tuydOnChat {
             padding: 0 8px;
@@ -10204,6 +10227,7 @@ function setupGameNotes() {
         button.toggleClass("tuydHasNotes", !gameNotesEmpty(notes));
     };
     var spot = null;
+    var waiting = null;
     // In the title bar the button is never in the chat's or war.app's way; without room there it sits by
     // the Game button, or left of the Chat tab while the chat is open.
     var place = function () {
@@ -10219,6 +10243,10 @@ function setupGameNotes() {
             button.toggleClass("tuydOnChat", !!tab);
             var corner = gameNotesButtonSpot(tab, window.innerHeight, button.outerWidth());
             next = { key: "corner:" + corner.left + ":" + corner.bottom, button: { left: corner.left, bottom: corner.bottom, top: "auto" }, panel: { left: corner.onChat ? Math.max(8, corner.left - 160) : 8, bottom: corner.bottom + (corner.onChat ? 24 : 46), top: "auto" } };
+        }
+        if (waiting && gameNotesButtonSettled(waiting, next.key, !rects || rects.ready, Date.now())) {
+            waiting = null;
+            button.removeClass("tuydNotesWaiting");
         }
         if (spot === next.key && panel.attr("data-placed")) {
             return;
@@ -10258,6 +10286,14 @@ function setupGameNotes() {
         if (!id) {
             return;
         }
+        waiting = { key: null, since: 0, until: Date.now() + GAME_NOTES_SETTLE_MAX_MS };
+        button.addClass("tuydNotesWaiting");
+        var settling = setInterval(function () {
+            place();
+            if (!waiting) {
+                clearInterval(settling);
+            }
+        }, 150);
         Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, gameNotesKey(id), function (setting) {
             if (gameId === id) {
                 notes = normalizeGameNotes(setting && setting.value);

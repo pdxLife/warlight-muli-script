@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.46.2
+
+- **Fix: the Notes button no longer shows up over the game's name.** When a game opened, the button appeared at once and then slid up to the title bar (war.app animates its buttons), sometimes to a spot that war.app's name and setting icons hadn't reached yet. It now stays hidden for a moment, until war.app has laid out the title bar, and then appears straight in its place after the setting icons, without sliding.
+
 ## 3.46.1
 
 - **Fix: Open Games filter, a 1v1 set up as a team game.** Players often make a 1v1 a team game so its chat stays the same. Such a game, with teams of one player, now counts as **1 v 1** (and a bigger one with teams of one as **FFA**) instead of a team game, so "show only 1 v 1" keeps it and "hide team games" no longer hides it.
