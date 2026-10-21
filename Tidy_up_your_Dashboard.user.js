@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.45.0
+// @version 3.46.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.45.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -29,6 +29,7 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
+var OPEN_GAMES_BOOT_UNITS = { minutes: 1, hours: 60, days: 1440 };
 var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
@@ -9146,15 +9147,18 @@ function normalizeOpenGamesFilter(value) {
     return {
         hideAutoGames: value.hideAutoGames === true,
         hideCoinGames: value.hideCoinGames === true,
-        minBootHours: Math.max(0, Number(value.minBootHours) || 0),
-        maxBootHours: Math.max(0, Number(value.maxBootHours) || 0),
+        // Filters saved before boot times had units were in hours (minBootHours, maxBootHours).
+        minBoot: Math.max(0, Number(value.minBoot !== undefined ? value.minBoot : value.minBootHours) || 0),
+        minBootUnit: Object.prototype.hasOwnProperty.call(OPEN_GAMES_BOOT_UNITS, value.minBootUnit) ? value.minBootUnit : "hours",
+        maxBoot: Math.max(0, Number(value.maxBoot !== undefined ? value.maxBoot : value.maxBootHours) || 0),
+        maxBootUnit: Object.prototype.hasOwnProperty.call(OPEN_GAMES_BOOT_UNITS, value.maxBootUnit) ? value.maxBootUnit : "hours",
         keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : [],
         mapWords: Array.isArray(value.mapWords) ? parseFilterKeywords(value.mapWords.join(",")) : [],
         minPlayers: count(value.minPlayers),
         maxPlayers: count(value.maxPlayers),
         minOpenSeats: count(value.minOpenSeats),
         maxOpenSeats: count(value.maxOpenSeats),
-        teamGames: ["only", "none", "ffa", "noffa"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
+        teamGames: ["only", "none", "ffa", "noffa", "1v1", "no1v1"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
         teamSize: ["2", "3", "4"].indexOf(value.teamSize) !== -1 ? value.teamSize : "",
         hideMuted: value.hideMuted === true,
         hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (key) {
@@ -9283,7 +9287,9 @@ function openGameIsFiltered(row, filter, extra) {
         return true;
     }
     var bootMinutes = parseBootTime($(row).find(".BootTimeLabel").text());
-    if (bootMinutes !== null && ((filter.minBootHours > 0 && bootMinutes < filter.minBootHours * 60) || (filter.maxBootHours > 0 && bootMinutes > filter.maxBootHours * 60))) {
+    var minBoot = filter.minBoot * OPEN_GAMES_BOOT_UNITS[filter.minBootUnit];
+    var maxBoot = filter.maxBoot * OPEN_GAMES_BOOT_UNITS[filter.maxBootUnit];
+    if (bootMinutes !== null && ((minBoot > 0 && bootMinutes < minBoot) || (maxBoot > 0 && bootMinutes > maxBoot))) {
         return true;
     }
     var seats = $(row).find(".MyGamesGameBox").length;
@@ -9304,6 +9310,10 @@ function openGameIsFiltered(row, filter, extra) {
     // Free-for-all: three or more seats and no teams. Without seat boxes there's no telling, so it stays.
     var ffa = seats >= 3 && !teamGame;
     if (seats > 0 && ((filter.teamGames === "ffa" && !ffa) || (filter.teamGames === "noffa" && ffa))) {
+        return true;
+    }
+    var duel = seats === 2 && !teamGame;
+    if (seats > 0 && ((filter.teamGames === "1v1" && !duel) || (filter.teamGames === "no1v1" && duel))) {
         return true;
     }
     if (filter.teamSize) {
@@ -9351,8 +9361,10 @@ function readOpenGamesFilterForm(panel) {
     return normalizeOpenGamesFilter({
         hideAutoGames: panel.find("[name=hideAutoGames]").prop("checked"),
         hideCoinGames: panel.find("[name=hideCoinGames]").prop("checked"),
-        minBootHours: panel.find("[name=minBootHours]").val(),
-        maxBootHours: panel.find("[name=maxBootHours]").val(),
+        minBoot: panel.find("[name=minBoot]").val(),
+        minBootUnit: panel.find("[name=minBootUnit]").val(),
+        maxBoot: panel.find("[name=maxBoot]").val(),
+        maxBootUnit: panel.find("[name=maxBootUnit]").val(),
         keywords: parseFilterKeywords(panel.find("[name=keywords]").val()),
         mapWords: parseFilterKeywords(panel.find("[name=mapWords]").val()),
         minPlayers: panel.find("[name=minPlayers]").val(),
@@ -9410,6 +9422,11 @@ function setupOpenGamesFilter() {
         } else {
             table.find("thead h2").parent().append(filterLink);
         }
+        var bootUnits = function (name) {
+            return '<select name="' + name + '">' + Object.keys(OPEN_GAMES_BOOT_UNITS).map(function (unit) {
+                return '<option value="' + unit + '">' + unit + '</option>';
+            }).join("") + "</select>";
+        };
         var checkboxes = function (entries) {
             return entries.map(function (entry) {
                 return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(entry[0]) + '"> ' + htmlEscape(entry[1]) + '</label>';
@@ -9419,12 +9436,12 @@ function setupOpenGamesFilter() {
             <tr id="OpenGamesFilterPanel" style="display: none"><td colspan="2">
                 <label><input type="checkbox" name="hideAutoGames"> Hide Auto Games</label>
                 <label><input type="checkbox" name="hideCoinGames"> Hide coin games</label>
-                <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours or over <input type="number" name="maxBootHours" min="0" step="1"> hours (0 = off)</label>
+                <label>Hide games with a boot time under <input type="number" name="minBoot" min="0" step="1"> ${bootUnits("minBootUnit")} or over <input type="number" name="maxBoot" min="0" step="1"> ${bootUnits("maxBootUnit")} (0 = off)</label>
                 <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
                 <label>Hide maps whose name contains any of these words <input type="text" name="mapWords" placeholder="earth, europe"> (separate with commas)</label>
                 <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
                 <label>Open seats left: from <input type="number" name="minOpenSeats" min="0" step="1"> to <input type="number" name="maxOpenSeats" min="0" step="1"> (0 = any; 1 to 1 for games about to start)</label>
-                <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
+                <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="1v1">show only 1 v 1</option><option value="no1v1">hide 1 v 1</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
                 <label>Team size: <select name="teamSize"><option value="">any</option><option value="2">show only teams of 2 (2v2, 2v2v2…)</option><option value="3">show only teams of 3</option><option value="4">show only teams of 4 or more</option></select></label>
                 <label><input type="checkbox" name="hideMuted"> Hide games with a player you muted</label>
                 <details data-group="settings"><summary>Hide games with these settings<span class="tuydFilterTicked"></span></summary>
@@ -9434,8 +9451,10 @@ function setupOpenGamesFilter() {
             </td></tr>`);
         panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
         panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
-        panel.find("[name=minBootHours]").val(filter.minBootHours);
-        panel.find("[name=maxBootHours]").val(filter.maxBootHours);
+        panel.find("[name=minBoot]").val(filter.minBoot);
+        panel.find("[name=minBootUnit]").val(filter.minBootUnit);
+        panel.find("[name=maxBoot]").val(filter.maxBoot);
+        panel.find("[name=maxBootUnit]").val(filter.maxBootUnit);
         panel.find("[name=keywords]").val(filter.keywords.join(", "));
         panel.find("[name=mapWords]").val(filter.mapWords.join(", "));
         panel.find("[name=minPlayers]").val(filter.minPlayers);
