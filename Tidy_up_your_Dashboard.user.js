@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.45.0
+// @version 3.46.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.45.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9154,7 +9154,7 @@ function normalizeOpenGamesFilter(value) {
         maxPlayers: count(value.maxPlayers),
         minOpenSeats: count(value.minOpenSeats),
         maxOpenSeats: count(value.maxOpenSeats),
-        teamGames: ["only", "none", "ffa", "noffa"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
+        teamGames: ["only", "none", "ffa", "noffa", "1v1", "no1v1"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
         teamSize: ["2", "3", "4"].indexOf(value.teamSize) !== -1 ? value.teamSize : "",
         hideMuted: value.hideMuted === true,
         hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (key) {
@@ -9306,6 +9306,10 @@ function openGameIsFiltered(row, filter, extra) {
     if (seats > 0 && ((filter.teamGames === "ffa" && !ffa) || (filter.teamGames === "noffa" && ffa))) {
         return true;
     }
+    var duel = seats === 2 && !teamGame;
+    if (seats > 0 && ((filter.teamGames === "1v1" && !duel) || (filter.teamGames === "no1v1" && duel))) {
+        return true;
+    }
     if (filter.teamSize) {
         var size = openGameTeamSize(row, icons);
         if (size === null || (filter.teamSize === "4" ? size < 4 : size !== Number(filter.teamSize))) {
@@ -9424,7 +9428,7 @@ function setupOpenGamesFilter() {
                 <label>Hide maps whose name contains any of these words <input type="text" name="mapWords" placeholder="earth, europe"> (separate with commas)</label>
                 <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
                 <label>Open seats left: from <input type="number" name="minOpenSeats" min="0" step="1"> to <input type="number" name="maxOpenSeats" min="0" step="1"> (0 = any; 1 to 1 for games about to start)</label>
-                <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
+                <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="1v1">show only 1 v 1</option><option value="no1v1">hide 1 v 1</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
                 <label>Team size: <select name="teamSize"><option value="">any</option><option value="2">show only teams of 2 (2v2, 2v2v2…)</option><option value="3">show only teams of 3</option><option value="4">show only teams of 4 or more</option></select></label>
                 <label><input type="checkbox" name="hideMuted"> Hide games with a player you muted</label>
                 <details data-group="settings"><summary>Hide games with these settings<span class="tuydFilterTicked"></span></summary>

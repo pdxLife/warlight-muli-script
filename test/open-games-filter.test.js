@@ -93,6 +93,8 @@ test("stored seat, team and setting filters are normalized", () => {
     assert.deepEqual(normalize({ teamGames: "none", hideSettings: "Commerce.png" }), filter({ teamGames: "none" }));
     assert.deepEqual(normalize({ teamGames: "ffa" }), filter({ teamGames: "ffa" }));
     assert.deepEqual(normalize({ teamGames: "noffa" }), filter({ teamGames: "noffa" }));
+    assert.deepEqual(normalize({ teamGames: "1v1" }), filter({ teamGames: "1v1" }));
+    assert.deepEqual(normalize({ teamGames: "no1v1" }), filter({ teamGames: "no1v1" }));
 });
 
 test("filters by seat count, team games and game settings", () => {
@@ -113,6 +115,8 @@ test("filters by seat count, team games and game settings", () => {
     assert.deepEqual(shownBy({ teamGames: "none" }), ["1", "3"]);
     assert.deepEqual(shownBy({ teamGames: "ffa" }), ["3"], "FFA: 3+ seats, no teams");
     assert.deepEqual(shownBy({ teamGames: "noffa" }), ["1", "2"]);
+    assert.deepEqual(shownBy({ teamGames: "1v1" }), ["1"], "1 v 1: two seats, no teams");
+    assert.deepEqual(shownBy({ teamGames: "no1v1" }), ["2", "3"]);
     const unknown = setup([openGameRow("4", "No seats shown", { seats: [] })]);
     unknown.ctx.applyOpenGamesFilter(filter({ teamGames: "ffa" }));
     assert.deepEqual(Array.from(unknown.visibleIds()), ["4"], "without seat boxes it can't tell, so it stays");

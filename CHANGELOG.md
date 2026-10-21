@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.46.0
+
+- **Open Games filter: 1 v 1 in Game type.** Two more choices: **show only 1 v 1** (two seats, no teams) and **hide 1 v 1**, next to team games and FFA.
+
 ## 3.45.0
 
 - **Open Games filter: many more choices.** All of them read what war.app already shows on each game:
