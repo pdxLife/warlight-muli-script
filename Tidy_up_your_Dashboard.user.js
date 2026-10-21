@@ -10123,6 +10123,8 @@ function setupGameNotes() {
             bottom: 10px;
             z-index: 50;
             pointer-events: auto;
+            /* war.app's .btn animates every change, which would slide the button across the game to its spot. */
+            transition: none;
         }
         #tuydGameNotesBtn.tuydNotesWaiting {
             visibility: hidden;
