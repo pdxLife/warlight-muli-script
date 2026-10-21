@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.44.0
+
+- **Open Games filter: FFA games.** The filter's "Team games" choice is now **Game type**, with two more options: **show only FFA** (free-for-all: three or more seats and no teams) and **hide FFA**. Show only team games and hide team games are as before, and a saved choice is kept. 1 v 1 games are neither, so "Players: from 2 to 2" still picks those.
+
 ## 3.43.1
 
 - **Fix: Idle's Mines tab, "time to afford" over the ore rates.** A mine that makes two or three ores shows a rate for each, side by side, and the script put its "in 9h 34m" right after the first one, on top of the second. It now goes after the last rate, or on a small line just under the rates when there's no room beside them. Army camps and hospitals, with one rate, are unchanged.

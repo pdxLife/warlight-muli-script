@@ -30,7 +30,7 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-chat-refresh.png[/img]
 [img]https://pdxlife.github.io/warlight-muli-script/media/dashboard-game-chat.png[/img]
 
-[b]Open Games filter[/b]: a Filter link in the Open Games header (dashboard and View All). Hide Auto Games, coin games, short boot times, names with words you choose, games with fewer or more seats than you want, team games (or everything but team games), and games with settings you don't like: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog, no-split and more. Games you've already joined get a green "Joined" badge.
+[b]Open Games filter[/b]: a Filter link in the Open Games header (dashboard and View All). Hide Auto Games, coin games, short boot times, names with words you choose, games with fewer or more seats than you want, team games or FFA games (or keep only those), and games with settings you don't like: Commerce, local deployments, manual or automatic distribution, cards, wastelands, fog, no-split and more. Games you've already joined get a green "Joined" badge.
 [img]https://pdxlife.github.io/warlight-muli-script/media/open-games-filter-more.png[/img]
 
 [hr]
