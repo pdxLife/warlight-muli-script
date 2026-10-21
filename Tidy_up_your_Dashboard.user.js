@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.43.0
+// @version 3.43.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.43.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.43.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1764,16 +1764,18 @@ function idleUpgradeRows() {
         var row = $(this);
         var button = row.find("a[id^='ujs_UpgradeBtn']").first();
         var cost = /Upgrade\s*[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
-        var host = row.find("[id$='_tmp']").filter(function () {
+        var outputs = row.find("[id$='_tmp']").filter(function () {
             return /\/\s*s(?:ec)?\b|Saves/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
-        }).first();
+        });
+        var host = outputs.first();
         var output = /^\s*₳\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(host.text());
         return cost ? {
             row: this,
             camp: /ArmyCampRow/.test(this.id),
             cost: parseIdleNumber(cost[1]),
             output: output ? parseIdleNumber(output[1]) : null,
-            host: host[0] || null
+            host: host[0] || null,
+            outputs: outputs.get()
         } : null;
     }).get().filter(function (entry) {
         return entry && entry.cost != null;
@@ -1790,6 +1792,18 @@ function idleBestCamp(rows) {
     })[0] || null;
 }
 
+// The right edge of the tab panel a row's label is drawn in: war.app's ujs_* elements are zero-size
+// anchors, so it's the first holder up the tree that's as wide as a panel.
+function idlePanelRight(element) {
+    for (var node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+        var box = node.getBoundingClientRect();
+        if (box.width > 300) {
+            return box.right;
+        }
+    }
+    return Infinity;
+}
+
 function showIdleUpgradeHints() {
     var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
     if (!wallet || wallet.money == null) {
@@ -1803,21 +1817,31 @@ function showIdleUpgradeHints() {
         }
         var wait = entry.cost > wallet.money && wallet.rate > 0 ? formatIdleWait((entry.cost - wallet.money) / wallet.rate) : "";
         var text = [wait, entry === best ? "Best value" : ""].filter(Boolean).join(" · ");
-        // war.app rewrites its label several times a second, so the hint sits beside it, in the
-        // label's holder, just after the text.
-        var holder = $(entry.host).parent();
-        var hint = holder.children(".idleUpgradeHint");
+        var hint = $(entry.row).find(".idleUpgradeHint");
         if (!text) {
             hint.remove();
             return;
         }
+        // war.app rewrites its labels several times a second, so the hint sits beside the row's last
+        // output (mines make two or three ores, side by side), in that label's holder.
+        var last = entry.outputs.reduce(function (rightmost, element) {
+            return element.getBoundingClientRect().right >= rightmost.getBoundingClientRect().right ? element : rightmost;
+        });
+        var holder = $(last).parent();
         if (!hint.length) {
-            hint = $('<span class="idleUpgradeHint"></span>').appendTo(holder);
+            hint = $('<span class="idleUpgradeHint"></span>');
         }
-        var label = $(entry.host).children().first()[0] || entry.host;
-        hint.css({ left: Math.round(label.getBoundingClientRect().width || label.offsetWidth || 0) + 8 + "px", lineHeight: (entry.host.offsetHeight || 18) + "px" });
+        if (hint.parent()[0] !== holder[0]) {
+            hint.appendTo(holder);
+        }
         hint.toggleClass("idleBestValue", entry === best).text(text)
             .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
+        var label = $(last).children().first()[0] || last;
+        var labelBox = label.getBoundingClientRect();
+        var width = Math.round(labelBox.width || label.offsetWidth || 0);
+        var below = labelBox.right + 8 + hint[0].offsetWidth > idlePanelRight(last) - 4;
+        hint.toggleClass("idleUpgradeHintBelow", below)
+            .css(below ? { left: "", lineHeight: "" } : { left: width + 8 + "px", lineHeight: (last.offsetHeight || 18) + "px" });
     });
 }
 
@@ -2074,6 +2098,13 @@ function setupIdleUpgradeHints() {
             color: #aaa;
             font-size: 12px;
             white-space: nowrap;
+        }
+        .idleUpgradeHint.idleUpgradeHintBelow {
+            top: 100%;
+            right: 0;
+            bottom: auto;
+            font-size: 11px;
+            line-height: 12px;
         }
         .idleUpgradeHint.idleBestValue {
             color: #e0c060;
