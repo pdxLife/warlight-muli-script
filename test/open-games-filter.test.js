@@ -19,6 +19,7 @@ function openGames(rows) {
         + `<tbody>${rows.join("")}<tr><td colspan="2"><a href="#" id="ShowMoreOpenGamesLink">+ Show 35 more open games</a></td></tr></tbody></table>`;
 }
 
+const OPEN_GAMES_BOOT_UNITS = { minutes: 1, hours: 60, days: 1440 };
 const FUNCTIONS = ["parseBootTime", "parseFilterKeywords", "normalizeOpenGamesFilter", "openGameIsFiltered", "applyOpenGamesFilter", "readOpenGamesFilterForm", "setupOpenGamesFilter", "openGameSettingIcons", "openGameCards", "openGameIcons", "openGameHasSetting", "openGameTeamSize", "openGamePlayers", "nameHasKeyword", "htmlEscape"];
 
 function setup(rows, saved, { muted = [], maps = {} } = {}) {
@@ -27,6 +28,7 @@ function setup(rows, saved, { muted = [], maps = {} } = {}) {
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
         addCSS: () => { },
+        OPEN_GAMES_BOOT_UNITS,
         readMutedPlayers: (callback) => callback(muted),
         loadMapNames: (callback) => callback(maps),
         Database: {
@@ -45,7 +47,7 @@ function setup(rows, saved, { muted = [], maps = {} } = {}) {
     return { ctx, dom, $, writes, visibleIds };
 }
 
-const filter = (overrides) => ({ hideAutoGames: false, hideCoinGames: false, minBootHours: 0, maxBootHours: 0, keywords: [], mapWords: [], minPlayers: 0, maxPlayers: 0, minOpenSeats: 0, maxOpenSeats: 0, teamGames: "", teamSize: "", hideMuted: false, hideSettings: [], ...overrides });
+const filter = (overrides) => ({ hideAutoGames: false, hideCoinGames: false, minBoot: 0, minBootUnit: "hours", maxBoot: 0, maxBootUnit: "hours", keywords: [], mapWords: [], minPlayers: 0, maxPlayers: 0, minOpenSeats: 0, maxOpenSeats: 0, teamGames: "", teamSize: "", hideMuted: false, hideSettings: [], ...overrides });
 
 test("reads boot time labels in minutes", () => {
     const { ctx } = setup([]);
@@ -60,8 +62,8 @@ test("stored filters are normalized, so bad imports fall back to defaults", () =
     const { ctx } = setup([]);
     const normalize = (value) => JSON.parse(JSON.stringify(ctx.normalizeOpenGamesFilter(value)));
     assert.deepEqual(normalize(undefined), filter());
-    assert.deepEqual(normalize({ hideAutoGames: "yes", minBootHours: -4, keywords: "rp" }), filter());
-    assert.deepEqual(normalize({ hideCoinGames: true, minBootHours: "12", keywords: [" RP ", "", "Diplo"] }), filter({ hideCoinGames: true, minBootHours: 12, keywords: ["rp", "diplo"] }));
+    assert.deepEqual(normalize({ hideAutoGames: "yes", minBoot: -4, minBootUnit: "constructor", keywords: "rp" }), filter());
+    assert.deepEqual(normalize({ hideCoinGames: true, minBootHours: "12", keywords: [" RP ", "", "Diplo"] }), filter({ hideCoinGames: true, minBoot: 12, keywords: ["rp", "diplo"] }));
 });
 
 test("each filter hides only the games it targets", () => {
@@ -80,7 +82,7 @@ test("each filter hides only the games it targets", () => {
     assert.deepEqual(hiddenBy({}), []);
     assert.deepEqual(hiddenBy({ hideAutoGames: true }), ["2"]);
     assert.deepEqual(hiddenBy({ hideCoinGames: true }), ["3"]);
-    assert.deepEqual(hiddenBy({ minBootHours: 24 }), ["4"]);
+    assert.deepEqual(hiddenBy({ minBoot: 24 }), ["4"]);
     assert.deepEqual(hiddenBy({ keywords: ["rp"] }), ["5"]);
     assert.equal($("#ShowMoreOpenGamesLink").closest("tr").hasClass("tuyd-filtered"), false);
 });
@@ -157,7 +159,8 @@ test("adds a Filter link and panel that start from the saved filter", () => {
     $("#OpenGamesFilterLink").trigger("click");
     assert.equal(panel.is(":visible"), true);
     assert.equal(panel.find("[name=hideAutoGames]").prop("checked"), true);
-    assert.equal(panel.find("[name=minBootHours]").val(), "6");
+    assert.equal(panel.find("[name=minBoot]").val(), "6", "a filter saved in hours before units still reads as hours");
+    assert.equal(panel.find("[name=minBootUnit]").val(), "hours");
     assert.equal(panel.find("[name=keywords]").val(), "rp, diplo");
 });
 
@@ -263,8 +266,8 @@ test("boot time over, open seats left and team size", () => {
         ctx.applyOpenGamesFilter(filter(overrides));
         return Array.from(visibleIds());
     };
-    assert.deepEqual(shownBy({ maxBootHours: 24 }), ["1", "2"], "1 day is not over 24 hours; 3 days is");
-    assert.deepEqual(shownBy({ minBootHours: 1, maxBootHours: 48 }), ["2", "4"]);
+    assert.deepEqual(shownBy({ maxBoot: 24 }), ["1", "2"], "1 day is not over 24 hours; 3 days is");
+    assert.deepEqual(shownBy({ minBoot: 1, maxBoot: 48 }), ["2", "4"]);
     assert.deepEqual(shownBy({ maxOpenSeats: 1 }), ["3"], "about to start");
     assert.deepEqual(shownBy({ minOpenSeats: 5 }), ["2", "4"], "room for a group");
     assert.deepEqual(shownBy({ teamSize: "2" }), ["1"], "set teams are counted from war.app's gaps between seats");
@@ -294,13 +297,13 @@ test("games with a muted player and maps by name can be hidden", () => {
 test("the new choices are kept, checked and restored", () => {
     const { ctx } = setup([]);
     const normalize = (value) => JSON.parse(JSON.stringify(ctx.normalizeOpenGamesFilter(value)));
-    assert.deepEqual(normalize({ maxBootHours: "48", minOpenSeats: "1.9", maxOpenSeats: -3, teamSize: "3", hideMuted: true, mapWords: [" Earth ", ""], hideSettings: ["Fog.png#more", "card:Bomb", "card:Joker", "KillRate.png"] }),
-        filter({ maxBootHours: 48, minOpenSeats: 1, teamSize: "3", hideMuted: true, mapWords: ["earth"], hideSettings: ["Fog.png#more", "card:Bomb", "KillRate.png"] }));
+    assert.deepEqual(normalize({ maxBoot: "48", minOpenSeats: "1.9", maxOpenSeats: -3, teamSize: "3", hideMuted: true, mapWords: [" Earth ", ""], hideSettings: ["Fog.png#more", "card:Bomb", "card:Joker", "KillRate.png"] }),
+        filter({ maxBoot: 48, minOpenSeats: 1, teamSize: "3", hideMuted: true, mapWords: ["earth"], hideSettings: ["Fog.png#more", "card:Bomb", "KillRate.png"] }));
     assert.equal(normalize({ teamSize: "5" }).teamSize, "");
-    const saved = { maxBootHours: 12, mapWords: ["earth"], minOpenSeats: 2, teamSize: "2", hideMuted: true, hideSettings: ["card:Spy", "Fog.png#less"] };
+    const saved = { maxBoot: 12, mapWords: ["earth"], minOpenSeats: 2, teamSize: "2", hideMuted: true, hideSettings: ["card:Spy", "Fog.png#less"] };
     const { $, writes } = setup([openGameRow("1", "Game", { map: "16114" })], saved, { maps: { "16114": { id: "1", name: "Small Earth" } } });
     const panel = $("#OpenGamesFilterPanel");
-    assert.equal(panel.find("[name=maxBootHours]").val(), "12");
+    assert.equal(panel.find("[name=maxBoot]").val(), "12");
     assert.equal(panel.find("[name=mapWords]").val(), "earth");
     assert.equal(panel.find("[name=minOpenSeats]").val(), "2");
     assert.equal(panel.find("[name=teamSize]").val(), "2");
@@ -310,7 +313,7 @@ test("the new choices are kept, checked and restored", () => {
     assert.ok($("#OpenGamesTable tr.GameRow").hasClass("tuyd-filtered"), "the saved map words hide Small Earth once the names load");
     panel.find("[name=teamSize]").val("").trigger("change");
     assert.equal(writes[writes.length - 1].value.teamSize, "");
-    assert.equal(writes[writes.length - 1].value.maxBootHours, 12);
+    assert.equal(writes[writes.length - 1].value.maxBoot, 12);
 });
 
 test("the setting and card groups fold, say how many are ticked, and the Filter link's arrow follows the panel", () => {
@@ -331,4 +334,28 @@ test("the setting and card groups fold, say how many are ticked, and the Filter 
     assert.equal(link.attr("aria-expanded"), "true");
     link.trigger("click");
     assert.ok(!link.hasClass("tuydFilterOpen"));
+});
+
+test("boot times can be set in minutes, hours or days", () => {
+    const rows = [
+        openGameRow("1", "Blitz", { boot: "1 minute" }),
+        openGameRow("2", "Real-time", { boot: "5 minutes" }),
+        openGameRow("3", "Hour", { boot: "1 hour" }),
+        openGameRow("4", "Multi-day", { boot: "3 days" })
+    ];
+    const { ctx, visibleIds, $, writes } = setup(rows);
+    const shownBy = (overrides) => {
+        ctx.applyOpenGamesFilter(filter(overrides));
+        return Array.from(visibleIds());
+    };
+    assert.deepEqual(shownBy({ minBoot: 3, minBootUnit: "minutes" }), ["2", "3", "4"], "no 1-minute boots");
+    assert.deepEqual(shownBy({ maxBoot: 10, maxBootUnit: "minutes" }), ["1", "2"], "real-time only");
+    assert.deepEqual(shownBy({ minBoot: 2, minBootUnit: "minutes", maxBoot: 2, maxBootUnit: "days" }), ["2", "3"]);
+    const panel = $("#OpenGamesFilterPanel");
+    assert.deepEqual(panel.find("[name=minBootUnit] option").map(function () { return this.value; }).get(), ["minutes", "hours", "days"]);
+    panel.find("[name=maxBoot]").val("10");
+    panel.find("[name=maxBootUnit]").val("minutes").trigger("change");
+    assert.equal(writes[writes.length - 1].value.maxBoot, 10);
+    assert.equal(writes[writes.length - 1].value.maxBootUnit, "minutes");
+    assert.deepEqual(Array.from(visibleIds()), ["1", "2"]);
 });

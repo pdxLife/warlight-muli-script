@@ -3,6 +3,7 @@
 ## 3.46.0
 
 - **Open Games filter: 1 v 1 in Game type.** Two more choices: **show only 1 v 1** (two seats, no teams) and **hide 1 v 1**, next to team games and FFA.
+- **Open Games filter: boot times in minutes, hours or days.** Each of "boot time under …" and "over …" has its own unit, so real-time players can hide 1-minute games ("under 3 minutes") or keep only real-time ones ("over 10 minutes" hidden). A filter saved in hours stays in hours.
 
 ## 3.45.0
 

@@ -29,6 +29,7 @@ var CUSTOM_SITE = "https://custom.wl-stats.com";
 var WL_STATS_CACHE_MS = 60 * 60 * 1000;
 var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
+var OPEN_GAMES_BOOT_UNITS = { minutes: 1, hours: 60, days: 1440 };
 var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
@@ -9146,8 +9147,11 @@ function normalizeOpenGamesFilter(value) {
     return {
         hideAutoGames: value.hideAutoGames === true,
         hideCoinGames: value.hideCoinGames === true,
-        minBootHours: Math.max(0, Number(value.minBootHours) || 0),
-        maxBootHours: Math.max(0, Number(value.maxBootHours) || 0),
+        // Filters saved before boot times had units were in hours (minBootHours, maxBootHours).
+        minBoot: Math.max(0, Number(value.minBoot !== undefined ? value.minBoot : value.minBootHours) || 0),
+        minBootUnit: Object.prototype.hasOwnProperty.call(OPEN_GAMES_BOOT_UNITS, value.minBootUnit) ? value.minBootUnit : "hours",
+        maxBoot: Math.max(0, Number(value.maxBoot !== undefined ? value.maxBoot : value.maxBootHours) || 0),
+        maxBootUnit: Object.prototype.hasOwnProperty.call(OPEN_GAMES_BOOT_UNITS, value.maxBootUnit) ? value.maxBootUnit : "hours",
         keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : [],
         mapWords: Array.isArray(value.mapWords) ? parseFilterKeywords(value.mapWords.join(",")) : [],
         minPlayers: count(value.minPlayers),
@@ -9283,7 +9287,9 @@ function openGameIsFiltered(row, filter, extra) {
         return true;
     }
     var bootMinutes = parseBootTime($(row).find(".BootTimeLabel").text());
-    if (bootMinutes !== null && ((filter.minBootHours > 0 && bootMinutes < filter.minBootHours * 60) || (filter.maxBootHours > 0 && bootMinutes > filter.maxBootHours * 60))) {
+    var minBoot = filter.minBoot * OPEN_GAMES_BOOT_UNITS[filter.minBootUnit];
+    var maxBoot = filter.maxBoot * OPEN_GAMES_BOOT_UNITS[filter.maxBootUnit];
+    if (bootMinutes !== null && ((minBoot > 0 && bootMinutes < minBoot) || (maxBoot > 0 && bootMinutes > maxBoot))) {
         return true;
     }
     var seats = $(row).find(".MyGamesGameBox").length;
@@ -9355,8 +9361,10 @@ function readOpenGamesFilterForm(panel) {
     return normalizeOpenGamesFilter({
         hideAutoGames: panel.find("[name=hideAutoGames]").prop("checked"),
         hideCoinGames: panel.find("[name=hideCoinGames]").prop("checked"),
-        minBootHours: panel.find("[name=minBootHours]").val(),
-        maxBootHours: panel.find("[name=maxBootHours]").val(),
+        minBoot: panel.find("[name=minBoot]").val(),
+        minBootUnit: panel.find("[name=minBootUnit]").val(),
+        maxBoot: panel.find("[name=maxBoot]").val(),
+        maxBootUnit: panel.find("[name=maxBootUnit]").val(),
         keywords: parseFilterKeywords(panel.find("[name=keywords]").val()),
         mapWords: parseFilterKeywords(panel.find("[name=mapWords]").val()),
         minPlayers: panel.find("[name=minPlayers]").val(),
@@ -9414,6 +9422,11 @@ function setupOpenGamesFilter() {
         } else {
             table.find("thead h2").parent().append(filterLink);
         }
+        var bootUnits = function (name) {
+            return '<select name="' + name + '">' + Object.keys(OPEN_GAMES_BOOT_UNITS).map(function (unit) {
+                return '<option value="' + unit + '">' + unit + '</option>';
+            }).join("") + "</select>";
+        };
         var checkboxes = function (entries) {
             return entries.map(function (entry) {
                 return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(entry[0]) + '"> ' + htmlEscape(entry[1]) + '</label>';
@@ -9423,7 +9436,7 @@ function setupOpenGamesFilter() {
             <tr id="OpenGamesFilterPanel" style="display: none"><td colspan="2">
                 <label><input type="checkbox" name="hideAutoGames"> Hide Auto Games</label>
                 <label><input type="checkbox" name="hideCoinGames"> Hide coin games</label>
-                <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours or over <input type="number" name="maxBootHours" min="0" step="1"> hours (0 = off)</label>
+                <label>Hide games with a boot time under <input type="number" name="minBoot" min="0" step="1"> ${bootUnits("minBootUnit")} or over <input type="number" name="maxBoot" min="0" step="1"> ${bootUnits("maxBootUnit")} (0 = off)</label>
                 <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
                 <label>Hide maps whose name contains any of these words <input type="text" name="mapWords" placeholder="earth, europe"> (separate with commas)</label>
                 <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
@@ -9438,8 +9451,10 @@ function setupOpenGamesFilter() {
             </td></tr>`);
         panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
         panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
-        panel.find("[name=minBootHours]").val(filter.minBootHours);
-        panel.find("[name=maxBootHours]").val(filter.maxBootHours);
+        panel.find("[name=minBoot]").val(filter.minBoot);
+        panel.find("[name=minBootUnit]").val(filter.minBootUnit);
+        panel.find("[name=maxBoot]").val(filter.maxBoot);
+        panel.find("[name=maxBootUnit]").val(filter.maxBootUnit);
         panel.find("[name=keywords]").val(filter.keywords.join(", "));
         panel.find("[name=mapWords]").val(filter.mapWords.join(", "));
         panel.find("[name=minPlayers]").val(filter.minPlayers);
