@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.46.1
+
+- **Fix: Open Games filter, a 1v1 set up as a team game.** Players often make a 1v1 a team game so its chat stays the same. Such a game, with teams of one player, now counts as **1 v 1** (and a bigger one with teams of one as **FFA**) instead of a team game, so "show only 1 v 1" keeps it and "hide team games" no longer hides it.
+
 ## 3.46.0
 
 - **Open Games filter: 1 v 1 in Game type.** Two more choices: **show only 1 v 1** (two seats, no teams) and **hide 1 v 1**, next to team games and FFA.
