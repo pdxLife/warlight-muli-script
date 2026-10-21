@@ -9137,23 +9137,34 @@ function parseFilterKeywords(text) {
 
 function normalizeOpenGamesFilter(value) {
     value = value || {};
+    var count = function (number) {
+        return Math.max(0, Math.floor(Number(number)) || 0);
+    };
+    var known = openGameSettingIcons().concat(openGameCards()).map(function (entry) {
+        return entry[0];
+    });
     return {
         hideAutoGames: value.hideAutoGames === true,
         hideCoinGames: value.hideCoinGames === true,
         minBootHours: Math.max(0, Number(value.minBootHours) || 0),
+        maxBootHours: Math.max(0, Number(value.maxBootHours) || 0),
         keywords: Array.isArray(value.keywords) ? parseFilterKeywords(value.keywords.join(",")) : [],
-        minPlayers: Math.max(0, Math.floor(Number(value.minPlayers)) || 0),
-        maxPlayers: Math.max(0, Math.floor(Number(value.maxPlayers)) || 0),
+        mapWords: Array.isArray(value.mapWords) ? parseFilterKeywords(value.mapWords.join(",")) : [],
+        minPlayers: count(value.minPlayers),
+        maxPlayers: count(value.maxPlayers),
+        minOpenSeats: count(value.minOpenSeats),
+        maxOpenSeats: count(value.maxOpenSeats),
         teamGames: ["only", "none", "ffa", "noffa"].indexOf(value.teamGames) !== -1 ? value.teamGames : "",
-        hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (icon) {
-            return openGameSettingIcons().some(function (known) {
-                return known[0] === icon;
-            });
+        teamSize: ["2", "3", "4"].indexOf(value.teamSize) !== -1 ? value.teamSize : "",
+        hideMuted: value.hideMuted === true,
+        hideSettings: Array.isArray(value.hideSettings) ? value.hideSettings.filter(function (key) {
+            return known.indexOf(key) !== -1;
         }) : []
     };
 }
 
-// war.app's game setting icons, by file name, with a short label for the filter.
+// war.app's game setting icons, by file name, with a short label for the filter. A "#" key also needs
+// the icon's hover text to match: the fog icon says which fog level the game has.
 function openGameSettingIcons() {
     return [
         ["Commerce.png", "Commerce"],
@@ -9163,22 +9174,107 @@ function openGameSettingIcons() {
         ["Cards.png", "Cards"],
         ["Wastelands.png", "Wastelands"],
         ["Fog.png", "Fog other than normal"],
+        ["Fog.png#less", "Less fog than normal (no fog, light fog)", /Fog level: (?:No|Light) Fog/i],
+        ["Fog.png#more", "More fog than normal (dense, heavy, complete)", /Fog level: (?:Dense|Heavy|Complete) Fog/i],
         ["NoSplit.png", "No-split mode"],
         ["OverriddenBonuses.png", "Overridden bonuses"],
         ["AttackTransferOnly.png", "Attack-only / transfer-only"],
         ["OneArmyStandGuard.png", "One army must stand guard"],
         ["AllSkill.png", "Pure skill (no luck)"],
-        ["BankingBoot.png", "Banked boot time"]
+        ["LuckModifier.png", "Changed luck or rounding"],
+        ["KillRate.png", "Changed kill rates"],
+        ["MinArmies.png", "Changed minimum armies per turn"],
+        ["BonusArmiesPer.png", "Extra armies per territory"],
+        ["ArmyCap.png", "Army cap"],
+        ["Commander.png", "Commanders"],
+        ["MultiAttack.png", "Multi-attack"],
+        ["BankingBoot.png", "Banked boot time"],
+        ["Mods.png", "Mods"],
+        ["CustomScenario.png", "Custom scenario"],
+        ["PracticeGame.png", "Practice game (no points)"]
     ];
+}
+
+// The cards war.app lists on a game's cards icon ("Reinforcement Card, Airlift Card, Blockade Card").
+function openGameCards() {
+    return ["Reinforcement", "Spy", "Emergency Blockade", "Order Priority", "Order Delay", "Airlift", "Gift", "Diplomacy", "Sanctions",
+        "Reconnaissance", "Surveillance", "Blockade", "Bomb"].map(function (card) {
+        return ["card:" + card, card];
+    });
 }
 
 function openGameIcons(row) {
     return $(row).find("img").not(".MyGamesGameThumbnail").map(function () {
-        return String($(this).attr("src") || "").split(/[?#]/)[0].split("/").pop();
+        return { file: String($(this).attr("src") || "").split(/[?#]/)[0].split("/").pop(), title: String($(this).attr("title") || "") };
     }).get();
 }
 
-function openGameIsFiltered(row, filter) {
+function openGameHasSetting(icons, key) {
+    var title = function (file) {
+        var icon = icons.filter(function (candidate) {
+            return candidate.file === file;
+        })[0];
+        return icon ? icon.title : null;
+    };
+    if (key.indexOf("card:") === 0) {
+        var cards = title("Cards.png");
+        return cards !== null && cards.split(",").some(function (card) {
+            return card.trim().toLowerCase() === key.slice(5).toLowerCase() + " card";
+        });
+    }
+    var entry = openGameSettingIcons().filter(function (candidate) {
+        return candidate[0] === key;
+    })[0];
+    var found = title(key.split("#")[0]);
+    return found !== null && (!entry || !entry[2] || entry[2].test(found));
+}
+
+// A team game's team size: war.app says it for random teams ("random teams of 2") and draws set teams as
+// groups of seats with a gap between them (two &nbsp;). null when it can't tell.
+function openGameTeamSize(row, icons) {
+    var team = icons.filter(function (icon) {
+        return icon.file === "Teams.png";
+    })[0];
+    if (!team) {
+        return null;
+    }
+    var random = /random teams of (\d+)/i.exec(team.title);
+    if (random) {
+        return Number(random[1]);
+    }
+    var groups = [0];
+    $(row).find(".MyGamesGameBoxesRow").first().contents().each(function () {
+        if (this.nodeType === 1 && $(this).hasClass("MyGamesGameBox")) {
+            groups[groups.length - 1]++;
+        } else if (this.nodeType === 3 && /\u00a0/.test(this.nodeValue) && groups[groups.length - 1] > 0) {
+            groups.push(0);
+        }
+    });
+    groups = groups.filter(Boolean);
+    return groups.length > 1 ? Math.max.apply(null, groups) : null;
+}
+
+// The players who joined, by their seat's hover text ("Name", or "Name: Waiting for this player…").
+function openGamePlayers(row) {
+    return $(row).find(".MyGamesGameBox").filter(function () {
+        return !$(this).find(".MyGamesGameBoxOpenSeat").length;
+    }).map(function () {
+        return String($(this).attr("title") || "").replace(/: Waiting for this player.*$/i, "").trim();
+    }).get().filter(function (name) {
+        return name && name !== "Open Seat";
+    });
+}
+
+function nameHasKeyword(name, keywords) {
+    return keywords.some(function (keyword) {
+        var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp("(?:^|[^\\p{L}\\p{N}])" + escaped + "(?:$|[^\\p{L}\\p{N}])", "iu").test(name);
+    });
+}
+
+// extra: what the filter loads on the side, the muted players and war.app's map names by thumbnail folder.
+function openGameIsFiltered(row, filter, extra) {
+    extra = extra || {};
     var link = $(row).find("td").eq(1).find("a").first();
     if (filter.hideAutoGames && /[?&]AutoGameID=/i.test(link.attr("href") || "")) {
         return true;
@@ -9187,15 +9283,21 @@ function openGameIsFiltered(row, filter) {
         return true;
     }
     var bootMinutes = parseBootTime($(row).find(".BootTimeLabel").text());
-    if (filter.minBootHours > 0 && bootMinutes !== null && bootMinutes < filter.minBootHours * 60) {
+    if (bootMinutes !== null && ((filter.minBootHours > 0 && bootMinutes < filter.minBootHours * 60) || (filter.maxBootHours > 0 && bootMinutes > filter.maxBootHours * 60))) {
         return true;
     }
     var seats = $(row).find(".MyGamesGameBox").length;
     if (seats > 0 && ((filter.minPlayers > 0 && seats < filter.minPlayers) || (filter.maxPlayers > 0 && seats > filter.maxPlayers))) {
         return true;
     }
+    var open = $(row).find(".MyGamesGameBoxOpenSeat").length;
+    if (seats > 0 && ((filter.minOpenSeats > 0 && open < filter.minOpenSeats) || (filter.maxOpenSeats > 0 && open > filter.maxOpenSeats))) {
+        return true;
+    }
     var icons = openGameIcons(row);
-    var teamGame = icons.indexOf("Teams.png") !== -1;
+    var teamGame = icons.some(function (icon) {
+        return icon.file === "Teams.png";
+    });
     if ((filter.teamGames === "only" && !teamGame) || (filter.teamGames === "none" && teamGame)) {
         return true;
     }
@@ -9204,22 +9306,41 @@ function openGameIsFiltered(row, filter) {
     if (seats > 0 && ((filter.teamGames === "ffa" && !ffa) || (filter.teamGames === "noffa" && ffa))) {
         return true;
     }
-    if (filter.hideSettings.some(function (icon) {
-        return icons.indexOf(icon) !== -1;
+    if (filter.teamSize) {
+        var size = openGameTeamSize(row, icons);
+        if (size === null || (filter.teamSize === "4" ? size < 4 : size !== Number(filter.teamSize))) {
+            return true;
+        }
+    }
+    if (filter.hideSettings.some(function (key) {
+        return openGameHasSetting(icons, key);
     })) {
         return true;
     }
-    var name = link.text();
-    return filter.keywords.some(function (keyword) {
-        var escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        return new RegExp("(?:^|[^\\p{L}\\p{N}])" + escaped + "(?:$|[^\\p{L}\\p{N}])", "iu").test(name);
-    });
+    if (filter.hideMuted && extra.muted && extra.muted.length) {
+        var muted = extra.muted.map(function (name) {
+            return name.toLowerCase();
+        });
+        if (openGamePlayers(row).some(function (name) {
+            return muted.indexOf(name.toLowerCase()) !== -1;
+        })) {
+            return true;
+        }
+    }
+    if (filter.mapWords.length && extra.maps) {
+        var folder = /\/Thumbs\/Maps\/(\d+)\//.exec($(row).find("img.MyGamesGameThumbnail").attr("src") || "");
+        var map = folder && extra.maps[folder[1]];
+        if (map && nameHasKeyword(map.name, filter.mapWords)) {
+            return true;
+        }
+    }
+    return nameHasKeyword(link.text(), filter.keywords);
 }
 
-function applyOpenGamesFilter(filter) {
+function applyOpenGamesFilter(filter, extra) {
     var rows = $("#OpenGamesTable tr.GameRow");
     var filtered = rows.filter(function () {
-        return openGameIsFiltered(this, filter);
+        return openGameIsFiltered(this, filter, extra);
     });
     rows.not(filtered).removeClass("tuyd-filtered");
     filtered.addClass("tuyd-filtered");
@@ -9231,10 +9352,16 @@ function readOpenGamesFilterForm(panel) {
         hideAutoGames: panel.find("[name=hideAutoGames]").prop("checked"),
         hideCoinGames: panel.find("[name=hideCoinGames]").prop("checked"),
         minBootHours: panel.find("[name=minBootHours]").val(),
+        maxBootHours: panel.find("[name=maxBootHours]").val(),
         keywords: parseFilterKeywords(panel.find("[name=keywords]").val()),
+        mapWords: parseFilterKeywords(panel.find("[name=mapWords]").val()),
         minPlayers: panel.find("[name=minPlayers]").val(),
         maxPlayers: panel.find("[name=maxPlayers]").val(),
+        minOpenSeats: panel.find("[name=minOpenSeats]").val(),
+        maxOpenSeats: panel.find("[name=maxOpenSeats]").val(),
         teamGames: panel.find("[name=teamGames]").val(),
+        teamSize: panel.find("[name=teamSize]").val(),
+        hideMuted: panel.find("[name=hideMuted]").prop("checked"),
         hideSettings: panel.find("[name=hideSetting]:checked").map(function () {
             return this.value;
         }).get()
@@ -9248,6 +9375,18 @@ function setupOpenGamesFilter() {
     }
     Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "openGamesFilter", function (setting) {
         var filter = normalizeOpenGamesFilter(setting && setting.value);
+        var extra = { muted: [], maps: null };
+        var mapsAsked = false;
+        var apply = function () {
+            if (filter.mapWords.length && !mapsAsked) {
+                mapsAsked = true;
+                loadMapNames(function (maps) {
+                    extra.maps = maps;
+                    applyOpenGamesFilter(filter, extra);
+                });
+            }
+            applyOpenGamesFilter(filter, extra);
+        };
         addCSS(`
             #OpenGamesTable tr.tuyd-filtered { display: none; }
             #OpenGamesFilterCount { color: #999; letter-spacing: 0; margin-left: 4px; }
@@ -9256,7 +9395,7 @@ function setupOpenGamesFilter() {
             #OpenGamesFilterPanel input[type=number] { width: 60px; }
             #OpenGamesFilterPanel input[type=text] { width: 260px; max-width: 100%; }
             #OpenGamesFilterPanel input[type=number], #OpenGamesFilterPanel input[type=text], #OpenGamesFilterPanel select { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
-            #OpenGamesFilterPanel .tuydFilterSettings { display: flex; flex-wrap: wrap; gap: 0 16px; margin: 2px 0 0 18px; }
+            #OpenGamesFilterPanel .tuydFilterSettings { display: flex; flex-wrap: wrap; gap: 0 16px; margin: 2px 0 6px 18px; }
             #OpenGamesFilterPanel .tuydFilterSettings label { margin-bottom: 2px; }
         `);
         var filterLink = ` | <a href="#" id="OpenGamesFilterLink" style="letter-spacing: 0px">Filter</a><span id="OpenGamesFilterCount"></span>`;
@@ -9266,26 +9405,41 @@ function setupOpenGamesFilter() {
         } else {
             table.find("thead h2").parent().append(filterLink);
         }
+        var checkboxes = function (entries) {
+            return entries.map(function (entry) {
+                return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(entry[0]) + '"> ' + htmlEscape(entry[1]) + '</label>';
+            }).join("");
+        };
         var panel = $(`
             <tr id="OpenGamesFilterPanel" style="display: none"><td colspan="2">
                 <label><input type="checkbox" name="hideAutoGames"> Hide Auto Games</label>
                 <label><input type="checkbox" name="hideCoinGames"> Hide coin games</label>
-                <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours (0 = off)</label>
+                <label>Hide games with a boot time under <input type="number" name="minBootHours" min="0" step="1"> hours or over <input type="number" name="maxBootHours" min="0" step="1"> hours (0 = off)</label>
                 <label>Hide games whose name contains any of these words <input type="text" name="keywords" placeholder="rp, diplo"> (separate with commas)</label>
+                <label>Hide maps whose name contains any of these words <input type="text" name="mapWords" placeholder="earth, europe"> (separate with commas)</label>
                 <label>Players: from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"> seats (0 = any)</label>
+                <label>Open seats left: from <input type="number" name="minOpenSeats" min="0" step="1"> to <input type="number" name="maxOpenSeats" min="0" step="1"> (0 = any; 1 to 1 for games about to start)</label>
                 <label>Game type: <select name="teamGames"><option value="">show all</option><option value="only">show only team games</option><option value="none">hide team games</option><option value="ffa">show only FFA (free-for-all, 3+ players)</option><option value="noffa">hide FFA</option></select></label>
+                <label>Team size: <select name="teamSize"><option value="">any</option><option value="2">show only teams of 2 (2v2, 2v2v2…)</option><option value="3">show only teams of 3</option><option value="4">show only teams of 4 or more</option></select></label>
+                <label><input type="checkbox" name="hideMuted"> Hide games with a player you muted</label>
                 <div>Hide games with:</div>
-                <div class="tuydFilterSettings">${openGameSettingIcons().map(function (icon) {
-                    return '<label><input type="checkbox" name="hideSetting" value="' + htmlEscape(icon[0]) + '"> ' + htmlEscape(icon[1]) + '</label>';
-                }).join("")}</div>
+                <div class="tuydFilterSettings">${checkboxes(openGameSettingIcons())}</div>
+                <div>Hide games with any of these cards:</div>
+                <div class="tuydFilterSettings">${checkboxes(openGameCards())}</div>
             </td></tr>`);
         panel.find("[name=hideAutoGames]").prop("checked", filter.hideAutoGames);
         panel.find("[name=hideCoinGames]").prop("checked", filter.hideCoinGames);
         panel.find("[name=minBootHours]").val(filter.minBootHours);
+        panel.find("[name=maxBootHours]").val(filter.maxBootHours);
         panel.find("[name=keywords]").val(filter.keywords.join(", "));
+        panel.find("[name=mapWords]").val(filter.mapWords.join(", "));
         panel.find("[name=minPlayers]").val(filter.minPlayers);
         panel.find("[name=maxPlayers]").val(filter.maxPlayers);
+        panel.find("[name=minOpenSeats]").val(filter.minOpenSeats);
+        panel.find("[name=maxOpenSeats]").val(filter.maxOpenSeats);
         panel.find("[name=teamGames]").val(filter.teamGames);
+        panel.find("[name=teamSize]").val(filter.teamSize);
+        panel.find("[name=hideMuted]").prop("checked", filter.hideMuted);
         panel.find("[name=hideSetting]").each(function () {
             this.checked = filter.hideSettings.indexOf(this.value) !== -1;
         });
@@ -9297,16 +9451,20 @@ function setupOpenGamesFilter() {
         panel.find("input, select").on("change", function () {
             filter = readOpenGamesFilterForm(panel);
             Database.update(Database.Table.Settings, { name: "openGamesFilter", value: filter }, undefined);
-            applyOpenGamesFilter(filter);
+            apply();
         });
-        applyOpenGamesFilter(filter);
+        readMutedPlayers(function (names) {
+            extra.muted = names;
+            apply();
+        });
+        apply();
         // The site re-renders rows for "Show more" and the pace buttons; changes in thead are our own.
         new MutationObserver(function (mutations) {
             var rowsChanged = mutations.some(function (mutation) {
                 return $(mutation.target).closest("thead").length === 0;
             });
             if (rowsChanged) {
-                applyOpenGamesFilter(filter);
+                applyOpenGamesFilter(filter, extra);
             }
         }).observe(table[0], { childList: true, subtree: true });
     });
