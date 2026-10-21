@@ -359,3 +359,23 @@ test("boot times can be set in minutes, hours or days", () => {
     assert.equal(writes[writes.length - 1].value.maxBootUnit, "minutes");
     assert.deepEqual(Array.from(visibleIds()), ["1", "2"]);
 });
+
+test("a 1v1 set up as a team game counts as 1 v 1, and teams of one aren't team games", () => {
+    const rows = [
+        openGameRow("1", "1v1 for the chat", { seats: ["Ann", "|", "Open Seat"], icons: [["Teams.png", "Team Game"]] }),
+        openGameRow("2", "Plain 1v1", { seats: ["Bo", "Open Seat"] }),
+        openGameRow("3", "2v2", { seats: ["Cy", "Di", "|", "Open Seat", "Open Seat"], icons: [["Teams.png", "Team Game"]] }),
+        openGameRow("4", "1v1v1 for the chat", { seats: ["Ed", "|", "Open Seat", "|", "Open Seat"], icons: [["Teams.png", "Team Game"]] })
+    ];
+    const { ctx, visibleIds } = setup(rows);
+    const shownBy = (overrides) => {
+        ctx.applyOpenGamesFilter(filter(overrides));
+        return Array.from(visibleIds());
+    };
+    assert.deepEqual(shownBy({ teamGames: "1v1" }), ["1", "2"]);
+    assert.deepEqual(shownBy({ teamGames: "no1v1" }), ["3", "4"]);
+    assert.deepEqual(shownBy({ teamGames: "only" }), ["3"], "teams of one aren't team games");
+    assert.deepEqual(shownBy({ teamGames: "none" }), ["1", "2", "4"]);
+    assert.deepEqual(shownBy({ teamGames: "ffa" }), ["4"], "three teams of one is a free-for-all");
+    assert.deepEqual(shownBy({ teamSize: "2" }), ["3"]);
+});

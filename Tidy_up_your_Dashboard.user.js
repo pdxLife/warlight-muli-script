@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.46.0
+// @version 3.46.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.46.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9301,9 +9301,12 @@ function openGameIsFiltered(row, filter, extra) {
         return true;
     }
     var icons = openGameIcons(row);
+    var size = openGameTeamSize(row, icons);
+    // Teams of one player (often a 1v1 made a team game for a chat that stays the same) aren't played in
+    // teams: such a game counts as 1 v 1 or FFA. Two seats can only be two teams of one.
     var teamGame = icons.some(function (icon) {
         return icon.file === "Teams.png";
-    });
+    }) && seats !== 2 && size !== 1;
     if ((filter.teamGames === "only" && !teamGame) || (filter.teamGames === "none" && teamGame)) {
         return true;
     }
@@ -9317,7 +9320,6 @@ function openGameIsFiltered(row, filter, extra) {
         return true;
     }
     if (filter.teamSize) {
-        var size = openGameTeamSize(row, icons);
         if (size === null || (filter.teamSize === "4" ? size < 4 : size !== Number(filter.teamSize))) {
             return true;
         }
