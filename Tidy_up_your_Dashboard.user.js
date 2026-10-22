@@ -6860,7 +6860,7 @@ function setupCustomProfileStats() {
 // MTL and Seasonal Ladder rows for war.app's Ladders table on a profile (Ladder, Best Rank, Current Rank).
 function ladderProfileRows(mtl, seasonal) {
     var rated = function (rank, rating) {
-        return htmlEscape(rank ? getRankText(rank) : "Unranked") + " (" + formatCount(rating) + ")";
+        return htmlEscape(rank ? getRankText(rank) : "Unranked") + " (" + htmlEscape(rating) + ")";
     };
     var link = function (url, text) {
         return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(url)) + '">' + htmlEscape(text) + '</a>';
