@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.48.1
+
+- **Ladders page: a set order for the players' list.** AWP World Tour, then the Multi-Template Ladder, P/R League, Titled Tuesday and the Seasonal Ladder, whatever order custom.wl-stats.com sends its series in. The clans' list is unchanged (Clan League, Clan Cup, Nations Cup).
+
 ## 3.48.0
 
 - **Seasonal Ladder from custom.wl-stats.com's new ladders API.** The Seasonal Ladder moved out of custom's series list into its own API (`/api/v1/ladders/seasonal`); the Ladders page and the Community Events cards now read it there, with the same season, leader and your place ("146th of 219 · 9–6 · rating 2,634"). While the series list still has its old copy, that copy is used if the new API doesn't answer.

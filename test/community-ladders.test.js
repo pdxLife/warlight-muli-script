@@ -20,7 +20,7 @@ const laddersUrls = (playerId) => [SEASONAL_URL, MTL_URL].concat(playerId ? [`${
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "shownUjsElement", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "seasonalLadderSeries", "withSeasonalLadder", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
+    "seriesLink", "seasonalLadderSeries", "withSeasonalLadder", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "inPlayerSeriesOrder", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent", "eventLineRoom", "fitEventLines"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -92,7 +92,8 @@ function laddersPage({ response = rankings, fail = false, seriesResponse = serie
         CUSTOM_SITE,
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
         SERIES_CACHE_MS: 10 * 60 * 1000,
-        CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"]
+        CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"],
+        PLAYER_SERIES_KINDS: ["league", "events", "ladder"]
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -187,7 +188,7 @@ test("one site down still shows the other's rows", async () => {
     const awpDown = laddersPage({ fail: true });
     awpDown.ctx.setupCommunityLadders();
     await flush();
-    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["P/R League", "Seasonal Ladder", "Titled Tuesday", "Clan Cup", "Nations Cup"]);
+    assert.deepEqual(awpDown.$(".communityLadderButton").map((i, a) => awpDown.$(a).text()).get(), ["P/R League", "Titled Tuesday", "Seasonal Ladder", "Clan Cup", "Nations Cup"]);
 
     const customDown = laddersPage({ seriesFail: true });
     customDown.ctx.setupCommunityLadders();
@@ -223,20 +224,20 @@ test("each running series on custom.wl-stats.com gets a row after AWP, with its 
     const sections = $("#communityLadders .communityLaddersSection");
     assert.deepEqual(sections.find("h4").map((i, h) => $(h).text()).get(), ["Players", "Clans & nations"]);
     const names = (section) => $(section).find(".communityLadderButton").map((i, a) => $(a).text()).get();
-    assert.deepEqual(names(sections[0]), ["AWP World Tour", "P/R League", "Seasonal Ladder", "Titled Tuesday"]);
+    assert.deepEqual(names(sections[0]), ["AWP World Tour", "P/R League", "Titled Tuesday", "Seasonal Ladder"]);
     assert.deepEqual(names(sections[1]), ["Clan Cup", "Nations Cup"], "Nations Cup is a team event, so it goes with the clans");
     const rows = $("#communityLadders .communityLadder");
-    assert.deepEqual(textOf($, rows[2]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
+    assert.deepEqual(textOf($, rows[3]), ["Season LXXI · running · 248 players", "Leader: Eraserhead"]);
     assert.equal($(".tuydSeasonalLine").length, 0, "war.app's own Seasonal row is left alone: signed in, its Unlocked line fills it");
     assert.deepEqual(textOf($, rows[4]), ["Clan Cup II · running · 23 clans · 11/15 matches"]);
     assert.deepEqual(textOf($, rows[5]), ["Nations Cup 2026 · running · 28 teams", "Your country Russia and Kazakhstan: Group C · 2nd of 3 · 11–10 · 11 points"]);
     assert.deepEqual(textOf($, rows[1]), ["Season 38 · running · 51 players · 77/161 games", "Leader: Stales78"]);
     assert.equal($(rows[5]).find(".communityLadderText a").attr("href"), "https://custom.wl-stats.com/series/nations-cup/players/2921525624");
     assert.equal($(rows[1]).find(".communityLadderButton").attr("href"), "https://custom.wl-stats.com/series/pr-league");
-    const titled = textOf($, rows[3]);
+    const titled = textOf($, rows[2]);
     assert.equal(titled[0], "Last: 91st Titled Tuesday - AUL · 20 players", "a weekly series names its last event, with no winner");
     assert.match(titled[1], /^Next: .+ \((?:in \d+ (?:min|hours?|days?)|now)\)$/);
-    assert.equal($(rows[3]).find(".tuydMuted a").attr("href"), "https://custom.wl-stats.com/tournaments/941", "the last event links to its page");
+    assert.equal($(rows[2]).find(".tuydMuted a").attr("href"), "https://custom.wl-stats.com/tournaments/941", "the last event links to its page");
 });
 
 test("Clan League leads the clans list, ahead of the cups the server lists first", async () => {
@@ -255,7 +256,7 @@ test("Clan League leads the clans list, ahead of the cups the server lists first
         "Your clan Optimum: Division A · 1st of 6 · 39–16 · 141 points · champion"
     ]);
     assert.deepEqual($("#communityLadders .communityLaddersSection").eq(0).find(".communityLadderButton").map((i, a) => $(a).text()).get(),
-        ["AWP World Tour", "P/R League", "Seasonal Ladder", "Titled Tuesday"], "the players list keeps its order");
+        ["AWP World Tour", "P/R League", "Titled Tuesday", "Seasonal Ladder"], "the players list keeps its order");
 });
 
 test("a series' standings take the leader's place: a division's top three, group leaders, or the clans still in", () => {
@@ -616,14 +617,14 @@ const mtlLadder = {
 };
 const mtlMe = { rank: null, name: "KKND", player_id: "2921525624", rating: 1880, games: 244, wins: 134, win_pct: 54.9, url: "https://custom.wl-stats.com/ladders/mtl/players/2921525624", best_rank: 6, best_rating: 1963 };
 
-test("the Seasonal Ladder comes from the ladders API, in its place among the series, with your place", async () => {
+test("the Seasonal Ladder comes from the ladders API, once, with your place", async () => {
     const { ctx, $ } = laddersPage({ ladders: { [SEASONAL_URL]: seasonalLadder } });
     ctx.setupCommunityLadders();
     await flush();
     const rows = $("#communityLadders .communityLadder");
     const names = rows.map((i, row) => $(row).find(".communityLadderButton").text()).get();
     assert.equal(names.filter((name) => name === "Seasonal Ladder").length, 1, "the series list's copy is replaced, not doubled");
-    assert.ok(names.indexOf("Seasonal Ladder") > names.indexOf("P/R League") && names.indexOf("Seasonal Ladder") < names.indexOf("Titled Tuesday"), "where the series list had it");
+    assert.equal(names.indexOf("Seasonal Ladder"), names.indexOf("Titled Tuesday") + 1, "last of the players' series");
     const row = rows.filter((i, el) => $(el).find(".communityLadderButton").text() === "Seasonal Ladder");
     assert.equal(row.find(".communityLadderText").children().map((i, line) => $(line).text()).get().join(" | "),
         "Season LXXI · running · 4 players | Leader: Eraserhead | You: 3rd of 3 · 9–6 · rating 2,634");
@@ -682,4 +683,15 @@ test("the Multi Template Ladder card on Community Events gets its leader and you
     assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: mtlMe } }).text, "You took part", "on the ladder, not ranked now");
     assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: { ...mtlMe, rank: 12 } } }).text, "You're ranked!");
     assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: null } }), null);
+});
+
+test("the players' list goes AWP World Tour, MTL, P/R League, Titled Tuesday, then the Seasonal Ladder", async () => {
+    const { ctx, $ } = laddersPage({ ladders: { [SEASONAL_URL]: seasonalLadder, [MTL_URL]: mtlLadder, [`${MTL_URL}/players/2921525624`]: mtlMe } });
+    ctx.setupCommunityLadders();
+    await flush();
+    const names = $("#communityLadders .communityLadder").map((i, row) => $(row).find(".communityLadderButton").text()).get();
+    assert.deepEqual(names.slice(0, 5), ["AWP World Tour", "Multi-Template Ladder", "P/R League", "Titled Tuesday", "Seasonal Ladder"]);
+    assert.deepEqual(names.slice(5), ["Clan Cup", "Nations Cup"], "the clan series as before");
+    const order = Array.from(ctx.inPlayerSeriesOrder([{ kind: "ladder" }, { kind: "clan_cup" }, { kind: "new_kind" }, { kind: "events" }, { kind: "league" }]).map((series) => series.kind));
+    assert.deepEqual(order, ["league", "clan_cup", "events", "ladder", "new_kind"], "a series of a new kind goes last; clan series stay put");
 });
