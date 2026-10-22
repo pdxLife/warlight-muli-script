@@ -46,7 +46,7 @@ Everything is in your account menu → "Muli's Userscript": every feature has it
 [img]https://pdxlife.github.io/warlight-muli-script/media/guide-settings-menu.png[/img]
 
 [b]Privacy and safety[/b]
-The script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. The features that use Muli's old server (MTL stats and community level records) are off by default.
+The script doesn't send your username anywhere. Community stats come from awp.wl-stats.com and custom.wl-stats.com without your war.app login. The features that use Muli's old server (MTL tables and community level records) are off by default; MTL on profiles and on the Ladders page comes from custom.wl-stats.com.
 
 [b]Feedback[/b]
 How to use each feature, step by step: https://pdxlife.github.io/warlight-muli-script/guide.html

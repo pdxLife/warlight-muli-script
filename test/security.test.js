@@ -156,6 +156,24 @@ test("custom.wl-stats.com series rows and Community Events lines escape API data
     assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#" || a.getAttribute("href").startsWith("https://awp.wl-stats.com/")), container.innerHTML);
 });
 
+test("custom.wl-stats.com ladders (Seasonal Ladder, MTL, profile rows) escape API data", () => {
+    const { $ } = createDom();
+    const ctx = load(["seasonalLadderSeries", "renderSeriesLadderRow", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "ladderProfileRows", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml",
+        "standingsHtml", "weeklyEventStatusHtml", "seriesLink", "signupsHtml", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "getRankText", "htmlEscape", "safeUrl"], { $, STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"] });
+    const player = { rank: 1, name: PAYLOAD, player_id: "5", rating: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, url: "javascript:alert(1)", best_rank: PAYLOAD, best_rating: PAYLOAD };
+    const seasonal = ctx.seasonalLadderSeries({ name: PAYLOAD, url: "javascript:alert(1)", season: { name: PAYLOAD, url: "data:text/html,x", status: "running" }, players: [player] }, "5");
+    const mtl = { ladder: { url: "javascript:alert(1)", site_up: false, copied_at: PAYLOAD, players: [player] }, mine: player };
+    const html = ctx.renderSeriesLadderRow(seasonal, 0)
+        + ctx.renderMtlLadderRow(mtl, "5")
+        + ctx.communityEventHtml("Multi Template Ladder (MTL)", { series: [], rankings: null, mtl, playerId: "5" })
+        + ctx.communityEventHtml("Multi Template Ladder (MTL)", { series: [], rankings: null, mtl, playerId: null })
+        + "<table><tbody>" + ctx.ladderProfileRows({ ...player, rank: PAYLOAD }, { url: "javascript:alert(1)", seasons: [{ season: { status: "running" }, rank: PAYLOAD, rating: PAYLOAD, champion: true }] }).map((row) => "<tr><td>" + row.cells.join("</td><td>") + "</td></tr>").join("") + "</tbody></table>";
+    const container = render(html);
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"), container.innerHTML);
+});
+
 test("custom.wl-stats.com profile stats escape API data", () => {
     const ctx = load(["renderCustomStats", "htmlEscape", "safeUrl", "getRankText"]);
     const container = render(ctx.renderCustomStats({
