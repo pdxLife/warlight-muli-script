@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.48.0
+// @version 3.48.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -31,6 +31,9 @@ var SERIES_CACHE_MS = 10 * 60 * 1000;
 var GAMES_CACHE_MS = 5 * 60 * 1000;
 var OPEN_GAMES_BOOT_UNITS = { minutes: 1, hours: 60, days: 1440 };
 var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
+// The players' series on the Ladders page, in order after the AWP World Tour and the MTL: P/R League,
+// Titled Tuesday, then the Seasonal Ladder.
+var PLAYER_SERIES_KINDS = ["league", "events", "ladder"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
@@ -6314,6 +6317,25 @@ function placeBelowColumn(panel, dialog, scene) {
 }
 
 // Clan League is the biggest clan event, so it leads; other series keep the server's order.
+// Players' series in PLAYER_SERIES_KINDS order, others after them as listed; clan series keep their places.
+function inPlayerSeriesOrder(list) {
+    var rank = function (series) {
+        if (CLAN_SERIES_KINDS.indexOf(series.kind) !== -1) {
+            return -1;
+        }
+        var i = PLAYER_SERIES_KINDS.indexOf(series.kind);
+        return i === -1 ? PLAYER_SERIES_KINDS.length : i;
+    };
+    var players = list.filter(function (series) {
+        return rank(series) !== -1;
+    }).sort(function (a, b) {
+        return rank(a) - rank(b);
+    });
+    return list.map(function (series) {
+        return rank(series) === -1 ? series : players.shift();
+    });
+}
+
 function inClanSeriesOrder(list) {
     var rank = function (series) {
         var i = CLAN_SERIES_KINDS.indexOf(series.kind);
@@ -7433,14 +7455,14 @@ function setupCommunityLadders() {
             if (data.rankings) {
                 rows.players.push(renderAwpLadderRow(data.rankings, data.playerId));
             }
-            inClanSeriesOrder(data.series).forEach(function (series) {
+            if (data.mtl) {
+                rows.players.push(renderMtlLadderRow(data.mtl, data.playerId));
+            }
+            inPlayerSeriesOrder(inClanSeriesOrder(data.series)).forEach(function (series) {
                 if (series.current) {
                     rows[CLAN_SERIES_KINDS.indexOf(series.kind) !== -1 ? "clans" : "players"].push(renderSeriesLadderRow(series, Date.now()));
                 }
             });
-            if (data.mtl) {
-                rows.players.push(renderMtlLadderRow(data.mtl, data.playerId));
-            }
             community = data;
             show();
         });
