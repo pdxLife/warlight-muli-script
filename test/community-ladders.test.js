@@ -20,7 +20,7 @@ const laddersUrls = (playerId) => [SEASONAL_URL, MTL_URL].concat(playerId ? [`${
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "shownUjsElement", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
     "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
-    "seriesLink", "seasonalLadderSeries", "withSeasonalLadder", "renderMtlLadderRow", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
+    "seriesLink", "seasonalLadderSeries", "withSeasonalLadder", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent", "eventLineRoom", "fitEventLines"];
 
 // Recorded from custom.wl-stats.com /api/v1/series?player=2921525624, trimmed to the fields the script reads.
@@ -666,4 +666,20 @@ test("the Multi-Template Ladder gets a row with its leader and your rating", asy
     none.ctx.setupCommunityLadders();
     await flush();
     assert.doesNotMatch(none.$("#communityLadders").text(), /Multi-Template Ladder/, "no row when custom has no MTL");
+});
+
+test("the Multi Template Ladder card on Community Events gets its leader and your line", async () => {
+    const { ctx, $ } = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, ladders: { [MTL_URL]: mtlLadder, [`${MTL_URL}/players/2921525624`]: mtlMe } });
+    ctx.setupCommunityEventsStanding();
+    await flush();
+    assert.deepEqual(eventLines($, "ujs_EventRow_4"), ["2 ranked", "Leader: Eraserhead 2,297", "You: not ranked · rating 1,880 · best 6th"]);
+    assert.equal($("#ujs_EventRow_4_img .tuydEventMore a").attr("href"), "https://custom.wl-stats.com/ladders/mtl/players/2921525624");
+    const signedOut = laddersPage({ url: "https://war.app/MultiPlayer?CommunityEvents=1", html: eventsScene, playerId: null, ladders: { [MTL_URL]: mtlLadder } });
+    signedOut.ctx.setupCommunityEventsStanding();
+    await flush();
+    assert.equal(eventLines(signedOut.$, "ujs_EventRow_4")[2], "Full rankings on custom.wl-stats.com ›");
+    const { ctx: labels } = laddersPage();
+    assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: mtlMe } }).text, "You took part", "on the ladder, not ranked now");
+    assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: { ...mtlMe, rank: 12 } } }).text, "You're ranked!");
+    assert.equal(labels.joinedEventLabel("Multi Template Ladder (MTL)", { series: [], mtl: { ladder: mtlLadder, mine: null } }), null);
 });

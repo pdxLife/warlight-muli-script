@@ -7809,31 +7809,56 @@ function withSeasonalLadder(series, seasonal) {
 // The Multi-Template Ladder, from custom.wl-stats.com's copy of warlight-mtl.com.
 function renderMtlLadderRow(mtl, playerId) {
     var ladder = mtl.ladder;
-    var leader = ladder.players.filter(function (entry) {
-        return entry && entry.rank === 1;
-    })[0] || ladder.players[0];
+    var leader = mtlLeader(ladder);
     var status = [formatCount(ladder.players.length) + " ranked players"];
     if (ladder.site_up === false && ladder.copied_at) {
         status.push("warlight-mtl.com is down; as of " + htmlEscape(formatEventTime(ladder.copied_at)));
-    }
-    var mine = mtl.mine;
-    var you = "";
-    if (playerId) {
-        you = mine
-            ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(mine.url)) + '">You</a>: ' + [
-                mine.rank ? htmlEscape(getRankText(mine.rank)) + " of " + formatCount(ladder.players.length) : "not ranked",
-                "rating " + formatCount(mine.rating),
-                mine.best_rank ? "best " + htmlEscape(getRankText(mine.best_rank)) : ""
-            ].filter(Boolean).join(" · ")
-            : "You: not on the MTL";
     }
     return communityLadderRow({
         name: "Multi-Template Ladder",
         url: ladder.url,
         statusHtml: status.join(" · "),
         detailHtml: leader ? "Leader: " + seriesLink(leader) + " " + formatCount(leader.rating) : "",
-        youHtml: you
+        youHtml: mtlYouHtml(mtl, playerId)
     });
+}
+
+function mtlYouHtml(mtl, playerId) {
+    var mine = mtl.mine;
+    if (!playerId) {
+        return "";
+    }
+    return mine
+        ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(mine.url)) + '">You</a>: ' + [
+            mine.rank ? htmlEscape(getRankText(mine.rank)) + " of " + formatCount(mtl.ladder.players.length) : "not ranked",
+            "rating " + formatCount(mine.rating),
+            mine.best_rank ? "best " + htmlEscape(getRankText(mine.best_rank)) : ""
+        ].filter(Boolean).join(" · ")
+        : "You: not on the MTL";
+}
+
+function mtlLeader(ladder) {
+    return ladder.players.filter(function (entry) {
+        return entry && entry.rank === 1;
+    })[0] || ladder.players[0];
+}
+
+// war.app's Community Events card for the Multi Template Ladder (MTL).
+function mtlEventLines(community) {
+    var mtl = community.mtl;
+    if (!mtl) {
+        return null;
+    }
+    var leader = mtlLeader(mtl.ladder);
+    var status = [formatCount(mtl.ladder.players.length) + " ranked"];
+    if (mtl.ladder.site_up === false && mtl.ladder.copied_at) {
+        status.push("warlight-mtl.com is down");
+    }
+    return {
+        status: status.join(" · "),
+        detail: leader ? "Leader: " + seriesLink(leader) + " " + formatCount(leader.rating) : "",
+        bottom: mtlYouHtml(mtl, community.playerId) || siteLink(mtl.ladder.url, "Full rankings on custom.wl-stats.com")
+    };
 }
 
 function formatCount(value) {
@@ -8112,6 +8137,10 @@ function joinedEventLabel(title, community) {
     if (/^AWP World Tour/i.test(title)) {
         return community.rankings && awpStanding(community.rankings, community.playerId) ? { text: "You're in the race!", color: colors.in } : null;
     }
+    if (/^Multi[ -]Template Ladder/i.test(title)) {
+        var mine = community.mtl && community.mtl.mine;
+        return !mine ? null : mine.rank ? { text: "You're ranked!", color: colors.in } : { text: "You took part", color: colors.tookPart };
+    }
     var series = community.series.filter(function (entry) {
         return entry.warapp_event && entry.current && title.toLowerCase().indexOf(String(entry.warapp_event).toLowerCase()) === 0;
     })[0];
@@ -8135,7 +8164,7 @@ function markJoinedEvent(row, label) {
 // Each card gets the event's standings beside war.app's title and player count, and your place,
 // or a link to the full standings, beside "You can join!".
 function communityEventHtml(title, community) {
-    var lines = /^AWP World Tour/i.test(title) ? awpEventLines(community) : seriesEventLines(title, community);
+    var lines = /^AWP World Tour/i.test(title) ? awpEventLines(community) : /^Multi[ -]Template Ladder/i.test(title) ? mtlEventLines(community) : seriesEventLines(title, community);
     if (!lines) {
         return "";
     }
