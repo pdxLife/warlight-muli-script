@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.48.2  
+> **Version:** 3.48.3  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -182,7 +182,7 @@ The menu is split into foldable sections by area: Dashboard, Tournaments, Ladder
 
 Settings also include **Import / Export** (Base64-encoded backup of bookmarks, settings, and hidden threads) and **Reset Hidden Threads**.
 
-**Updates:** once a day the script checks GitHub for a newer version. When there is one, the small version label in the bottom-right corner turns into a gold **Update to …** link; clicking it opens Tampermonkey's update screen. Nothing else on the page changes. Tampermonkey also updates the script by itself on its own schedule.
+**Updates:** once a day the script checks GitHub for a newer version. When there is one, the small version label in the bottom-right corner turns into a gold **Update to …** link; clicking it opens Tampermonkey's update screen in a new tab, and the label becomes **Reload to finish updating**, which reloads war.app with the new version (Tampermonkey leaves the new tab empty; close it). Nothing else on the page changes. Tampermonkey also updates the script by itself on its own schedule.
 
 ## Data Storage
 
