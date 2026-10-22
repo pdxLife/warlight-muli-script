@@ -56,6 +56,8 @@ test("champions are marked, and a player outside this season is told so", () => 
     assert.equal(rows[0][2], "Not in this season");
     assert.equal(ctx.ladderProfileRows({ rank: 12, rating: 1950, best_rank: 3, best_rating: 2001, url: "https://x" }, null)[0][2], "12th (1950)");
     assert.equal(ctx.ladderProfileRows(null, { seasons: [] }).length, 0);
+    assert.equal(ctx.ladderProfileRows({ rank: 1, rating: 2297, best_rank: null, best_rating: 2343, url: "https://x" }, null)[0][1], "1st (2343)", "the MTL's number one, whose best rank custom leaves empty");
+    assert.equal(ctx.ladderProfileRows({ rank: null, rating: 1500, best_rank: null, best_rating: null, url: "https://x" }, null)[0][1], "-");
 });
 
 test("without war.app ladders the player still gets a Ladders table, before Ranked Games", async () => {

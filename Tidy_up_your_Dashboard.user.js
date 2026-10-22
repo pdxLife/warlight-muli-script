@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.47.1
+// @version 3.48.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.47.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6867,7 +6867,9 @@ function ladderProfileRows(mtl, seasonal) {
     };
     var rows = [];
     if (mtl) {
-        rows.push([link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "", rated(mtl.rank, mtl.rating)]);
+        // custom.wl-stats.com leaves best_rank empty for the player ranked first right now.
+        var bestRank = mtl.best_rank || (mtl.rank === 1 ? 1 : null);
+        rows.push([link(mtl.url, "MTL"), bestRank ? rated(bestRank, mtl.best_rating || mtl.rating) : "-", rated(mtl.rank, mtl.rating)]);
     }
     var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
     if (seasons.length) {
