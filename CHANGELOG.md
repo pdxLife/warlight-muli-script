@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.47.0
+
+- **My Games: time left before you're booted.** After "Your turn for 14 minutes." each of your games now says "· boots in 2d 23h": its boot time, with any banked time, minus how long it has been your turn. That's also what the your-turn games are sorted by, so a game that became your turn a few minutes ago can come first when its boot is short. Games without a boot say nothing. Settings menu → Dashboard → "Time left before boot on your-turn games".
+- **New setting, off by default: "Sort Your-Turn Games by How Long They Have Waited".** It sorts your-turn games by "Your turn for …", the longest first, instead of by time left. To keep war.app's own order, turn off "Sort your-turn games by time left before boot".
+
 ## 3.46.3
 
 - **Settings menu:** the footer now reads "Maintained by KKND · Forum thread · Discord". The Discord link (https://discord.gg/sc99xHNuE) is the other place to tell KKND when something breaks, and the website, guide and README list it too.
