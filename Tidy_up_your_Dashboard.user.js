@@ -10384,6 +10384,13 @@ function gameTitleBarRects() {
     return { bar: barRect, after: after, obstacles: obstacles, ready: !shownIcons.length || !!icons };
 }
 
+// A lobby war.app still offers you to join: you're not in the game, so it has no notes for you.
+function gameLobbyNotJoined() {
+    return /^Lobby\b/.test(document.title) && $(".ujsTextInner").filter(function () {
+        return $(this).text().trim() === "Join Game" && shownUjsElement(this);
+    }).length > 0;
+}
+
 var GAME_NOTES_SETTLE_MS = 500;
 var GAME_NOTES_SETTLE_MAX_MS = 3000;
 
@@ -10423,6 +10430,9 @@ function setupGameNotes() {
         }
         #tuydGameNotesBtn.tuydNotesWaiting {
             visibility: hidden;
+        }
+        #tuydGameNotesBtn.tuydNotesOutsider {
+            display: none !important;
         }
         #tuydGameNotesBtn.tuydOnChat {
             padding: 0 8px;
@@ -10526,6 +10536,11 @@ function setupGameNotes() {
     // In the title bar the button is never in the chat's or war.app's way; without room there it sits by
     // the Game button, or left of the Chat tab while the chat is open.
     var place = function () {
+        var outsider = gameLobbyNotJoined();
+        button.toggleClass("tuydNotesOutsider", outsider);
+        if (outsider && $("#tuydGameNotes").length) {
+            close();
+        }
         var rects = gameTitleBarRects();
         button.addClass("tuydOnChat");
         var title = rects ? gameNotesTitleSpot(rects.bar, rects.after, rects.obstacles, button.outerWidth(), button.outerHeight()) : null;

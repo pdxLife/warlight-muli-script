@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -10,8 +10,11 @@ const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
     <div id="ujs_PlayerNameContainer_3"><span>L61</span>  <span>Me</span><div id="ujs_PlayerNameContainer_3_tmp"></div></div>
     <div id="ujs_PlayerNameContainer_4"><span>L58</span>  <span>Alice</span></div>`;
 
-function setup(stored, url = "https://war.app/MultiPlayer?GameID=123") {
-    const { dom, $ } = createDom(GAME_PAGE, url);
+function setup(stored, url = "https://war.app/MultiPlayer?GameID=123", { html = GAME_PAGE, title } = {}) {
+    const { dom, $ } = createDom(html, url);
+    if (title) {
+        dom.window.document.title = title;
+    }
     const settings = new Map(stored ? [["gameNotes:123", { name: "gameNotes:123", value: stored }]] : []);
     const timers = [];
     const ctx = load(FUNCTIONS, {
@@ -188,4 +191,16 @@ test("the Notes button waits, hidden, until war.app has laid out the title bar",
 test("the Notes button starts hidden on a game page", () => {
     const { $ } = setup();
     assert.ok($("#tuydGameNotesBtn").hasClass("tuydNotesWaiting"));
+});
+
+test("in a lobby war.app still offers you to join, there's no Notes button", async () => {
+    const join = `<div id="ujs_JoinBtn"><a id="ujs_JoinBtn_btn" class="ujsBtnInner"></a><div id="ujs_Text_9"><div id="ujs_Text_9_tmp" class="ujsTextInner">Join Game</div></div></div>`;
+    const { $, runTimers } = setup(null, undefined, { html: GAME_PAGE + join, title: "Lobby - Modern Warfare Remastered II* - War.app" });
+    assert.ok($("#tuydGameNotesBtn").hasClass("tuydNotesOutsider"));
+    $("#ujs_JoinBtn").remove();
+    await flush();
+    runTimers();
+    assert.ok(!$("#tuydGameNotesBtn").hasClass("tuydNotesOutsider"), "joined: the button comes back");
+    const inGame = setup(null, undefined, { html: GAME_PAGE + join, title: "Turn 3 - Modern Warfare - War.app" });
+    assert.ok(!inGame.$("#tuydGameNotesBtn").hasClass("tuydNotesOutsider"), "only lobbies; a started game's own buttons don't count");
 });
