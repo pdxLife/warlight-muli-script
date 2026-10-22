@@ -228,37 +228,6 @@ function windowError(message, source, lineno, colno, error) {
         window.wlerror(message, source, lineno, colno, error)
     }
 }
-function setupMtlProfile() {
-    var playerId = location.href.match(/p=(\d+)/)[1];
-    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/" + playerId;
-    var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
-    $.ajax({
-        type: 'GET',
-        url: url,
-        dataType: 'jsonp',
-        crossDomain: true
-    }).done(function (response) {
-        var data = JSON.parse(response.data);
-        var player = data.player;
-        if (player) {
-            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/player?playerId=' + playerId + '">MTL</a></td>';
-            if (player.rank) {
-                mtlStats += '<td>' + htmlEscape(getRankText(player.best_rank)) + ' (' + htmlEscape(player.best_displayed_rating) + ')</td><td>' + htmlEscape(getRankText(player.rank)) + ' (' + htmlEscape(player.displayed_rating) + ')</td>'
-            } else if (player.best_displayed_rating) {
-                mtlStats += `<td> ${htmlEscape(getRankText(player.best_rank))} (${htmlEscape(player.best_displayed_rating)}) </td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
-            } else if (player.displayed_rating) {
-                mtlStats += `<td></td><td> Unranked (${htmlEscape(player.displayed_rating)}) </td>`;
-            }
-        } else {
-            var mtlStats = '<td><a target="_blank" href="https://www.warlight-mtl.com/">MTL</a></td>';
-            mtlStats += '<td colspan="2">Currently not participating </td>'
-        }
-        $("h3:contains('Ladders')").next().find("table tbody").prepend('<tr>' + mtlStats + '</tr>');
-    }).fail(function (e) {
-        log("Error loading MTL profile: " + e.statusText);
-    })
-}
-
 function setupMtlLadderTable() {
     addCSS(`
         .spinner {
@@ -4609,10 +4578,10 @@ window.userscriptSettings = [
     },
     {
         id: 'useMaakServices',
-        text: 'Load MTL Ladder and Community Level Records (via maak.ch)',
+        text: 'Load MTL Tables and Community Level Records (via maak.ch)',
         selected: false,
         section: 'Third-party data',
-        help: 'Shows Multi-Template Ladder (MTL) ratings and tables, and the community level record count on profiles. This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows Multi-Template Ladder (MTL) rankings and recent games on the Community page and in MTL forum threads, and the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles and on the Ladders page come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 
@@ -6888,6 +6857,82 @@ function setupCustomProfileStats() {
     });
 }
 
+// MTL and Seasonal Ladder rows for war.app's Ladders table on a profile (Ladder, Best Rank, Current Rank).
+function ladderProfileRows(mtl, seasonal) {
+    var rated = function (rank, rating) {
+        return htmlEscape(rank ? getRankText(rank) : "Unranked") + " (" + formatCount(rating) + ")";
+    };
+    var link = function (url, text) {
+        return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(url)) + '">' + htmlEscape(text) + '</a>';
+    };
+    var rows = [];
+    if (mtl) {
+        rows.push([link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "", rated(mtl.rank, mtl.rating)]);
+    }
+    var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
+    if (seasons.length) {
+        var best = seasons.filter(function (entry) {
+            return entry.rank;
+        }).sort(function (a, b) {
+            return a.rank - b.rank || b.rating - a.rating;
+        })[0];
+        var titles = seasons.filter(function (entry) {
+            return entry.champion;
+        }).length;
+        var running = seasons.filter(function (entry) {
+            return entry.season && entry.season.status === "running";
+        })[0];
+        rows.push([
+            link(seasonal.url, "Seasonal Ladder"),
+            (best ? rated(best.rank, best.rating) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
+            running ? rated(running.rank, running.rating) : "Not in this season"
+        ]);
+    }
+    return rows;
+}
+
+// war.app's own Ladders table, or one like it before Ranked Games when the player has no war.app ladder.
+function profileLaddersTable() {
+    var heading = $("h3").filter(function () {
+        return $(this).text().trim() === "Ladders";
+    }).first();
+    var table = heading.next("table");
+    if (!table.length) {
+        table = heading.next().find("table").first();
+    }
+    if (table.length) {
+        return table;
+    }
+    var before = $("h3").filter(function () {
+        return $(this).text().trim() === "Ranked Games";
+    }).first();
+    if (!before.length) {
+        return $();
+    }
+    var made = $('<table cellpadding="2" class="tuydLaddersTable"><thead><tr><td>Ladder</td><td>Best Rank</td><td>Current Rank</td></tr></thead><tbody></tbody></table>');
+    before.before($('<h3 class="tuydLaddersTable">Ladders</h3>'), made);
+    return made;
+}
+
+function setupLadderProfileRows() {
+    var match = location.href.match(/[?&]p=(\d+)/i);
+    if (!match) {
+        return;
+    }
+    $.when(
+        settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/mtl/players/" + match[1], SERIES_CACHE_MS), "MTL figures"),
+        settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/seasonal/players/" + match[1], SERIES_CACHE_MS), "Seasonal Ladder seasons")
+    ).done(function (mtl, seasonal) {
+        var rows = ladderProfileRows(mtl, seasonal);
+        if (!rows.length || $(".tuydLadderRow").length) {
+            return;
+        }
+        profileLaddersTable().children("tbody").first().append(rows.map(function (row) {
+            return '<tr class="tuydLadderRow"><td>' + row.join("</td><td>") + "</td></tr>";
+        }).join(""));
+    });
+}
+
 function renderCustomStats(player, pageUrl) {
     var stats = player.stats;
     var rows = [
@@ -7389,6 +7434,9 @@ function setupCommunityLadders() {
                     rows[CLAN_SERIES_KINDS.indexOf(series.kind) !== -1 ? "clans" : "players"].push(renderSeriesLadderRow(series, Date.now()));
                 }
             });
+            if (data.mtl) {
+                rows.players.push(renderMtlLadderRow(data.mtl, data.playerId));
+            }
             community = data;
             show();
         });
@@ -7683,16 +7731,107 @@ function loadCommunityData() {
     signedInPlayerId().done(function (playerId) {
         $.when(
             settleRequest(fetchWlStats(AWP_SITE + "/api/v1/rankings"), "the AWP World Tour rankings"),
-            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series")
-        ).done(function (rankings, series) {
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/series" + (playerId ? "?player=" + playerId : ""), SERIES_CACHE_MS), "the custom.wl-stats.com series"),
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/seasonal", SERIES_CACHE_MS), "the Seasonal Ladder"),
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/mtl", SERIES_CACHE_MS), "the MTL rankings"),
+            playerId ? settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/mtl/players/" + playerId, SERIES_CACHE_MS), "your MTL figures") : null
+        ).done(function (rankings, series, seasonal, mtl, mtlMine) {
             result.resolve({
                 playerId: playerId,
                 rankings: rankings && rankings.rankings ? rankings : null,
-                series: series && Array.isArray(series.series) ? series.series : []
+                series: withSeasonalLadder(series && Array.isArray(series.series) ? series.series : [], seasonalLadderSeries(seasonal, playerId)),
+                mtl: mtl && Array.isArray(mtl.players) ? { ladder: mtl, mine: mtlMine || null } : null
             });
         });
     });
     return result.promise();
+}
+
+// The Seasonal Ladder moved from custom.wl-stats.com's series to its own ladders API
+// (/api/v1/ladders/seasonal); this turns that season's standings into a series like the others.
+function seasonalLadderSeries(ladder, playerId) {
+    if (!ladder || !ladder.season || !Array.isArray(ladder.players)) {
+        return null;
+    }
+    var season = ladder.season;
+    var ranked = ladder.players.filter(function (entry) {
+        return entry && entry.rank != null;
+    }).sort(function (a, b) {
+        return a.rank - b.rank;
+    });
+    var top = ranked[0] ? { name: ranked[0].name, url: ranked[0].url } : null;
+    var me = playerId ? ladder.players.filter(function (entry) {
+        return entry && String(entry.player_id) === String(playerId);
+    })[0] : null;
+    var finished = season.status === "finished";
+    return {
+        slug: "seasonal-ladder",
+        name: ladder.name || "Seasonal Ladder",
+        kind: "ladder",
+        url: ladder.url,
+        current: {
+            name: season.name,
+            url: season.url,
+            status: season.status,
+            started_at: season.started_at,
+            finished_at: season.finished_at,
+            players: ladder.players.length,
+            progress: null,
+            leader: finished ? null : top,
+            winner: finished ? top : null,
+            standings: null,
+            stage: null
+        },
+        you: me ? { as: "player", name: me.name, place: me.rank, of: ranked.length, wins: me.wins, losses: me.losses, points: me.rating, status: finished ? "finished" : "playing", url: me.url } : null
+    };
+}
+
+// The series list with the Seasonal Ladder from the ladders API in its place. While the series list
+// still has its own copy, that copy is used when the ladders API doesn't answer.
+function withSeasonalLadder(series, seasonal) {
+    if (!seasonal) {
+        return series;
+    }
+    var at = -1;
+    var others = series.filter(function (entry, i) {
+        var ladder = entry && (entry.kind === "ladder" || entry.slug === "seasonal-ladder");
+        if (ladder && at === -1) {
+            at = i;
+        }
+        return !ladder;
+    });
+    others.splice(at === -1 ? others.length : at, 0, seasonal);
+    return others;
+}
+
+// The Multi-Template Ladder, from custom.wl-stats.com's copy of warlight-mtl.com.
+function renderMtlLadderRow(mtl, playerId) {
+    var ladder = mtl.ladder;
+    var leader = ladder.players.filter(function (entry) {
+        return entry && entry.rank === 1;
+    })[0] || ladder.players[0];
+    var status = [formatCount(ladder.players.length) + " ranked players"];
+    if (ladder.site_up === false && ladder.copied_at) {
+        status.push("warlight-mtl.com is down; as of " + htmlEscape(formatEventTime(ladder.copied_at)));
+    }
+    var mine = mtl.mine;
+    var you = "";
+    if (playerId) {
+        you = mine
+            ? '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(mine.url)) + '">You</a>: ' + [
+                mine.rank ? htmlEscape(getRankText(mine.rank)) + " of " + formatCount(ladder.players.length) : "not ranked",
+                "rating " + formatCount(mine.rating),
+                mine.best_rank ? "best " + htmlEscape(getRankText(mine.best_rank)) : ""
+            ].filter(Boolean).join(" · ")
+            : "You: not on the MTL";
+    }
+    return communityLadderRow({
+        name: "Multi-Template Ladder",
+        url: ladder.url,
+        statusHtml: status.join(" · "),
+        detailHtml: leader ? "Leader: " + seriesLink(leader) + " " + formatCount(leader.rating) : "",
+        youHtml: you
+    });
 }
 
 function formatCount(value) {
@@ -8175,6 +8314,7 @@ function pageFeatures() {
         { name: "Collapsible stat sections", section: "Profile", match: pageIsProfile, run: foldProfileStats },
         { name: "AWP World Tour stats", section: "Profile", match: pageIsProfile, run: setupAwpProfileStats },
         { name: "custom.wl-stats.com stats", section: "Profile", match: pageIsProfile, run: setupCustomProfileStats },
+        { name: "MTL and Seasonal Ladder in the Ladders table", section: "Profile", match: pageIsProfile, run: setupLadderProfileRows },
         { name: "Sort and filter player search results", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchSort },
         { name: "Tags on players in search results", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchTags },
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
@@ -8235,7 +8375,6 @@ function maakFeatures() {
     return [
         { name: "MTL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
         { name: "MTL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
-        { name: "MTL profile stats", match: pageIsProfile, run: setupMtlProfile },
         { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
     ];
 }
