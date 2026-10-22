@@ -4566,6 +4566,13 @@ window.userscriptSettings = [
         help: 'This option will allow you to right-click forum thread on the dashboard and use the default browser options.'
     },
     {
+        id: 'sortTurnsByWaiting',
+        text: 'Sort Your-Turn Games by How Long They Have Waited',
+        selected: false,
+        section: 'Dashboard',
+        help: 'Your-turn games are sorted by the time left before war.app boots you, the most urgent first. With this on, they are sorted by how long it has been your turn instead, the longest first. Turn off "Sort your-turn games by time left before boot" to keep war.app\'s own order.'
+    },
+    {
         id: 'turnNotifications',
         text: 'Desktop Notification When a Game Needs You',
         selected: false,
@@ -8190,6 +8197,7 @@ function mainFeatures() {
         { name: "Game chat from the dashboard", section: "Dashboard", match: pageIsDashboard, run: setupDashboardGameChat },
         { name: "Your-turn count in tab title and background checks", section: "Dashboard", match: pageIsDashboard, run: setupTurnAlerts },
         { name: "Sort your-turn games by time left before boot", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeSort },
+        { name: "Time left before boot on your-turn games", section: "Dashboard", match: pageIsDashboard, run: setupBootTimeLeft },
         { name: "Community event badges on My Games", section: "Dashboard", match: pageIsDashboard, run: setupEventBadges },
         { name: "Open Games filter", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupOpenGamesFilter },
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
@@ -9020,23 +9028,36 @@ function findGamesAwaitingTurn(root) {
     }).get();
 }
 
-function bootMinutesLeft(row) {
-    var turnText = $(row).find("span").filter(function () {
+function myGameTurnSpan(row) {
+    return $(row).find("span").filter(function () {
         return /^\s*Your turn for\b/.test($(this).text());
-    }).first().text();
-    if (!turnText) {
+    }).first();
+}
+
+// How long it has been your turn in a My Games row, in minutes; null when it isn't your turn.
+function myGameTurnMinutes(row) {
+    var turnText = myGameTurnSpan(row).text();
+    return turnText ? parseBootTime(turnText) || 0 : null;
+}
+
+function bootMinutesLeft(row) {
+    var waited = myGameTurnMinutes(row);
+    if (waited === null) {
         return null;
     }
     // war.app's label is the boot time plus your banked time; "Never" means the game has no boot.
     var allowed = parseBootTime($(row).find(".BootTimeLabel").text());
-    return allowed === null ? Infinity : allowed - (parseBootTime(turnText) || 0);
+    return allowed === null ? Infinity : allowed - waited;
 }
 
-function sortMyGamesByBootTime() {
+// byWaiting: longest "Your turn for" first, instead of the least time left before boot.
+function sortMyGamesByBootTime(byWaiting) {
     var rows = $("#MyGamesTable tr.GameRow").filter(function () {
         return bootMinutesLeft(this) !== null;
     }).get();
-    var left = rows.map(bootMinutesLeft);
+    var left = rows.map(byWaiting ? function (row) {
+        return -myGameTurnMinutes(row);
+    } : bootMinutesLeft);
     var sorted = rows.map(function (row, i) {
         return i;
     }).sort(function (a, b) {
@@ -9059,14 +9080,79 @@ function setupBootTimeSort() {
     if (!table) {
         return;
     }
+    var byWaiting = false;
     // war.app's Filter button re-draws My Games without tuyd:gamesRefreshed, so watch the table.
     // The observer is paused while sorting so that moving rows doesn't trigger it again.
     var observer = new MutationObserver(function () {
         observer.disconnect();
-        sortMyGamesByBootTime();
+        sortMyGamesByBootTime(byWaiting);
         observer.observe(table, { childList: true, subtree: true });
     });
-    sortMyGamesByBootTime();
+    sortMyGamesByBootTime(byWaiting);
+    observer.observe(table, { childList: true, subtree: true });
+    ifSettingIsEnabled("sortTurnsByWaiting", function () {
+        byWaiting = true;
+        observer.disconnect();
+        sortMyGamesByBootTime(byWaiting);
+        observer.observe(table, { childList: true, subtree: true });
+    });
+}
+
+// "2d 23h", "4h 10m", "12m"; null for a game without a boot.
+function formatBootLeft(minutes) {
+    if (minutes === Infinity || minutes === null) {
+        return null;
+    }
+    if (minutes < 1) {
+        return "now";
+    }
+    var days = Math.floor(minutes / 1440);
+    var hours = Math.floor(minutes % 1440 / 60);
+    var rest = Math.floor(minutes % 60);
+    if (days) {
+        return days + "d" + (hours ? " " + hours + "h" : "");
+    }
+    return hours ? hours + "h" + (rest ? " " + rest + "m" : "") : rest + "m";
+}
+
+// After "Your turn for …" on each of your games, how long until war.app boots you.
+function showBootTimeLeft() {
+    $("#MyGamesTable tr.GameRow").each(function () {
+        var text = formatBootLeft(bootMinutesLeft(this));
+        var hint = $(this).find(".tuydBootLeft");
+        if (!text) {
+            hint.remove();
+            return;
+        }
+        if (!hint.length) {
+            hint = $('<span class="tuydBootLeft" title="Time left before war.app boots you from this game: its boot time, with any banked time, minus how long it has been your turn."></span>');
+            myGameTurnSpan(this).after(hint);
+        }
+        var label = text === "now" ? "· boot is due" : "· boots in " + text;
+        if (hint.text() !== label) {
+            hint.text(label);
+        }
+    });
+}
+
+function setupBootTimeLeft() {
+    var table = document.getElementById("MyGamesTable");
+    if (!table) {
+        return;
+    }
+    addCSS(`
+        #MyGamesTable .tuydBootLeft {
+            margin-left: 4px;
+            color: #aaa;
+            font-size: 13px;
+        }
+    `);
+    var observer = new MutationObserver(function () {
+        observer.disconnect();
+        showBootTimeLeft();
+        observer.observe(table, { childList: true, subtree: true });
+    });
+    showBootTimeLeft();
     observer.observe(table, { childList: true, subtree: true });
 }
 
