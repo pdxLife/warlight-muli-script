@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.47.0
+// @version 3.47.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.47.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.47.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -4804,7 +4804,7 @@ function setupUserscriptMenu() {
     $(".close-userscript").on("click", function () {
         location.reload();
     });
-    $("#userscriptMenu .menuSection[data-section='Dashboard'] > .menuSectionBody").append('<button class="btn btn-primary" data-toggle="modal" data-target="#dashboardTableSortMenu" style="margin-top:15px;">Sort Right Column Tables</button>');
+    $("#userscriptMenu .menuSection[data-section='Dashboard'] > .menuSectionBody").append('<button class="btn btn-primary" data-menu-dialog="#dashboardTableSortMenu" style="margin-top:15px;">Sort Right Column Tables</button>');
     addCSS(`
         .userscriptSettingsButtons {
             display: flex;
@@ -4815,9 +4815,12 @@ function setupUserscriptMenu() {
     $("#userscriptMenu .modal-body").append(menuSection("Backup", "Backup", null, "<div class='userscriptSettingsButtons'></div>", openMenuSections().indexOf("Backup") !== -1));
     setupMenuSections();
     //Export settings button
-    $(".userscriptSettingsButtons").append('<button data-target="#userscriptExportSettings" data-toggle="modal" id="exportSettings" class="btn btn-primary">Export Settings</button>');
+    $(".userscriptSettingsButtons").append('<button data-menu-dialog="#userscriptExportSettings" id="exportSettings" class="btn btn-primary">Export Settings</button>');
     //Import settings button
-    $(".userscriptSettingsButtons").append('<button data-toggle="modal" data-target="#userscriptImportSettings" class="btn btn-primary">Import Settings</button>');
+    $(".userscriptSettingsButtons").append('<button data-menu-dialog="#userscriptImportSettings" class="btn btn-primary">Import Settings</button>');
+    $("#userscriptMenu").on("click", "[data-menu-dialog]", function () {
+        openFromSettingsMenu($(this).attr("data-menu-dialog"));
+    });
     //Reset hidden threads button
     $(".userscriptSettingsButtons").append('<button id="resetHiddenThreads" class="btn btn-primary">Reset Hidden Threads</button>');
     $("body").append(`
@@ -4991,6 +4994,18 @@ function exportSettings() {
             this.href = "data:text/plain;charset=UTF-8," + settingsString;
         });
     });
+}
+
+// Bootstrap can't keep one dialog open on top of another: closing the top one marks the page as having no
+// dialog open, and the settings menu left under it stops scrolling and taking clicks. So the menu closes
+// while one of its dialogs is open, and opens again when that dialog closes.
+function openFromSettingsMenu(target) {
+    var menu = $("#userscriptMenu");
+    menu.one("hidden.bs.modal", function () {
+        $(target).one("hidden.bs.modal", function () {
+            menu.modal("show");
+        }).modal("show");
+    }).modal("hide");
 }
 
 function getSortTables(callback) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.47.1
+
+- **Fix: the settings menu froze after "Sort Right Column Tables", "Export Settings" or "Import Settings".** Those windows opened on top of the menu, and closing them left the menu unable to scroll or take clicks, with clicking outside it the only way out. Now the menu steps aside while one of them is open and comes back when it closes.
+
 ## 3.47.0
 
 - **My Games: time left before you're booted.** After "Your turn for 14 minutes." each of your games now says "· boots in 2d 23h": its boot time, with any banked time, minus how long it has been your turn. That's also what the your-turn games are sorted by, so a game that became your turn a few minutes ago can come first when its boot is short. Games without a boot say nothing. Settings menu → Dashboard → "Time left before boot on your-turn games".
