@@ -15,11 +15,13 @@ function page({ running = "3.19.0", remote = header("3.20.0"), fail = false } = 
         return (fail ? result.reject({ status: 0, statusText: "error" }) : result.resolve(remote)).promise();
     };
     const logs = [];
-    const ctx = load(["setupUpdateNotice", "latestScriptVersion", "parseScriptVersion", "compareVersions", "renderUpdateLabel", "htmlEscape"], {
+    const reloads = [];
+    const ctx = load(["setupUpdateNotice", "latestScriptVersion", "parseScriptVersion", "compareVersions", "renderUpdateLabel", "renderReloadLabel", "htmlEscape"], {
         ...domGlobals(dom, $), localStorage: dom.window.localStorage, log: (entry) => logs.push(entry), createSelector: () => {},
+        location: { reload: () => reloads.push(true) }, setTimeout: (fn) => fn(),
         version: running, SCRIPT_URL, UPDATE_CHECK_KEY: KEY, UPDATE_CHECK_MS: 24 * 60 * 60 * 1000, UPDATE_RETRY_MS: 60 * 60 * 1000
     });
-    return { ctx, dom, $, requests, logs };
+    return { ctx, dom, $, requests, logs, reloads };
 }
 
 test("the script's update URL constant is the header's download URL", () => {
@@ -102,4 +104,20 @@ test("when GitHub can't be reached, it's logged, nothing shows, and it's tried a
     later.ctx.setupUpdateNotice();
     await flush();
     assert.deepEqual(later.requests, [SCRIPT_URL], "retried after an hour, not a day");
+});
+
+test("after the update link is clicked, the label offers the reload that runs the new version", async () => {
+    const { ctx, $, reloads } = page();
+    ctx.setupUpdateNotice();
+    await flush();
+    const link = $(".versionLabel");
+    link.on("click", (event) => event.preventDefault());
+    link.trigger("click");
+    const label = $(".versionLabel");
+    assert.equal(label.length, 1);
+    assert.equal(label.text(), "Reload to finish updating");
+    assert.match(label.attr("title"), /reload war\.app to run it.*empty tab/);
+    assert.equal(reloads.length, 0, "clicking Update itself doesn't reload");
+    label.trigger("click");
+    assert.equal(reloads.length, 1);
 });

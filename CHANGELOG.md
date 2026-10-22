@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.48.3
+
+- **Updating: "Reload to finish updating".** Clicking the gold "Update to …" label opens Tampermonkey's update screen in a new tab (which Tampermonkey leaves empty afterwards; it can be closed), while the war.app tab keeps running the old version. The label now turns into "Reload to finish updating", and clicking it reloads war.app with the new version.
+
 ## 3.48.2
 
 - **No Notes button in a lobby you haven't joined.** In a game's lobby that war.app still offers you ("Join Game"), the button sat in the bottom-left corner with nothing to note. It now shows once you've joined, and in games you're in, as before.

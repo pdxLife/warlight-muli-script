@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.48.2
+// @version 3.48.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -11131,9 +11131,27 @@ function setupUpdateNotice() {
         if (!latest || compareVersions(latest, version) <= 0 || !label.length) {
             return;
         }
-        label.replaceWith(renderUpdateLabel(latest));
+        var link = $(renderUpdateLabel(latest));
+        label.replaceWith(link);
         createSelector(".versionLabel.updateAvailable", "color: #e0c060 !important; font-weight: bold; text-decoration: none !important");
+        // The link opens the file in a new tab for Tampermonkey; this page keeps running the old version,
+        // so the label then offers the reload that starts the new one.
+        link.one("click", function () {
+            setTimeout(function () {
+                var reload = $(renderReloadLabel(latest));
+                link.replaceWith(reload);
+                reload.on("click", function (event) {
+                    event.preventDefault();
+                    location.reload();
+                });
+            }, 0);
+        });
     });
+}
+
+function renderReloadLabel(latest) {
+    return '<a class="versionLabel updateAvailable updateReload" href="#" title="Once Tampermonkey has updated the script to ' + htmlEscape(latest) +
+        ', reload war.app to run it. Tampermonkey leaves an empty tab behind; you can close it.">Reload to finish updating</a>';
 }
 
 // Opening the .user.js file is what makes Tampermonkey show its update screen.
