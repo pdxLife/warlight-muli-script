@@ -32,17 +32,17 @@ const MTL_URL = `${CUSTOM_SITE}/api/v1/ladders/mtl/players/2921525624`;
 const SEASONAL_URL = `${CUSTOM_SITE}/api/v1/ladders/seasonal/players/2921525624`;
 const cells = ($, row) => $(row).children("td").map((i, td) => $(td).text()).get().join(" | ");
 
-test("a profile's Ladders table gets MTL and Seasonal Ladder rows after war.app's own", async () => {
+test("a profile's Ladders table gets MTL above war.app's ladders and the Seasonal Ladder after them", async () => {
     const { ctx, $, requests } = profile(warappLadders, { [MTL_URL]: mtl, [SEASONAL_URL]: seasonal });
     ctx.setupLadderProfileRows();
     await flush();
     assert.deepEqual(requests, [MTL_URL, SEASONAL_URL]);
     const rows = $("table tbody tr");
     assert.equal(rows.length, 3);
-    assert.equal(cells($, rows[0]), "1 v 1 | 7th (2080) | Unranked (100)", "war.app's row stays first");
-    assert.equal(cells($, rows[1]), "MTL | 6th (1963) | Unranked (1880)", "ratings written as war.app writes them");
-    assert.equal(cells($, rows[2]), "Seasonal Ladder | 47th (2900) | 146th (2634)", "the best of all seasons, and this season's place");
-    assert.equal($(rows[1]).find("a").attr("href"), "https://custom.wl-stats.com/ladders/mtl/players/2921525624");
+    assert.equal(cells($, rows[0]), "MTL | 6th (1963) | Unranked (1880)", "MTL first, ratings written as war.app writes them");
+    assert.equal(cells($, rows[1]), "1 v 1 | 7th (2080) | Unranked (100)", "then war.app's ladders");
+    assert.equal(cells($, rows[2]), "Seasonal Ladder | 47th (2900) | 146th (2634)", "the Seasonal Ladder last: the best of all seasons, and this season's place");
+    assert.equal($(rows[0]).find("a").attr("href"), "https://custom.wl-stats.com/ladders/mtl/players/2921525624");
     ctx.setupLadderProfileRows();
     await flush();
     assert.equal($("table tbody tr").length, 3, "not added twice");
@@ -52,12 +52,13 @@ test("champions are marked, and a player outside this season is told so", () => 
     const { ctx } = profile("", {});
     const rows = ctx.ladderProfileRows(null, { url: "https://x", seasons: [season(30, "finished", 1, 3700, true), season(31, "finished", 1, 3650, true), season(32, "finished", 4, 3400)] });
     assert.equal(rows.length, 1, "no MTL row without MTL figures");
-    assert.equal(rows[0][1], "1st (3700) · champion ×2");
-    assert.equal(rows[0][2], "Not in this season");
-    assert.equal(ctx.ladderProfileRows({ rank: 12, rating: 1950, best_rank: 3, best_rating: 2001, url: "https://x" }, null)[0][2], "12th (1950)");
+    assert.equal(rows[0].cells[1], "1st (3700) · champion ×2");
+    assert.equal(rows[0].cells[2], "Not in this season");
+    assert.equal(rows[0].first, false);
+    assert.equal(ctx.ladderProfileRows({ rank: 12, rating: 1950, best_rank: 3, best_rating: 2001, url: "https://x" }, null)[0].cells[2], "12th (1950)");
     assert.equal(ctx.ladderProfileRows(null, { seasons: [] }).length, 0);
-    assert.equal(ctx.ladderProfileRows({ rank: 1, rating: 2297, best_rank: null, best_rating: 2343, url: "https://x" }, null)[0][1], "1st (2343)", "the MTL's number one, whose best rank custom leaves empty");
-    assert.equal(ctx.ladderProfileRows({ rank: null, rating: 1500, best_rank: null, best_rating: null, url: "https://x" }, null)[0][1], "-");
+    assert.equal(ctx.ladderProfileRows({ rank: 1, rating: 2297, best_rank: null, best_rating: 2343, url: "https://x" }, null)[0].cells[1], "1st (2343)", "the MTL's number one, whose best rank custom leaves empty");
+    assert.equal(ctx.ladderProfileRows({ rank: null, rating: 1500, best_rank: null, best_rating: null, url: "https://x" }, null)[0].cells[1], "-");
 });
 
 test("without war.app ladders the player still gets a Ladders table, before Ranked Games", async () => {

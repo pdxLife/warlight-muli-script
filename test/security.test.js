@@ -167,7 +167,7 @@ test("custom.wl-stats.com ladders (Seasonal Ladder, MTL, profile rows) escape AP
         + ctx.renderMtlLadderRow(mtl, "5")
         + ctx.communityEventHtml("Multi Template Ladder (MTL)", { series: [], rankings: null, mtl, playerId: "5" })
         + ctx.communityEventHtml("Multi Template Ladder (MTL)", { series: [], rankings: null, mtl, playerId: null })
-        + "<table><tbody>" + ctx.ladderProfileRows({ ...player, rank: PAYLOAD }, { url: "javascript:alert(1)", seasons: [{ season: { status: "running" }, rank: PAYLOAD, rating: PAYLOAD, champion: true }] }).map((row) => "<tr><td>" + row.join("</td><td>") + "</td></tr>").join("") + "</tbody></table>";
+        + "<table><tbody>" + ctx.ladderProfileRows({ ...player, rank: PAYLOAD }, { url: "javascript:alert(1)", seasons: [{ season: { status: "running" }, rank: PAYLOAD, rating: PAYLOAD, champion: true }] }).map((row) => "<tr><td>" + row.cells.join("</td><td>") + "</td></tr>").join("") + "</tbody></table>";
     const container = render(html);
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));

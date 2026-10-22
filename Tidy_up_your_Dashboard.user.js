@@ -6858,6 +6858,7 @@ function setupCustomProfileStats() {
 }
 
 // MTL and Seasonal Ladder rows for war.app's Ladders table on a profile (Ladder, Best Rank, Current Rank).
+// MTL goes first, above war.app's ladders; the Seasonal Ladder last.
 function ladderProfileRows(mtl, seasonal) {
     var rated = function (rank, rating) {
         return htmlEscape(rank ? getRankText(rank) : "Unranked") + " (" + htmlEscape(rating) + ")";
@@ -6869,7 +6870,7 @@ function ladderProfileRows(mtl, seasonal) {
     if (mtl) {
         // custom.wl-stats.com leaves best_rank empty for the player ranked first right now.
         var bestRank = mtl.best_rank || (mtl.rank === 1 ? 1 : null);
-        rows.push([link(mtl.url, "MTL"), bestRank ? rated(bestRank, mtl.best_rating || mtl.rating) : "-", rated(mtl.rank, mtl.rating)]);
+        rows.push({ first: true, cells: [link(mtl.url, "MTL"), bestRank ? rated(bestRank, mtl.best_rating || mtl.rating) : "-", rated(mtl.rank, mtl.rating)] });
     }
     var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
     if (seasons.length) {
@@ -6884,11 +6885,11 @@ function ladderProfileRows(mtl, seasonal) {
         var running = seasons.filter(function (entry) {
             return entry.season && entry.season.status === "running";
         })[0];
-        rows.push([
+        rows.push({ first: false, cells: [
             link(seasonal.url, "Seasonal Ladder"),
             (best ? rated(best.rank, best.rating) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
             running ? rated(running.rank, running.rating) : "Not in this season"
-        ]);
+        ] });
     }
     return rows;
 }
@@ -6929,9 +6930,10 @@ function setupLadderProfileRows() {
         if (!rows.length || $(".tuydLadderRow").length) {
             return;
         }
-        profileLaddersTable().children("tbody").first().append(rows.map(function (row) {
-            return '<tr class="tuydLadderRow"><td>' + row.join("</td><td>") + "</td></tr>";
-        }).join(""));
+        var body = profileLaddersTable().children("tbody").first();
+        rows.forEach(function (row) {
+            body[row.first ? "prepend" : "append"]('<tr class="tuydLadderRow"><td>' + row.cells.join("</td><td>") + "</td></tr>");
+        });
     });
 }
 
