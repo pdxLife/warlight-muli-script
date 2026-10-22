@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createDom, load, domGlobals, flush } = require("./harness");
+const { source, createDom, load, domGlobals, flush } = require("./harness");
 
 const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64");
 
@@ -102,4 +102,27 @@ test("setupSettingsDatabase reloads two seconds after saving defaults", async (t
     assert.equal(reloads.length, 0);
     t.mock.timers.tick(1);
     assert.equal(reloads.length, 1);
+});
+
+test("the settings menu's own dialogs open in its place, not on top of it", () => {
+    const opensOnTop = /userscriptMenu[^\n]*data-toggle="modal" data-target="#(?!userscriptMenu)/;
+    assert.doesNotMatch(source, opensOnTop, "a button in the menu that stacks a dialog over it");
+    for (const dialog of ["#dashboardTableSortMenu", "#userscriptExportSettings", "#userscriptImportSettings"]) {
+        assert.match(source, new RegExp(`data-menu-dialog="${dialog}"`));
+    }
+    const { dom, $ } = createDom(`<div id="userscriptMenu" class="modal show"></div><div id="dashboardTableSortMenu" class="modal"></div>`);
+    const steps = [];
+    $.fn.modal = function (action) {
+        steps.push(this.attr("id") + " " + action);
+        this.toggleClass("show", action === "show");
+        this.trigger(action === "show" ? "shown.bs.modal" : "hidden.bs.modal");
+        return this;
+    };
+    const ctx = load(["openFromSettingsMenu"], domGlobals(dom, $));
+    ctx.openFromSettingsMenu("#dashboardTableSortMenu");
+    assert.deepEqual(steps, ["userscriptMenu hide", "dashboardTableSortMenu show"]);
+    $("#dashboardTableSortMenu").modal("hide");
+    assert.deepEqual(steps.slice(2), ["dashboardTableSortMenu hide", "userscriptMenu show"], "closing the dialog brings the menu back");
+    $("#dashboardTableSortMenu").modal("hide");
+    assert.equal(steps.filter((step) => step === "userscriptMenu show").length, 1, "only once");
 });
