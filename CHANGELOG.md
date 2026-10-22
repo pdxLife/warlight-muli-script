@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.48.2
+
+- **No Notes button in a lobby you haven't joined.** In a game's lobby that war.app still offers you ("Join Game"), the button sat in the bottom-left corner with nothing to note. It now shows once you've joined, and in games you're in, as before.
+
 ## 3.48.1
 
 - **Ladders page: a set order for the players' list.** AWP World Tour, then the Multi-Template Ladder, P/R League, Titled Tuesday and the Seasonal Ladder, whatever order custom.wl-stats.com sends its series in. The clans' list is unchanged (Clan League, Clan Cup, Nations Cup).
