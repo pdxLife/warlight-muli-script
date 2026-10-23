@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "chatLinkAdded", "insertAtCursor", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "chatLinkAdded", "insertAtCursor", "gameMapPlaces", "notesPlaces", "highlightPlace", "canHighlightPlaces", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -253,4 +253,72 @@ test("without war.app's chat, the notes' link button says what to do", () => {
     $("#tuydGameNotesBtn").trigger("click");
     $("#tuydGameNotes .tuydGameNotesLink").trigger("click");
     assert.equal($("#tuydGameNotes .tuydGameNotesSaved").text(), "Open the chat once to link territories");
+});
+
+// Shaped like war.app's game data and game object on a game page (window.UJS_Hooks), with invented places.
+function fakeHooks(calls) {
+    const dict = (entries) => ({ keys: Object.keys(entries).map(Number), Aa: (id) => entries[id] });
+    const territory = (name) => ({ Ya: name, lh: () => ({ x: 1, y: 2, name }) });
+    return {
+        za: { Map: {
+            Ia: dict({ 1: territory("Sudan"), 2: territory("South Sudan"), 3: territory("Elos"), 4: territory("Western Sahara") }),
+            pd: dict({ 10: { Ya: "Maghreb" }, 11: { Ya: "Western Sahara" } })
+        } },
+        Sd: { ta: {
+            nv: (id) => calls.push("highlight " + id), Au: (bonus) => calls.push("highlight bonus " + bonus.Ya),
+            Xb: { xI: (at) => calls.push("move to " + at.name), wQa: (bonus) => calls.push("move to bonus " + bonus.Ya) }
+        } }
+    };
+}
+
+test("the territories and bonuses a note names are found, longest names first, territories over bonuses", () => {
+    const { ctx } = setup();
+    const places = ctx.gameMapPlaces(fakeHooks([]));
+    assert.equal(places.length, 6);
+    const named = (text) => Array.from(ctx.notesPlaces(text, places).map((place) => place.kind + ":" + place.name));
+    assert.deepEqual(named("Take Elos, then south sudan; hold Maghreb"), ["territory:Elos", "territory:South Sudan", "bonus:Maghreb"], "in the note's order, any case");
+    assert.deepEqual(named("Sudan and South Sudan"), ["territory:Sudan", "territory:South Sudan"], "Sudan inside South Sudan isn't counted again");
+    assert.deepEqual(named("Western Sahara"), ["territory:Western Sahara"], "a territory over a bonus of the same name");
+    assert.deepEqual(named("Elosian Elos Elos"), ["territory:Elos"], "whole words, each place once");
+    assert.equal(ctx.gameMapPlaces({}).length, 0);
+});
+
+test("a place's button shows it on war.app's map the way a chat link does, and nothing happens without war.app's game", () => {
+    const calls = [];
+    const { ctx } = setup();
+    const hooks = fakeHooks(calls);
+    assert.equal(ctx.highlightPlace(hooks, { kind: "territory", id: 3, name: "Elos" }), true);
+    assert.equal(ctx.highlightPlace(hooks, { kind: "bonus", id: 10, name: "Maghreb" }), true);
+    assert.deepEqual(calls, ["highlight 3", "move to Elos", "highlight bonus Maghreb", "move to bonus Maghreb"]);
+    assert.equal(ctx.canHighlightPlaces(hooks), true);
+    assert.equal(ctx.canHighlightPlaces({ Sd: { ta: {} } }), false, "war.app renamed its functions");
+    assert.equal(ctx.highlightPlace({ Sd: { ta: {} } }, { kind: "territory", id: 3, name: "Elos" }), false);
+});
+
+test("the notes show a button for each place they name, which highlights it", () => {
+    const calls = [];
+    const { ctx, $ } = setup({ text: "Take Elos first", firstMove: "", players: {} });
+    ctx.UJS_Hooks = fakeHooks(calls);
+    $("#tuydGameNotesBtn").trigger("click");
+    const row = () => $("#tuydGameNotes textarea[name=text]").next(".tuydNotesPlaces");
+    assert.deepEqual(row().find(".tuydNotesPlace").map((i, a) => $(a).text()).get(), ["Elos"]);
+    const notes = $("#tuydGameNotes textarea[name=text]");
+    notes.val("Take Elos first, then Maghreb").trigger("input");
+    assert.deepEqual(row().find(".tuydNotesPlace").map((i, a) => $(a).text()).get(), ["Elos", "Maghreb"]);
+    assert.ok(row().find(".tuydNotesPlace").last().hasClass("tuydNotesBonus"));
+    row().find(".tuydNotesPlace").first().trigger("click");
+    assert.deepEqual(calls, ["highlight 3", "move to Elos"]);
+});
+
+test("place names from war.app's game data stay text in their buttons", () => {
+    const PAYLOAD = `"><img src=x onerror="alert(1)">`;
+    const { ctx, $ } = setup({ text: "Go " + PAYLOAD, firstMove: "", players: {} });
+    const hooks = fakeHooks([]);
+    hooks.za.Map.Ia = { keys: [9], Aa: () => ({ Ya: PAYLOAD, lh: () => ({}) }) };
+    ctx.UJS_Hooks = hooks;
+    $("#tuydGameNotesBtn").trigger("click");
+    const button = $("#tuydGameNotes .tuydNotesPlace");
+    assert.equal(button.length, 1);
+    assert.equal(button.text(), PAYLOAD);
+    assert.equal($("#tuydGameNotes img").length, 0);
 });
