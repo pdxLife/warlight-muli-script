@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.48.3
+// @version 3.49.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.48.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.49.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10302,6 +10302,7 @@ function gameNotesHtml(notes, players) {
         }
     });
     return '<div class="tuydGameNotesHead">Notes for this game<span class="tuydGameNotesSaved"></span>' +
+        '<a href="#" class="tuydGameNotesLink" title="Link a territory: click this, then a territory or bonus on the map, and its name goes into your notes where the cursor was. While these notes are open, war.app\'s own chat link button puts names here too.">🔗</a>' +
         '<a href="#" class="tuydGameNotesClose" title="Close">×</a></div>' +
         '<textarea name="text" rows="5" placeholder="Plans, picks, deals… only you can see these.">' + htmlEscape(notes.text) + '</textarea>' +
         '<label class="tuydGameNotesMove">I move first on <select name="firstMove">' +
@@ -10312,6 +10313,109 @@ function gameNotesHtml(notes, players) {
             return '<label>' + htmlEscape(name) + '<textarea rows="2" data-player="' + htmlEscape(name) + '" placeholder="About this player">' +
                 htmlEscape(notes.players[name] || "") + '</textarea></label>';
         }).join("") + '</div>' : "");
+}
+
+// What war.app's link button added to a chat box: it appends " <a t_ID>Name</a>" for a territory, or
+// b_ID for a bonus, to the box's text. null for anything else, such as typing.
+function chatLinkAdded(before, after) {
+    if (typeof before !== "string" || typeof after !== "string" || after.length <= before.length || after.indexOf(before) !== 0) {
+        return null;
+    }
+    var match = /^\s?<a ([tb])_(\d+)>([^<]*)<\/a>$/.exec(after.slice(before.length));
+    return match ? { kind: match[1] === "t" ? "territory" : "bonus", id: match[2], name: match[3] } : null;
+}
+
+// text with words put in at the cursor (start..end), spaced from the words around it.
+function insertAtCursor(text, start, end, words) {
+    var before = text.slice(0, start);
+    var after = text.slice(end);
+    var lead = before && !/\s$/.test(before) ? " " : "";
+    var trail = after && !/^\s/.test(after) ? " " : "";
+    var inserted = lead + words + trail;
+    return { value: before + inserted + after, caret: before.length + inserted.length };
+}
+
+// The game's territories and bonuses by name, from war.app's game data (window.UJS_Hooks on a game page).
+function gameMapPlaces(hooks) {
+    var map = hooks && hooks.za && hooks.za.Map;
+    var places = [];
+    [["territory", map && map.Ia], ["bonus", map && map.pd]].forEach(function (list) {
+        if (!list[1] || !Array.isArray(list[1].keys) || typeof list[1].Aa !== "function") {
+            return;
+        }
+        list[1].keys.forEach(function (id) {
+            var entry = list[1].Aa(id);
+            if (entry && typeof entry.Ya === "string" && entry.Ya.trim()) {
+                places.push({ kind: list[0], id: id, name: entry.Ya.trim() });
+            }
+        });
+    });
+    return places;
+}
+
+// The territories and bonuses a note names, in the order it names them. A longer name wins over one
+// inside it ("South Sudan" over "Sudan"), and a territory over a bonus of the same name.
+function notesPlaces(text, places) {
+    var taken = [];
+    var found = [];
+    places.slice().sort(function (a, b) {
+        return b.name.length - a.name.length || (a.kind === "territory" ? -1 : 1);
+    }).forEach(function (place) {
+        var escaped = place.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        var pattern = new RegExp("(?:^|[^\\p{L}\\p{N}])(" + escaped + ")(?=$|[^\\p{L}\\p{N}])", "giu");
+        var match;
+        while ((match = pattern.exec(text))) {
+            var start = match.index + match[0].length - match[1].length;
+            var end = start + match[1].length;
+            if (taken.some(function (span) {
+                return start < span[1] && end > span[0];
+            })) {
+                continue;
+            }
+            taken.push([start, end]);
+            if (!found.some(function (other) {
+                return other.place.kind === place.kind && other.place.id === place.id;
+            })) {
+                found.push({ place: place, at: start });
+            }
+        }
+    });
+    return found.sort(function (a, b) {
+        return a.at - b.at;
+    }).map(function (entry) {
+        return entry.place;
+    });
+}
+
+// Highlights a territory or bonus on war.app's map and moves the map to it, as a chat link does, through
+// war.app's own game object (UJS_Hooks.Sd.ta). Its names are minified and can change with a war.app
+// update; false then, and nothing happens.
+function highlightPlace(hooks, place) {
+    var game = hooks && hooks.Sd && hooks.Sd.ta;
+    var map = hooks && hooks.za && hooks.za.Map;
+    var view = game && game.Xb;
+    try {
+        if (place.kind === "territory" && game && typeof game.nv === "function" && view && typeof view.xI === "function") {
+            var territory = map.Ia.Aa(place.id);
+            game.nv(place.id);
+            view.xI(territory.lh());
+            return true;
+        }
+        if (place.kind === "bonus" && game && typeof game.Au === "function" && view && typeof view.wQa === "function") {
+            var bonus = map.pd.Aa(place.id);
+            game.Au(bonus);
+            view.wQa(bonus);
+            return true;
+        }
+    } catch (e) {
+        log("Notes: couldn't highlight " + place.name + ": " + e);
+    }
+    return false;
+}
+
+function canHighlightPlaces(hooks) {
+    var game = hooks && hooks.Sd && hooks.Sd.ta;
+    return !!(game && typeof game.nv === "function" && typeof game.Au === "function" && game.Xb && typeof game.Xb.xI === "function" && typeof game.Xb.wQa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
@@ -10475,8 +10579,44 @@ function setupGameNotes() {
             font-size: 12px;
             font-weight: normal;
         }
-        #tuydGameNotes .tuydGameNotesClose {
+        #tuydGameNotes .tuydNotesPlaces {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 3px;
+        }
+        #tuydGameNotes .tuydNotesPlaces:empty {
+            display: none;
+        }
+        #tuydGameNotes .tuydNotesPlace {
+            padding: 0 6px;
+            border: 1px solid #4a6b8a;
+            border-radius: 9px;
+            background: #1d2a36;
+            color: #9cc8ff;
+            font-size: 12px;
+            line-height: 17px;
+            cursor: pointer;
+        }
+        #tuydGameNotes .tuydNotesPlace.tuydNotesBonus {
+            border-color: #7a6a3a;
+            background: #2e2817;
+            color: #e0c060;
+        }
+        #tuydGameNotes .tuydNotesPlace:hover {
+            filter: brightness(1.3);
+        }
+        #tuydGameNotes .tuydGameNotesLink {
             margin-left: auto;
+            font-size: 13px;
+            text-decoration: none;
+            filter: grayscale(1);
+        }
+        #tuydGameNotes .tuydGameNotesLink:hover,
+        #tuydGameNotes .tuydGameNotesLink.tuydLinking {
+            filter: none;
+        }
+        #tuydGameNotes .tuydGameNotesClose {
             color: #aaa;
             font-size: 18px;
             text-decoration: none;
@@ -10575,14 +10715,94 @@ function setupGameNotes() {
         $("body").append(panel);
         place();
         showTurn();
+        panel.find("textarea").each(function () {
+            showPlaces(this);
+        });
         panel.find("textarea[name=text]").trigger("focus");
+        watchChatLinks();
     };
     var close = function () {
         if (timer) {
             clearTimeout(timer);
             save();
         }
+        clearInterval(linkWatch);
+        linkWatch = null;
         $("#tuydGameNotes").remove();
+    };
+    // war.app's chat link button puts a territory's link into the chat box; while the notes are open the
+    // link is taken back out of the chat box and its name goes into the notes field last typed in.
+    var linkTarget = null;
+    var linkWatch = null;
+    var chatBoxes = function () {
+        return $("textarea[id^='ujs_SendChatInput'][id$='_input']").get();
+    };
+    var watchChatLinks = function () {
+        var seen = {};
+        chatBoxes().forEach(function (box) {
+            seen[box.id] = box.value;
+        });
+        clearInterval(linkWatch);
+        linkWatch = setInterval(function () {
+            if (!$("#tuydGameNotes").length) {
+                return;
+            }
+            chatBoxes().forEach(function (box) {
+                var link = chatLinkAdded(seen[box.id], box.value);
+                if (link) {
+                    box.value = seen[box.id];
+                    $(box).trigger("input");
+                    putLinkInNotes(link.name);
+                } else {
+                    seen[box.id] = box.value;
+                }
+            });
+        }, 200);
+    };
+    // Under each notes box, a button for each territory or bonus it names; clicking one shows it on the map.
+    var mapPlaces = null;
+    var showPlaces = function (field) {
+        var hooks = window.UJS_Hooks;
+        if (!canHighlightPlaces(hooks)) {
+            return;
+        }
+        if (!mapPlaces || !mapPlaces.length) {
+            mapPlaces = gameMapPlaces(hooks);
+        }
+        var row = $(field).next(".tuydNotesPlaces");
+        if (!row.length) {
+            row = $('<div class="tuydNotesPlaces"></div>').insertAfter(field);
+        }
+        var found = notesPlaces(field.value, mapPlaces).slice(0, 30);
+        var key = found.map(function (place) {
+            return place.kind + place.id;
+        }).join(",");
+        if (row.attr("data-places") === key) {
+            return;
+        }
+        row.attr("data-places", key).empty();
+        found.forEach(function (place) {
+            $('<a href="#" class="tuydNotesPlace"></a>').toggleClass("tuydNotesBonus", place.kind === "bonus")
+                .attr("title", "Show " + place.name + " on the map").text(place.name).data("place", place).appendTo(row);
+        });
+    };
+    var putLinkInNotes = function (name) {
+        var panel = $("#tuydGameNotes");
+        panel.find(".tuydGameNotesLink").removeClass("tuydLinking");
+        var field = linkTarget && $.contains(panel[0], linkTarget) ? linkTarget : panel.find("textarea[name=text]")[0];
+        if (!field) {
+            return;
+        }
+        var put = insertAtCursor(field.value, field.selectionStart, field.selectionEnd, name);
+        field.value = put.value;
+        $(field).trigger("input");
+        // war.app moves the keyboard to its chat box after adding a link; bring it back.
+        [30, 200].forEach(function (delay) {
+            setTimeout(function () {
+                field.focus();
+                field.setSelectionRange(put.caret, put.caret);
+            }, delay);
+        });
     };
     var load = function () {
         var id = (/[?&]GameID=(\d+)/i.exec(location.search) || [])[1] || null;
@@ -10630,6 +10850,9 @@ function setupGameNotes() {
         }
     }, true);
     $(document).on("input change", "#tuydGameNotes textarea, #tuydGameNotes select", function () {
+        if (this.tagName === "TEXTAREA") {
+            showPlaces(this);
+        }
         $("#tuydGameNotes .tuydGameNotesSaved").text("");
         showTurn();
         clearTimeout(timer);
@@ -10637,6 +10860,25 @@ function setupGameNotes() {
     }).on("click", "#tuydGameNotes .tuydGameNotesClose", function (event) {
         event.preventDefault();
         close();
+    }).on("focusin", "#tuydGameNotes textarea", function () {
+        linkTarget = this;
+    }).on("click", "#tuydGameNotes .tuydNotesPlace", function (event) {
+        event.preventDefault();
+        highlightPlace(window.UJS_Hooks, $(this).data("place"));
+    }).on("click", "#tuydGameNotes .tuydGameNotesLink", function (event) {
+        event.preventDefault();
+        // war.app's own link button, in the chat; the shown one if the chat is open.
+        var buttons = $("[id^='ujs_LinkButton'][id$='_btn']");
+        var shown = buttons.filter(function () {
+            return shownUjsElement(this);
+        });
+        var button = (shown.length ? shown : buttons)[0];
+        if (!button) {
+            $("#tuydGameNotes .tuydGameNotesSaved").text("Open the chat once to link territories");
+            return;
+        }
+        $(this).addClass("tuydLinking");
+        button.click();
     });
     if (window.playerDataReady) {
         playerDataReady.done(function (player) {
