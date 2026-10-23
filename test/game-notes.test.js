@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "chatLinkAdded", "insertAtCursor", "gameMapPlaces", "notesPlaces", "highlightPlace", "canHighlightPlaces", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "chatLinkAdded", "insertAtCursor", "gameMapPlaces", "notesPlaces", "highlightPlace", "gameLive", "canHighlightPlaces", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -321,4 +321,48 @@ test("place names from war.app's game data stay text in their buttons", () => {
     assert.equal(button.length, 1);
     assert.equal(button.text(), PAYLOAD);
     assert.equal($("#tuydGameNotes img").length, 0);
+});
+
+// Mirrors war.app's Live object: AKc / zKc set the one-shot callback for the next territory click or bonus
+// link click, first calling the one they replace with null; a click hands the callback the place.
+function fakeLive() {
+    const live = {
+        c$: null, b$: null,
+        AKc(cb) { const old = this.c$; this.c$ = null; if (old) old(null); this.c$ = cb; },
+        zKc(cb) { const old = this.b$; this.b$ = null; if (old) old(null); this.b$ = cb; },
+        clickTerritory(name) { const cb = this.c$; this.c$ = null; return cb ? !!cb({ Ya: name }) : false; },
+        clickBonus(name) { const cb = this.b$; this.b$ = null; return cb ? !!cb({ Ya: name }) : false; }
+    };
+    return live;
+}
+
+test("with war.app's click hook, the notes' 🔗 takes the next territory or bonus clicked, chat open or not", () => {
+    const { ctx, $, runTimers } = setup();
+    const live = fakeLive();
+    ctx.UJS_Hooks = { Sd: { ta: { Nh: live } } };
+    $("#tuydGameNotesBtn").trigger("click");
+    const notes = $("#tuydGameNotes textarea[name=text]")[0];
+    notes.value = "Take first";
+    notes.setSelectionRange(5, 5);
+    $(notes).trigger("focusin");
+    const link = $("#tuydGameNotes .tuydGameNotesLink");
+    link.trigger("click");
+    assert.ok(link.hasClass("tuydLinking"));
+    assert.equal($("#tuydGameNotes .tuydGameNotesSaved").text(), "Click a territory or bonus");
+    assert.equal(live.clickTerritory("Elos"), true, "war.app is told the click is taken, so it does nothing else with it");
+    assert.equal(notes.value, "Take Elos first");
+    assert.equal(live.c$, null, "one click only");
+    assert.equal(live.b$, null, "the bonus hook is let go too");
+    assert.ok(!link.hasClass("tuydLinking"));
+    runTimers();
+    link.trigger("click");
+    assert.equal(live.clickBonus("Maghreb"), true);
+    assert.match(notes.value, /Maghreb/);
+    link.trigger("click");
+    link.trigger("click");
+    assert.equal(live.c$, null, "a second click on 🔗 lets war.app have its clicks back");
+    link.trigger("click");
+    $("#tuydGameNotes .tuydGameNotesClose").trigger("click");
+    assert.equal(live.c$, null, "and so does closing the notes");
+    assert.equal(live.clickTerritory("Ruth"), false);
 });
