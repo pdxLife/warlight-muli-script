@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.49.1
+// @version 3.50.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.49.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.50.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10302,7 +10302,7 @@ function gameNotesHtml(notes, players) {
         }
     });
     return '<div class="tuydGameNotesHead">Notes for this game<span class="tuydGameNotesSaved"></span>' +
-        '<a href="#" class="tuydGameNotesLink" title="Link a territory: click this, then a territory on the map or a bonus link, and its name goes into your notes where the cursor was. While these notes are open, war.app\'s own chat link button puts names here too.">🔗</a>' +
+        '<a href="#" class="tuydGameNotesLink" title="Link a territory: click this, then a territory on the map or a bonus link, and its name goes into your notes where the cursor was. Or, as in war.app\'s chat, hold Ctrl (Cmd on a Mac) or Shift and click territories.">🔗</a>' +
         '<a href="#" class="tuydGameNotesClose" title="Close">×</a></div>' +
         '<textarea name="text" rows="5" placeholder="Plans, picks, deals… only you can see these.">' + htmlEscape(notes.text) + '</textarea>' +
         '<label class="tuydGameNotesMove">I move first on <select name="firstMove">' +
@@ -10737,6 +10737,7 @@ function setupGameNotes() {
         clearInterval(linkWatch);
         linkWatch = null;
         stopPicking();
+        letGo();
         $("#tuydGameNotes").remove();
     };
     // war.app's chat link button puts a territory's link into the chat box; while the notes are open the
@@ -10803,6 +10804,7 @@ function setupGameNotes() {
             stopPicking();
             return;
         }
+        letGo();
         var token = picking = { live: live };
         $("#tuydGameNotes .tuydGameNotesLink").addClass("tuydLinking");
         $("#tuydGameNotes .tuydGameNotesSaved").text("Click a territory or bonus");
@@ -10824,6 +10826,53 @@ function setupGameNotes() {
         live.AKc(take);
         live.zKc(take);
     };
+    // war.app's own shortcut: with its chat open, Ctrl/Cmd+click or Shift+click on a territory puts its link
+    // in the chat. With the notes open the same click puts the name in the notes, chat open or not: while
+    // one of those keys is held, the next click goes to the notes.
+    var held = null;
+    var holdForNotes = function () {
+        var live = gameLive(window.UJS_Hooks);
+        if (held || picking || !live || !$("#tuydGameNotes").length) {
+            return;
+        }
+        var token = held = { live: live };
+        var take = function (place) {
+            if (held !== token || !place) {
+                return false;
+            }
+            putLinkInNotes(String(place.Ya || "").replace(/[<>]/g, ""));
+            held = null;
+            live.AKc(null);
+            live.zKc(null);
+            holdForNotes();
+            return true;
+        };
+        live.AKc(take);
+        live.zKc(take);
+    };
+    var letGo = function () {
+        var token = held;
+        if (!token) {
+            return;
+        }
+        held = null;
+        token.live.AKc(null);
+        token.live.zKc(null);
+    };
+    var linkKeys = function (event) {
+        return event.ctrlKey || event.metaKey || event.shiftKey;
+    };
+    document.addEventListener("keydown", function (event) {
+        if (linkKeys(event)) {
+            holdForNotes();
+        }
+    }, true);
+    document.addEventListener("keyup", function (event) {
+        if (!linkKeys(event)) {
+            letGo();
+        }
+    }, true);
+    window.addEventListener("blur", letGo);
     var stopPicking = function () {
         var token = picking;
         if (!token) {
