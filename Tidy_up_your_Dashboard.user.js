@@ -6890,9 +6890,7 @@ function ladderProfileRows(mtl, seasonal) {
     };
     var rows = [];
     if (mtl) {
-        // custom.wl-stats.com leaves best_rank empty for the player ranked first right now.
-        var bestRank = mtl.best_rank || (mtl.rank === 1 ? 1 : null);
-        rows.push({ first: true, cells: [link(mtl.url, "MTL"), bestRank ? rated(bestRank, mtl.best_rating || mtl.rating) : "-", rated(mtl.rank, mtl.rating)] });
+        rows.push({ first: true, cells: [link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "-", rated(mtl.rank, mtl.rating)] });
     }
     var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
     if (seasons.length) {
