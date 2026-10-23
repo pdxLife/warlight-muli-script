@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.50.0
+
+- **Game notes: war.app's link shortcut.** In war.app's chat, Ctrl+click (Cmd+click on a Mac) or Shift+click on a territory links it. With your notes open, the same click puts the territory's name into the notes, with the chat open or closed, and does nothing else in the game; keep the key held to add several. Plain clicks work as usual. The 🔗 in the notes stays.
+
 ## 3.49.1
 
 - **Game notes: 🔗 works with the chat closed.** The notes' 🔗 now uses war.app's own "next territory click" hook: click it, then a territory on the map (or a bonus link), and its name goes into your notes; the click does nothing else in the game. It says "Click a territory or bonus" while it waits; click 🔗 again, or close the notes, to stop waiting. Before, it pressed the chat's link button, which war.app only listens to while the chat is open. If war.app renames that hook, it falls back to the chat's button.
