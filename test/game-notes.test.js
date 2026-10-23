@@ -22,6 +22,7 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123", { html = 
         ...domGlobals(dom, $),
         location: dom.window.location,
         innerHeight: 768,
+        addEventListener: () => { },
         GAME_NOTES_SETTLE_MS: 500,
         GAME_NOTES_SETTLE_MAX_MS: 3000,
         addCSS: () => { },
@@ -365,4 +366,34 @@ test("with war.app's click hook, the notes' 🔗 takes the next territory or bon
     $("#tuydGameNotes .tuydGameNotesClose").trigger("click");
     assert.equal(live.c$, null, "and so does closing the notes");
     assert.equal(live.clickTerritory("Ruth"), false);
+});
+
+test("as in war.app's chat, Ctrl/Cmd+click or Shift+click puts a territory in the open notes, without the 🔗", () => {
+    const { ctx, $, dom } = setup();
+    const live = fakeLive();
+    ctx.UJS_Hooks = { Sd: { ta: { Nh: live } } };
+    const key = (type, init) => dom.window.document.dispatchEvent(new dom.window.KeyboardEvent(type, { bubbles: true, ...init }));
+    key("keydown", { key: "Shift", shiftKey: true });
+    assert.equal(live.c$, null, "with the notes closed, the keys are war.app's");
+    key("keyup", { key: "Shift" });
+    $("#tuydGameNotesBtn").trigger("click");
+    const notes = $("#tuydGameNotes textarea[name=text]")[0];
+    notes.value = "Hold";
+    notes.setSelectionRange(4, 4);
+    $(notes).trigger("focusin");
+    key("keydown", { key: "Control", ctrlKey: true });
+    assert.equal(typeof live.c$, "function", "holding Ctrl waits for a click");
+    assert.equal(live.clickTerritory("Elos"), true);
+    assert.equal(live.clickTerritory("Cortius"), true, "still held: the next click is taken too");
+    assert.equal(notes.value, "Hold Elos Cortius");
+    key("keyup", { key: "Control" });
+    assert.equal(live.c$, null, "letting go gives war.app its clicks back");
+    assert.equal(live.clickTerritory("Ruth"), false);
+    key("keydown", { key: "Meta", metaKey: true });
+    assert.equal(live.clickBonus("Maghreb"), true, "Cmd on a Mac, and bonus links");
+    key("keyup", { key: "Meta" });
+    assert.match(notes.value, /Maghreb$/);
+    key("keydown", { key: "Shift", shiftKey: true });
+    $("#tuydGameNotes .tuydGameNotesClose").trigger("click");
+    assert.equal(live.c$, null, "closing the notes lets go too");
 });
