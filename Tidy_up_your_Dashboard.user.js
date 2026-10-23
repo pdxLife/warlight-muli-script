@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.49.0
+// @version 3.49.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.49.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.49.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10302,7 +10302,7 @@ function gameNotesHtml(notes, players) {
         }
     });
     return '<div class="tuydGameNotesHead">Notes for this game<span class="tuydGameNotesSaved"></span>' +
-        '<a href="#" class="tuydGameNotesLink" title="Link a territory: click this, then a territory or bonus on the map, and its name goes into your notes where the cursor was. While these notes are open, war.app\'s own chat link button puts names here too.">🔗</a>' +
+        '<a href="#" class="tuydGameNotesLink" title="Link a territory: click this, then a territory on the map or a bonus link, and its name goes into your notes where the cursor was. While these notes are open, war.app\'s own chat link button puts names here too.">🔗</a>' +
         '<a href="#" class="tuydGameNotesClose" title="Close">×</a></div>' +
         '<textarea name="text" rows="5" placeholder="Plans, picks, deals… only you can see these.">' + htmlEscape(notes.text) + '</textarea>' +
         '<label class="tuydGameNotesMove">I move first on <select name="firstMove">' +
@@ -10411,6 +10411,14 @@ function highlightPlace(hooks, place) {
         log("Notes: couldn't highlight " + place.name + ": " + e);
     }
     return false;
+}
+
+// war.app's Live object (UJS_Hooks.Sd.ta.Nh) can hand the next territory click on the map, or the next
+// bonus link click, to a callback instead of acting on it ("InterceptNextTerritoryClick", AKc, and
+// "InterceptNextBonusLinkClick", zKc). null when those minified names aren't there.
+function gameLive(hooks) {
+    var live = hooks && hooks.Sd && hooks.Sd.ta && hooks.Sd.ta.Nh;
+    return live && typeof live.AKc === "function" && typeof live.zKc === "function" ? live : null;
 }
 
 function canHighlightPlaces(hooks) {
@@ -10728,6 +10736,7 @@ function setupGameNotes() {
         }
         clearInterval(linkWatch);
         linkWatch = null;
+        stopPicking();
         $("#tuydGameNotes").remove();
     };
     // war.app's chat link button puts a territory's link into the chat box; while the notes are open the
@@ -10785,6 +10794,46 @@ function setupGameNotes() {
             $('<a href="#" class="tuydNotesPlace"></a>').toggleClass("tuydNotesBonus", place.kind === "bonus")
                 .attr("title", "Show " + place.name + " on the map").text(place.name).data("place", place).appendTo(row);
         });
+    };
+    // The next territory (or bonus link) clicked goes into the notes, with the chat open or not; the click
+    // does nothing else. A second click on 🔗, or closing the notes, lets war.app have its clicks back.
+    var picking = null;
+    var pickForNotes = function (live) {
+        if (picking) {
+            stopPicking();
+            return;
+        }
+        var token = picking = { live: live };
+        $("#tuydGameNotes .tuydGameNotesLink").addClass("tuydLinking");
+        $("#tuydGameNotes .tuydGameNotesSaved").text("Click a territory or bonus");
+        var take = function (place) {
+            if (picking !== token) {
+                return false;
+            }
+            if (!place) {
+                stopPicking();
+                return false;
+            }
+            picking = null;
+            live.AKc(null);
+            live.zKc(null);
+            $("#tuydGameNotes .tuydGameNotesSaved").text("");
+            putLinkInNotes(String(place.Ya || "").replace(/[<>]/g, ""));
+            return true;
+        };
+        live.AKc(take);
+        live.zKc(take);
+    };
+    var stopPicking = function () {
+        var token = picking;
+        if (!token) {
+            return;
+        }
+        picking = null;
+        token.live.AKc(null);
+        token.live.zKc(null);
+        $("#tuydGameNotes .tuydGameNotesLink").removeClass("tuydLinking");
+        $("#tuydGameNotes .tuydGameNotesSaved").text("");
     };
     var putLinkInNotes = function (name) {
         var panel = $("#tuydGameNotes");
@@ -10867,6 +10916,11 @@ function setupGameNotes() {
         highlightPlace(window.UJS_Hooks, $(this).data("place"));
     }).on("click", "#tuydGameNotes .tuydGameNotesLink", function (event) {
         event.preventDefault();
+        var live = gameLive(window.UJS_Hooks);
+        if (live) {
+            pickForNotes(live);
+            return;
+        }
         // war.app's own link button, in the chat; the shown one if the chat is open.
         var buttons = $("[id^='ujs_LinkButton'][id$='_btn']");
         var shown = buttons.filter(function () {
