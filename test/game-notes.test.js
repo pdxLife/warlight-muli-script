@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
+const FUNCTIONS = ["shownUjsElement", "gameNotesButtonSpot", "gameNotesTitleSpot", "gameTitleBarRects", "gameNotesButtonSettled", "gameLobbyNotJoined", "openGameChatTabRect", "gameNotesKey", "normalizeGameNotes", "gameNotesEmpty", "gamePlayerNames", "gameTurnNumber", "gameFirstMoveText", "gameNotesHtml", "chatLinkAdded", "insertAtCursor", "readGameNotesPanel", "setupGameNotes", "htmlEscape"];
 
 // Mirrors the bits of war.app's game page the notes read (names are invented).
 const GAME_PAGE = `<div id="ujs_GameNameLabel">Test cup: Game 2</div>
@@ -17,6 +17,7 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123", { html = 
     }
     const settings = new Map(stored ? [["gameNotes:123", { name: "gameNotes:123", value: stored }]] : []);
     const timers = [];
+    const intervals = [];
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
         location: dom.window.location,
@@ -26,7 +27,8 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123", { html = 
         addCSS: () => { },
         setTimeout: (fn) => { timers.push(fn); return timers.length; },
         clearTimeout: () => { },
-        setInterval: () => { },
+        setInterval: (fn) => intervals.push(fn) - 1,
+        clearInterval: (id) => { if (id != null) { intervals[id] = null; } },
         playerDataReady: $.Deferred().resolve({ Name: "Me" }).promise(),
         Database: {
             Table: { Settings: "Settings" },
@@ -38,7 +40,8 @@ function setup(stored, url = "https://war.app/MultiPlayer?GameID=123", { html = 
     });
     ctx.setupGameNotes();
     const runTimers = () => timers.splice(0).forEach((fn) => fn());
-    return { ctx, $, dom, settings, runTimers };
+    const runIntervals = () => intervals.slice().forEach((fn) => fn && fn());
+    return { ctx, $, dom, settings, runTimers, runIntervals };
 }
 
 test("lists the other players without their level", () => {
@@ -203,4 +206,51 @@ test("in a lobby war.app still offers you to join, there's no Notes button", asy
     assert.ok(!$("#tuydGameNotesBtn").hasClass("tuydNotesOutsider"), "joined: the button comes back");
     const inGame = setup(null, undefined, { html: GAME_PAGE + join, title: "Turn 3 - Modern Warfare - War.app" });
     assert.ok(!inGame.$("#tuydGameNotesBtn").hasClass("tuydNotesOutsider"), "only lobbies; a started game's own buttons don't count");
+});
+
+test("war.app's chat link text is recognised, and words go in at the cursor with spaces around them", () => {
+    const { ctx } = setup();
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.chatLinkAdded("hi", "hi <a t_11735>Elos</a>"))), { kind: "territory", id: "11735", name: "Elos" });
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.chatLinkAdded("", "<a b_42>Northern Bonus</a>"))), { kind: "bonus", id: "42", name: "Northern Bonus" });
+    assert.equal(ctx.chatLinkAdded("hi", "hi there"), null, "typing");
+    assert.equal(ctx.chatLinkAdded("hello", "help <a t_1>X</a>"), null, "not an addition to the same text");
+    assert.equal(ctx.chatLinkAdded(undefined, "<a t_1>X</a>"), null, "a chat box not seen before");
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.insertAtCursor("Take then hold", 5, 5, "Elos"))), { value: "Take Elos then hold", caret: 10 });
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.insertAtCursor("Take", 4, 4, "Elos"))), { value: "Take Elos", caret: 9 });
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.insertAtCursor("", 0, 0, "Elos"))), { value: "Elos", caret: 4 });
+    assert.equal(ctx.insertAtCursor("Take X now", 5, 6, "Elos").value, "Take Elos now", "replaces a selection");
+});
+
+test("while the notes are open, a territory linked in the chat goes into the notes, not the chat", () => {
+    const chat = `<div id="ujs_SendChatInput"><textarea id="ujs_SendChatInput_input" class="ujsInner ujsInputField"></textarea></div>`
+        + `<div id="ujs_LinkButton"><a id="ujs_LinkButton_btn" class="ujsBtnInner" href="#"></a></div>`;
+    const { $, runIntervals, runTimers } = setup(null, undefined, { html: GAME_PAGE + chat });
+    const box = $("#ujs_SendChatInput_input")[0];
+    box.value = "gg ";
+    $("#tuydGameNotesBtn").trigger("click");
+    const notes = $("#tuydGameNotes textarea[name=text]")[0];
+    notes.value = "Take first";
+    notes.setSelectionRange(5, 5);
+    $(notes).trigger("focusin");
+    let pressed = 0;
+    $("#ujs_LinkButton_btn").on("click", () => { pressed++; });
+    $("#tuydGameNotes .tuydGameNotesLink").trigger("click");
+    assert.equal(pressed, 1, "the notes' link button presses war.app's own");
+    box.value = "gg <a t_11735>Elos</a>";
+    runIntervals();
+    assert.equal(box.value, "gg ", "the link is taken back out of the chat box");
+    assert.equal(notes.value, "Take Elos first");
+    runTimers();
+    $("#tuydGameNotesBtn").trigger("click");
+    assert.equal($("#tuydGameNotes").length, 0);
+    box.value = "gg <a t_1>Ruth</a>";
+    runIntervals();
+    assert.equal(box.value, "gg <a t_1>Ruth</a>", "with the notes closed, links stay in the chat");
+});
+
+test("without war.app's chat, the notes' link button says what to do", () => {
+    const { $ } = setup();
+    $("#tuydGameNotesBtn").trigger("click");
+    $("#tuydGameNotes .tuydGameNotesLink").trigger("click");
+    assert.equal($("#tuydGameNotes .tuydGameNotesSaved").text(), "Open the chat once to link territories");
 });

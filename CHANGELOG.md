@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.49.0
+
+- **Game notes: link territories, as in the chat.** While your notes are open, war.app's chat link button (🔗 next to Send) puts the territory or bonus you click into your notes, at the cursor, instead of into the chat; with the notes closed it goes to the chat as before. The notes have a 🔗 of their own, in their title line, that starts the same war.app link mode, so the chat doesn't need to be open (war.app needs it to have been opened once in the game). In the notes the link is the territory's name, e.g. "Elos": the notes are plain text, so it isn't clickable there.
+
 ## 3.48.3
 
 - **Updating: "Reload to finish updating".** Clicking the gold "Update to …" label opens Tampermonkey's update screen in a new tab (which Tampermonkey leaves empty afterwards; it can be closed), while the war.app tab keeps running the old version. The label now turns into "Reload to finish updating", and clicking it reloads war.app with the new version.
