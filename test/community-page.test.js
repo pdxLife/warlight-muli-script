@@ -6,7 +6,7 @@ const AWP_SITE = "https://awp.wl-stats.com";
 const CUSTOM_SITE = "https://custom.wl-stats.com";
 const MTL_URL = `${CUSTOM_SITE}/api/v1/ladders/mtl`;
 
-const FUNCTIONS = ["setupCommunityPageSummary", "communityPageEventsHtml", "communityPageEventHtml", "mtlTopHtml", "mtlYouHtml", "addMtlTopStyles",
+const FUNCTIONS = ["setupCommunityPageSummary", "communityPageEventsHtml", "communityPageEventHtml", "trimBlogPosts", "mtlTopHtml", "mtlYouHtml", "addMtlTopStyles",
     "setupMtlForumTop", "isMtlThreadTitle", "pageIsCommunityHome",
     "loadCommunityData", "settleRequest", "fetchWlStats", "signedInPlayerId", "withSeasonalLadder", "seasonalLadderSeries",
     "siteLink", "seriesLink", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "signupsHtml",
@@ -20,6 +20,13 @@ const series = {
             current: { name: "Clan Cup II", url: "https://custom.wl-stats.com/series/cups/3", status: "running", stage: "Round 2" } },
         { slug: "nations-cup", name: "Nations Cup", kind: "nations_cup", url: "https://custom.wl-stats.com/series/nations-cup",
             current: { name: "Nations Cup 2026", url: "https://custom.wl-stats.com/series/nations-cup/seasons/2026", status: "running", stage: "Qualifiers", players: 28 } },
+        { slug: "pr-league", name: "P/R League", kind: "league", url: "https://custom.wl-stats.com/series/pr-league",
+            current: { name: "Season 38", url: "https://custom.wl-stats.com/series/pr-league/seasons/38", status: "running", players: 51, progress: { played: 99, total: 161 },
+                leader: { name: "Stales78", url: "https://custom.wl-stats.com/series/pr-league/players/7252844100" },
+                standings: { label: "Division A", entries: [{ name: "Stales78", url: "https://custom.wl-stats.com/series/pr-league/players/7252844100", place: 1, wins: 3, losses: 0 }] } } },
+        { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "https://custom.wl-stats.com/series/clan-league",
+            current: { name: "Clan League 19", url: "https://custom.wl-stats.com/series/clan-league/seasons/19", status: "finished", players: 18, progress: { played: 495, total: 495 },
+                winner: { name: "Optimum", url: "https://custom.wl-stats.com/clans/Optimum" } } },
         { slug: "seasonal-ladder", name: "Seasonal Ladder", kind: "ladder", url: "https://custom.wl-stats.com/series/seasonal-ladder",
             current: { name: "Season LXXI", url: "https://custom.wl-stats.com/series/seasonal-ladder/seasons/71", status: "running", players: 248,
                 leader: { name: "Eraserhead", url: "https://custom.wl-stats.com/series/seasonal-ladder/players/2979814301" } } },
@@ -39,7 +46,9 @@ const mine = (rank) => ({ rank, rating: 1612, best_rank: 9, url: "https://custom
 // war.app's Community page, as served: blog posts with the (empty) Community Events box under them,
 // forum posts beside them, then New Maps.
 const communityPage = `<section class="container"><h1>Community</h1><div class="row">`
-    + `<div class="col-sm-12 col-md-6 mb-2"><div class="bg-gray p-3 fill"><h2 class="text-medium">Recent Blog Posts</h2><table class="ml-3"><tbody></tbody></table>`
+    + `<div class="col-sm-12 col-md-6 mb-2"><div class="bg-gray p-3 fill"><h2 class="text-medium">Recent Blog Posts</h2><table class="ml-3" id="blog"><tbody>`
+    + Array.from({ length: 10 }, (_, i) => `<tr><td><span class="text-muted">●&nbsp;2026-10-0${i}:</span></td><td><a href="/blog/${i}">Post ${i}</a></td></tr>`).join("")
+    + `<tr><td colspan="2"><a href="/blog">●&nbsp;Show All</a></td></tr></tbody></table>`
     + `<h2 class="text-medium pt-3">Community Events</h2><table class="ml-3" id="kenny"><tbody><tr><td colspan="2">List of community events is maintained by <a href="/Profile?p=635295275">Kenny</a></td></tr></tbody></table></div></div>`
     + `<div class="col-sm-12 col-md-6 mb-2"><div class="bg-gray p-3 fill"><h3 class="text-medium">Notable Forum Posts</h3></div></div>`
     + `</div></section><section id="maps" class="container">New Maps</section><section id="CommunityLevels" class="container"></section>`;
@@ -76,7 +85,8 @@ function page({ url = "https://war.app/Community", html = communityPage, playerI
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
         SERIES_CACHE_MS: 10 * 60 * 1000,
         STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"],
-        COMMUNITY_PAGE_SERIES: ["titled-tuesday", "seasonal-ladder", "nations-cup"],
+        COMMUNITY_PAGE_SERIES: ["titled-tuesday", "pr-league", "seasonal-ladder", "clan-league", "nations-cup"],
+        COMMUNITY_PAGE_BLOG_POSTS: 5,
         MTL_TOP_COUNT: 10
     });
     return { ctx, dom, $, requests, logs };
@@ -84,21 +94,49 @@ function page({ url = "https://war.app/Community", html = communityPage, playerI
 
 const lines = ($) => $("#tuydCommunityPageEvents tr").map((i, row) => $(row).text().replace(/\s+/g, " ").trim()).get();
 
-test("the Community Events box gets Titled Tuesday's last winner, the Seasonal Ladder's leader and Nations Cup's stage, above war.app's line", async () => {
+test("the Community Events box lists Titled Tuesday, P/R League, the Seasonal Ladder, Clan League and Nations Cup, above war.app's line", async () => {
     const { ctx, $ } = page();
     ctx.setupCommunityPageSummary();
     await flush();
     const found = lines($);
-    assert.equal(found.length, 3, "Clan Cup isn't listed");
+    assert.equal(found.length, 5, "Clan Cup isn't listed");
     assert.match(found[0], /^● Titled Tuesday · Last winner: Pablo Platcasso \(92nd Titled Tuesday - TTU\)Next: .+ \(in \d+ days?\)$/);
-    assert.equal(found[1], "● Seasonal Ladder · Season LXXI · Leader: Eraserhead");
-    assert.equal(found[2], "● Nations Cup 2026 · Qualifiers ›");
+    assert.equal(found[1], "● P/R League · Season 38 · 99/161 games · Leader: Stales78", "a leader, not the division's standings");
+    assert.equal(found[2], "● Seasonal Ladder · Season LXXI · Leader: Eraserhead");
+    assert.equal(found[3], "● Clan League 19 · finished · Winner: Optimum");
+    assert.equal(found[4], "● Nations Cup 2026 · Qualifiers ›");
     assert.equal($("h2:contains('Community Events')").next().attr("id"), "tuydCommunityPageEvents");
     assert.equal($("#tuydCommunityPageEvents").next().attr("id"), "kenny", "war.app's own line stays, below");
     const links = $("#tuydCommunityPageEvents a").map((i, a) => `${$(a).text()} ${a.getAttribute("href")}`).get();
     assert.ok(links.includes("Pablo Platcasso https://custom.wl-stats.com/series/titled-tuesday/players/33146680727"));
     assert.ok(links.includes("92nd Titled Tuesday - TTU https://custom.wl-stats.com/tournaments/942"));
+    assert.ok(links.includes("Season 38 https://custom.wl-stats.com/series/pr-league/seasons/38"));
+    assert.ok(links.includes("Optimum https://custom.wl-stats.com/clans/Optimum"));
     assert.ok(links.includes("Qualifiers › https://custom.wl-stats.com/series/nations-cup/seasons/2026"));
+});
+
+test("a running Clan League shows its progress and leader, a series taking signups says so", () => {
+    const { ctx, $ } = page();
+    const html = ctx.communityPageEventsHtml([
+        { slug: "clan-league", name: "Clan League", kind: "clan_league", url: "/cl", current: { name: "Clan League 20", url: "/cl/20", status: "running", progress: { played: 120, total: 495 }, leader: { name: "Optimum", url: "/o" } } },
+        { slug: "pr-league", name: "P/R League", kind: "league", url: "/pr", current: { name: "Season 39", url: "/pr/39", status: "signups", signups_close_at: null } }
+    ], 0);
+    assert.deepEqual($("<div>").html(html).find("tr").map((i, row) => $(row).text().replace(/\s+/g, " ").trim()).get(),
+        ["● P/R League · Season 39 · Signups open", "● Clan League 20 · 120/495 games · Leader: Optimum"]);
+});
+
+test("the blog list keeps its 5 latest posts and its Show All link once the events are in", async () => {
+    const { ctx, $ } = page();
+    ctx.setupCommunityPageSummary();
+    await flush();
+    const rows = $("#blog tr");
+    assert.deepEqual(rows.filter((i, row) => row.style.display !== "none").map((i, row) => $(row).text().trim()).get(),
+        ["●\u00a02026-10-00:Post 0", "●\u00a02026-10-01:Post 1", "●\u00a02026-10-02:Post 2", "●\u00a02026-10-03:Post 3", "●\u00a02026-10-04:Post 4", "●\u00a0Show All"]);
+
+    const down = page({ down: true });
+    down.ctx.setupCommunityPageSummary();
+    await flush();
+    assert.equal(down.$("#blog tr").filter((i, row) => row.style.display === "none").length, 0, "without the events, every post stays");
 });
 
 test("while a Titled Tuesday is being played it shows that event's progress instead of a winner", async () => {

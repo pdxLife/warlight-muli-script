@@ -35,7 +35,8 @@ var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 // Titled Tuesday, then the Seasonal Ladder.
 var PLAYER_SERIES_KINDS = ["league", "events", "ladder"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
-var COMMUNITY_PAGE_SERIES = ["titled-tuesday", "seasonal-ladder", "nations-cup"];
+var COMMUNITY_PAGE_SERIES = ["titled-tuesday", "pr-league", "seasonal-ladder", "clan-league", "nations-cup"];
+var COMMUNITY_PAGE_BLOG_POSTS = 5;
 var MTL_TOP_COUNT = 10;
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
@@ -233,8 +234,8 @@ function windowError(message, source, lineno, colno, error) {
         window.wlerror(message, source, lineno, colno, error)
     }
 }
-// war.app's Community page: Titled Tuesday, the Seasonal Ladder and Nations Cup in its (otherwise empty)
-// Community Events box, and the MTL's top 10 in a box of its own above New Maps.
+// war.app's Community page: the community series in its (otherwise empty) Community Events box, with
+// fewer blog posts above to make room, and the MTL's top 10 in a box of its own above New Maps.
 function setupCommunityPageSummary() {
     loadCommunityData().done(function (community) {
         var heading = $("h2").filter(function () {
@@ -243,6 +244,7 @@ function setupCommunityPageSummary() {
         var events = communityPageEventsHtml(community.series, Date.now());
         if (events && heading.length && !$("#tuydCommunityPageEvents").length) {
             heading.after(events);
+            trimBlogPosts();
         }
         var top = community.mtl ? mtlTopHtml(community.mtl, community.playerId) : "";
         if (top && !$("#tuydMtlTop").length) {
@@ -282,7 +284,23 @@ function communityPageEventHtml(series, now) {
     var edition = String(current.name || "");
     // "Nations Cup" + "Nations Cup 2026" reads as "Nations Cup 2026".
     var label = edition.indexOf(series.name + " ") === 0 ? name + " " + htmlEscape(edition.slice(series.name.length + 1)) : name + (edition ? " · " + seriesLink({ name: edition, url: current.url }) : "");
-    return [label, current.status === "signups" ? signupsHtml(current) : "", seriesDetailHtml(series, now)].filter(Boolean).join(" · ");
+    var finished = current.status === "finished";
+    var state = current.status === "signups" ? signupsHtml(current) : finished ? "finished"
+        : current.progress ? formatCount(current.progress.played) + "/" + formatCount(current.progress.total) + " games" : "";
+    // One name fits a line here; a division's top three (the Ladders page's standings) doesn't.
+    var lead = finished ? current.winner : current.leader;
+    var detail = STAGED_SERIES_KINDS.indexOf(series.kind) !== -1 && current.status === "running" && current.stage ? siteLink(current.url, current.stage)
+        : lead && lead.name ? (finished ? "Winner: " : "Leader: ") + seriesLink(lead) : standingsHtml(current.standings);
+    return [label, state, detail].filter(Boolean).join(" · ");
+}
+
+function trimBlogPosts() {
+    var heading = $("h2").filter(function () {
+        return $.trim($(this).text()) === "Recent Blog Posts";
+    }).first();
+    heading.next("table").find("tr").filter(function () {
+        return !$(this).find("td[colspan]").length;
+    }).slice(COMMUNITY_PAGE_BLOG_POSTS).hide();
 }
 
 // The MTL's top 10 in two columns of five, from custom.wl-stats.com's copy of warlight-mtl.com, and
@@ -8256,7 +8274,7 @@ function pageFeatures() {
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
         { name: "Search your friends in a team ladder proposal", section: "Community", run: setupLadderFriendSearch },
         { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },
-        { name: "Community events and the MTL top 10 on the Community page", section: "Community", match: pageIsCommunityHome, run: setupCommunityPageSummary },
+        { name: "Community page: community events, the MTL top 10 and the 5 latest blog posts", section: "Community", match: pageIsCommunityHome, run: setupCommunityPageSummary },
         { name: "Community event standings on clan pages", section: "Clans", run: setupClanStandings },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
