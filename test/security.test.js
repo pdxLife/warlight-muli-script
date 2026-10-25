@@ -33,16 +33,25 @@ test("normalizeBookmarkUrl keeps web and relative URLs and prefixes the rest", (
     assert.equal(normalizeBookmarkUrl("javascript:alert(1)"), "https://javascript:alert(1)");
 });
 
-test("MTL player, clan and game markup escapes API data", () => {
-    const ctx = load(["getClanIcon", "getPlayerLink", "getPlayerGameString", "htmlEscape", "safeUrl"]);
-    const evil = { player_id: PAYLOAD, player_name: PAYLOAD, clan_id: PAYLOAD, clan: PAYLOAD, clan_icon: "javascript:alert(1)" };
-    const good = { player_id: 1, player_name: "Good", clan_id: 0 };
-
-    const html = ctx.getClanIcon(evil) + ctx.getPlayerLink(evil) + ctx.getPlayerGameString(evil, good, 1);
-    const container = render(html);
+test("the Community page's events lines and MTL top 10 escape API data", () => {
+    const ctx = load(["communityPageEventsHtml", "communityPageEventHtml", "mtlTopHtml", "mtlYouHtml", "siteLink", "seriesLink", "seriesDetailHtml", "standingsHtml",
+        "weeklyEventStatusHtml", "signupsHtml", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "getRankText", "htmlEscape", "safeUrl"],
+        { STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"], COMMUNITY_PAGE_SERIES: ["titled-tuesday", "pr-league", "seasonal-ladder", "clan-league", "nations-cup"], MTL_TOP_COUNT: 10 });
+    const link = { name: PAYLOAD, url: "javascript:alert(1)" };
+    const current = (extra) => ({ name: PAYLOAD, url: "javascript:alert(1)", players: PAYLOAD, progress: { played: PAYLOAD, total: PAYLOAD }, signups_close_at: PAYLOAD, next_event_at: PAYLOAD, ...extra });
+    const series = [
+        { slug: "titled-tuesday", kind: "events", name: PAYLOAD, url: "javascript:alert(1)", current: current({ status: "finished", winner: link }) },
+        { slug: "seasonal-ladder", kind: "ladder", name: PAYLOAD, url: "javascript:alert(1)", current: current({ status: "signups", leader: link, standings: { label: PAYLOAD, entries: [{ name: PAYLOAD, url: "javascript:alert(1)", place: PAYLOAD, points: PAYLOAD }] } }) },
+        { slug: "nations-cup", kind: "nations_cup", name: PAYLOAD, url: "javascript:alert(1)", current: current({ status: "running", stage: PAYLOAD }) },
+        { slug: "pr-league", kind: "league", name: PAYLOAD, url: "javascript:alert(1)", current: current({ status: "running", leader: link }) },
+        { slug: "clan-league", kind: "clan_league", name: PAYLOAD, url: "javascript:alert(1)", current: current({ status: "finished", winner: link }) }
+    ];
+    const player = { rank: 1, name: PAYLOAD, player_id: "5", rating: PAYLOAD, win_pct: PAYLOAD, url: "javascript:alert(1)" };
+    const mtl = { ladder: { url: "javascript:alert(1)", site_up: false, copied_at: PAYLOAD, players: [player] }, mine: { ...player, rank: 40, best_rank: PAYLOAD } };
+    const container = render(ctx.communityPageEventsHtml(series, 0) + ctx.mtlTopHtml(mtl, "6"));
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
-    assert.equal(container.querySelector("img").getAttribute("src"), "#");
+    assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#" || a.getAttribute("href") === "https://www.warlight-mtl.com/"), container.innerHTML);
 });
 
 test("community level cards escape API data", () => {

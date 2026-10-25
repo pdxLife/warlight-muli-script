@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.50.0
+// @version 3.51.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.50.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.51.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -35,6 +35,9 @@ var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 // Titled Tuesday, then the Seasonal Ladder.
 var PLAYER_SERIES_KINDS = ["league", "events", "ladder"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
+var COMMUNITY_PAGE_SERIES = ["titled-tuesday", "pr-league", "seasonal-ladder", "clan-league", "nations-cup"];
+var COMMUNITY_PAGE_BLOG_POSTS = 5;
+var MTL_TOP_COUNT = 10;
 var SCRIPT_URL = "https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/Tidy_up_your_Dashboard.user.js";
 var UPDATE_CHECK_KEY = "tidyUpYourDashboard.updateCheck";
 var MAIL_PREVIEWS_KEY = "tidyUpYourDashboard.mailPreviews";
@@ -231,212 +234,140 @@ function windowError(message, source, lineno, colno, error) {
         window.wlerror(message, source, lineno, colno, error)
     }
 }
-function setupMtlLadderTable() {
-    addCSS(`
-        .spinner {
-          margin: 100px auto 0;
-          width: 70px;
-          text-align: center;
+// war.app's Community page: the community series in its (otherwise empty) Community Events box, with
+// fewer blog posts above to make room, and the MTL's top 10 in a box of its own above New Maps.
+function setupCommunityPageSummary() {
+    loadCommunityData().done(function (community) {
+        var heading = $("h2").filter(function () {
+            return $.trim($(this).text()) === "Community Events";
+        }).first();
+        var events = communityPageEventsHtml(community.series, Date.now());
+        if (events && heading.length && !$("#tuydCommunityPageEvents").length) {
+            heading.after(events);
+            trimBlogPosts();
         }
-
-        .spinner > div {
-          width: 18px;
-          height: 18px;
-          background-color: #333;
-
-          border-radius: 100%;
-          display: inline-block;
-          -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
-          animation: sk-bouncedelay 1.4s infinite ease-in-out both;
-        }
-
-        .spinner .bounce1 {
-          -webkit-animation-delay: -0.32s;
-          animation-delay: -0.32s;
-        }
-
-        .spinner .bounce2 {
-          -webkit-animation-delay: -0.16s;
-          animation-delay: -0.16s;
-        }
-
-        @-webkit-keyframes sk-bouncedelay {
-          0%, 80%, 100% { -webkit-transform: scale(0) }
-          40% { -webkit-transform: scale(1.0) }
-        }
-
-        @keyframes sk-bouncedelay {
-          0%, 80%, 100% { 
-            -webkit-transform: scale(0);
-            transform: scale(0);
-          } 40% { 
-            -webkit-transform: scale(1.0);
-            transform: scale(1.0);
-          }
-        }
-    `);
-    var mtlData = `
-    <section class="container" id="mtlData">
-        <div class="p-3"> 
-            <div class="row bg-gray p-3 br-4">
-                <div class="mtlPlayers p-3 " style="flex:1">
-                    <div class="spinner mtlPlayerTable-loading" style="min-width:265px">
-                    <div class="bounce1"></div>
-                    <div class="bounce2"></div>
-                    <div class="bounce3"></div>
-                    </div>
-                    <div class="mtl-content" style="display:none">
-                        <a href="https://www.warlight-mtl.com/allplayers" style="float:right;margin-top:5px">Show All</a>
-                    </div>
-                </div>
-                <div class="mtlGames p-3 " style="flex:1">
-                    <div class="spinner mtlGamesTable-loading">
-                    <div class="bounce1"></div>
-                    <div class="bounce2"></div>
-                    <div class="bounce3"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>`;
-    $(".container:nth-of-type(1)").after(mtlData);
-    getMtlPlayerTable(function (table) {
-        $(".mtlPlayers .mtl-content").prepend(table);
-        $(".mtlPlayerTable-loading").remove();
-        $(".mtlPlayers .mtl-content").show();
-    });
-    getMtlGamesTable(10, function (table) {
-        $(".mtlGames").prepend(table);
-        $(".mtlGamesTable-loading").remove();
-        $("#DashboardLadderTabs-6 .mtlGames table").show();
-    });
-}
-
-function getMtlGamesTable(numOfGames, cb) {
-    var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Recent Games</h4>');
-    var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
-    table.append(`
-        <thead>
-            <tr>
-                <td>Game</td>
-                <td>Link</td>
-            </tr>
-        </thead>
-    `);
-    table.append("<tbody></table>");
-    var urlParam = "https://www.warlight-mtl.com/api/v1.0/games/?topk=" + numOfGames;
-    var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
-    $.ajax({
-        type: 'GET',
-        url: url,
-        dataType: 'jsonp',
-        crossDomain: true
-    }).done(function (response) {
-        var data = JSON.parse(response.data);
-        var games = data.games;
-        $.each(games, function (key, game) {
-            var p1 = game.players[0];
-            var p2 = game.players[1];
-            var winner = game.winner_id;
-            var rowData = "<td>" + getPlayerGameString(p1, p2, winner) + "</td>";
-            if (game.is_game_deleted) {
-                rowData += "<td>DELETED</td>"
+        var top = community.mtl ? mtlTopHtml(community.mtl, community.playerId) : "";
+        if (top && !$("#tuydMtlTop").length) {
+            addMtlTopStyles();
+            var box = '<section class="container" id="tuydMtlTop"><div class="bg-gray p-3 mb-2">' + top + '</div></section>';
+            var maps = $("section#maps");
+            if (maps.length) {
+                maps.before(box);
             } else {
-                rowData += "<td><a href='/MultiPlayer?GameID=" + htmlEscape(game.game_id) + "'>" + htmlEscape(game.game_id) + "</a></td>"
+                $("section.container").first().after(box);
             }
-            table.append("<tr>" + rowData + "</tr>")
-        });
-        content.append(table);
-        if (cb) {
-            cb(content)
         }
-    }).fail(function (e) {
-        log("Error loading MTL games table: " + e.statusText);
-    })
+    });
 }
 
-function getMtlPlayerTable(cb) {
-    var content = $("<div>");
-    content.prepend('<h4 class="mb-0 py-3"><a href="https://www.warlight-mtl.com/">Multi-Template Ladder</a>: Rankings</h4>');
-    var table = $("<table>").attr("cellpadding", 2).attr("cellspacing", 0).css("width", "100%").addClass("table table-striped mb-0");
-    table.append(`
-        <thead>
-           <tr>
-                <td>Rank</td>
-                <td>Name</td>
-                <td>Rating</td>
-           </tr>
-        </thead>`);
-    table.append("<tbody></table>");
-    var urlParam = "https://www.warlight-mtl.com/api/v1.0/players/?topk=10";
-    var url = "https://maak.ch/wl/httpTohttps.php?url=" + encodeURI(urlParam);
-    $.ajax({
-        type: 'GET',
-        url: url,
-        dataType: 'jsonp',
-        crossDomain: true
-    }).done(function (response) {
-        var data = JSON.parse(response.data);
-        var players = data.players;
-        players = players.filter(function (p) {
-            return p.rank <= 10
-        }).sort(function (p1, p2) {
-            return p1.rank - p2.rank
-        });
-        $.each(players, function (key, player) {
-            var rowData = "<td>" + htmlEscape(player.rank) + "</td>";
-            var playerLink = getPlayerLink(player);
-            var clanIcon = getClanIcon(player);
-            rowData += "<td>" + clanIcon + playerLink + "</td>";
-            rowData += "<td>" + htmlEscape(player.displayed_rating) + "</td>";
-            $(table).find("tbody").append("<tr>" + rowData + "</tr>")
-        });
-        if (cb) {
-            content.append(table);
-            cb(content)
-        }
-    }).fail(function (e) {
-        log("Error loading MTL player table: " + e.statusText);
-    })
+function communityPageEventsHtml(series, now) {
+    var rows = COMMUNITY_PAGE_SERIES.map(function (slug) {
+        return series.filter(function (entry) {
+            return entry && entry.slug === slug && entry.current;
+        })[0];
+    }).filter(Boolean).map(function (entry) {
+        return '<tr><td class="align-top"><span class="text-muted">●&nbsp;</span></td><td>' + communityPageEventHtml(entry, now) + '</td></tr>';
+    });
+    return rows.length ? '<table class="ml-3" id="tuydCommunityPageEvents"><tbody>' + rows.join("") + '</tbody></table>' : "";
 }
 
-function setupMtlForumTable() {
-    let title = $("title").text().toLowerCase();
-    title = title.replace(/[^a-zA-Z]/g, '');
-    if (title.includes("mtl") || title.includes("multitemplate") || title.includes("mdl") || title.includes("multiday")) {
-        var mtlContainer = setupBottomForumContainer("mtl");
-        getMtlPlayerTable(function (table) {
-            mtlContainer.prepend(table)
-        });
-        getMtlGamesTable(10, function (table) {
-            mtlContainer.append(table);
-        })
+function communityPageEventHtml(series, now) {
+    var current = series.current;
+    var name = seriesLink({ name: series.name, url: series.url });
+    if (series.kind === "events") {
+        var last = current.status === "finished" && current.winner && current.winner.name
+            ? "Last winner: " + seriesLink(current.winner) + " (" + seriesLink({ name: current.name, url: current.url }) + ")"
+            : weeklyEventStatusHtml(current);
+        var next = seriesDetailHtml(series, now);
+        return name + " · " + last + (next ? '<br><span class="text-muted">' + next + '</span>' : "");
     }
+    var edition = String(current.name || "");
+    // "Nations Cup" + "Nations Cup 2026" reads as "Nations Cup 2026".
+    var label = edition.indexOf(series.name + " ") === 0 ? name + " " + htmlEscape(edition.slice(series.name.length + 1)) : name + (edition ? " · " + seriesLink({ name: edition, url: current.url }) : "");
+    var finished = current.status === "finished";
+    var state = current.status === "signups" ? signupsHtml(current) : finished ? "finished"
+        : current.progress ? formatCount(current.progress.played) + "/" + formatCount(current.progress.total) + " games" : "";
+    // One name fits a line here; a division's top three (the Ladders page's standings) doesn't.
+    var lead = finished ? current.winner : current.leader;
+    var detail = STAGED_SERIES_KINDS.indexOf(series.kind) !== -1 && current.status === "running" && current.stage ? siteLink(current.url, current.stage)
+        : lead && lead.name ? (finished ? "Winner: " : "Leader: ") + seriesLink(lead) : standingsHtml(current.standings);
+    return [label, state, detail].filter(Boolean).join(" · ");
 }
 
-function getPlayerGameString(p1, p2, winnerId) {
-    var c1 = getClanIcon(p1);
-    var c2 = getClanIcon(p2);
-    var p1s = c1 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p1.player_id) + "'> " + htmlEscape(p1.player_name) + "</a>";
-    var p2s = c2 + "<a target='_blank' href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(p2.player_id) + "'> " + htmlEscape(p2.player_name) + "</a>";
-    if (p1.player_id == winnerId) {
-        return p1s + " defeated " + p2s
-    } else {
-        return p2s + " defeated " + p1s
+function trimBlogPosts() {
+    var heading = $("h2").filter(function () {
+        return $.trim($(this).text()) === "Recent Blog Posts";
+    }).first();
+    heading.next("table").find("tr").filter(function () {
+        return !$(this).find("td[colspan]").length;
+    }).slice(COMMUNITY_PAGE_BLOG_POSTS).hide();
+}
+
+// The MTL's top 10 in two columns of five, from custom.wl-stats.com's copy of warlight-mtl.com, and
+// your line below when you're ranked lower.
+function mtlTopHtml(mtl, playerId) {
+    var ladder = mtl.ladder;
+    var top = ladder.players.filter(function (entry) {
+        return entry && entry.rank != null && entry.rank <= MTL_TOP_COUNT;
+    }).sort(function (a, b) {
+        return a.rank - b.rank;
+    });
+    if (!top.length) {
+        return "";
     }
-}
-
-function getPlayerLink(player) {
-    return "<a href='https://www.warlight-mtl.com/player?playerId=" + htmlEscape(player.player_id) + "'> " + htmlEscape(player.player_name) + "</a>"
-}
-
-function getClanIcon(player) {
-    if (player.clan_id) {
-        return '<a href="https://www.warlight-mtl.com/clan?clanId=' + htmlEscape(player.clan_id) + '" title="' + htmlEscape(player.clan) + '"><img border="0" style="vertical-align: middle" src="' + htmlEscape(safeUrl(player.clan_icon)) + '"></a>'
-    } else {
-        return ""
+    var status = ["Top " + top.length + " of " + formatCount(ladder.players.length) + " ranked"];
+    if (ladder.site_up === false && ladder.copied_at) {
+        status.push("warlight-mtl.com is down; as of " + htmlEscape(formatEventTime(ladder.copied_at)));
     }
+    var column = function (entries) {
+        return '<div class="col-md-6"><table class="table table-sm mb-0 tuydMtlTopTable"><thead><tr><th>#</th><th>Player</th><th class="text-right">Rating</th><th class="text-right">Won</th></tr></thead><tbody>' +
+            entries.map(function (entry) {
+                var you = playerId && String(entry.player_id) === String(playerId);
+                return '<tr' + (you ? ' class="tuydMtlYou"' : "") + '><td class="text-muted">' + htmlEscape(entry.rank) + '</td><td>' + seriesLink(entry) + '</td>' +
+                    '<td class="text-right">' + formatCount(entry.rating) + '</td><td class="text-right text-muted">' + (entry.win_pct != null ? formatCount(Math.round(entry.win_pct)) + "%" : "") + '</td></tr>';
+            }).join("") + '</tbody></table></div>';
+    };
+    var half = Math.ceil(top.length / 2);
+    var inTop = top.some(function (entry) {
+        return playerId && String(entry.player_id) === String(playerId);
+    });
+    return '<div class="tuydMtlTopLinks">' + siteLink(ladder.url, "Full ladder") + " " + siteLink("https://www.warlight-mtl.com/", "warlight-mtl.com") + '</div>' +
+        '<h2 class="text-medium">Multi-Template Ladder</h2><div class="text-muted mb-2">' + status.join(" · ") + '</div>' +
+        '<div class="row">' + column(top.slice(0, half)) + (top.length > half ? column(top.slice(half)) : "") + '</div>' +
+        (mtl.mine && !inTop ? '<div class="mt-2">' + mtlYouHtml(mtl, playerId) + '</div>' : "");
+}
+
+function addMtlTopStyles() {
+    addCSS(`
+        .tuydMtlTopLinks { float: right; margin-top: 4px; }
+        .tuydMtlTopLinks a { margin-left: 12px; }
+        .tuydMtlTopTable th { font-weight: normal; color: #999; text-align: left; }
+        .tuydMtlTopTable td, .tuydMtlTopTable th { border-top: none; }
+        .tuydMtlYou td { font-weight: bold; }
+    `);
+}
+
+function isMtlThreadTitle(title) {
+    return /\b(?:MTL|MDL)\b|multi[\s-]*(?:template|day)[\s-]*ladder/i.test(title);
+}
+
+// The MTL's top 10 below the reply box in MTL threads.
+function setupMtlForumTop() {
+    if (!isMtlThreadTitle($("title").text()) || !$("#ReplyDiv").length) {
+        return;
+    }
+    signedInPlayerId().done(function (playerId) {
+        $.when(
+            settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/mtl", SERIES_CACHE_MS), "the MTL rankings"),
+            playerId ? settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/mtl/players/" + playerId, SERIES_CACHE_MS), "your MTL figures") : null
+        ).done(function (ladder, mine) {
+            var top = ladder && Array.isArray(ladder.players) ? mtlTopHtml({ ladder: ladder, mine: mine || null }, playerId) : "";
+            if (top && !$("#tuydMtlTop").length) {
+                addMtlTopStyles();
+                $("#ReplyDiv").after('<div id="tuydMtlTop" class="bg-gray p-3 my-3">' + top + '</div>');
+            }
+        });
+    });
 }
 
 function getRankText(n) {
@@ -445,25 +376,6 @@ function getRankText(n) {
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function setupBottomForumContainer(className) {
-    $("#ReplyDiv").after("<div class='" + className + "'></div>");
-    addCSS(`
-        .` + className + ` {
-                padding: 20px;
-                display: flex;
-                justify-content: space-between;
-        }
-        .` + className + ` > * {
-           flex: 0.47;
-        }        
-        .` + className + ` .scroller  {
-                max-height: 750px;
-                display: block;
-                overflow-y: auto;
-        }
-    `);
-    return $("." + className);
-}
 function setupDatabase() {
     log("indexedDB start setup");
     var db = null;
@@ -4581,10 +4493,10 @@ window.userscriptSettings = [
     },
     {
         id: 'useMaakServices',
-        text: 'Load MTL Tables and Community Level Records (via maak.ch)',
+        text: 'Load Community Level Records (via maak.ch)',
         selected: false,
         section: 'Third-party data',
-        help: 'Shows Multi-Template Ladder (MTL) rankings and recent games on the Community page and in MTL forum threads, and the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles and on the Ladders page come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles, the Ladders page, the Community page and in MTL threads come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 
@@ -6233,6 +6145,10 @@ function pageIsChatRoom() {
 
 function pageIsQuickmatch() {
     return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\/?\?(?:[^#]*&)?Quickmatch=/i);
+}
+
+function pageIsCommunityHome() {
+    return location.href.match(/^https?:\/\/[^\/]+\/Community\/?(?:[?#].*)?$/i);
 }
 
 function pageIsPlayerSearch() {
@@ -8352,11 +8268,13 @@ function pageFeatures() {
         { name: "Formatting toolbar for posts", section: "Forum", match: pageIsThread, run: setupTextarea },
         { name: "Bookmark link and layout tweaks in threads", section: "Forum", match: isAnyForumThread, run: setupForumThreadTweaks },
         { name: "Level previews in posts", section: "Forum", match: isAnyForumThread, run: parseForumSPLevels },
+        { name: "MTL top 10 in MTL threads", section: "Forum", match: isAnyForumThread, run: setupMtlForumTop },
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
         { name: "Search your friends in a team ladder proposal", section: "Community", run: setupLadderFriendSearch },
         { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },
+        { name: "Community page: community events, the MTL top 10 and the 5 latest blog posts", section: "Community", match: pageIsCommunityHome, run: setupCommunityPageSummary },
         { name: "Community event standings on clan pages", section: "Clans", run: setupClanStandings },
         { name: "Sortable Common Games table", section: "Other", match: pageIsCommonGames, run: setupCommonGamesDataTable },
         { name: "Clan list search", section: "Clans", match: pageIsClanList, run: setupClanListSearch },
@@ -8426,8 +8344,6 @@ function mainFeatures() {
 
 function maakFeatures() {
     return [
-        { name: "MTL ladder", match: pageIsCommunity, run: setupMtlLadderTable },
-        { name: "MTL forum tables", match: isAnyForumThread, run: setupMtlForumTable },
         { name: "community level records", match: pageIsProfile, run: loadCommunityLevelRecords }
     ];
 }
