@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.50.0  
+> **Version:** 3.51.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -71,6 +71,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Community ladders & leagues** — a panel below war.app's four ladders on the Ladders page, in war.app's own style with blue buttons instead of green, in two lists: **Players** and **Clans & nations**. On a wide window it's wider than war.app's ladders and the two lists sit side by side. It shows the [AWP World Tour](https://awp.wl-stats.com) race, the Multi-Template Ladder, and every series [custom.wl-stats.com](https://custom.wl-stats.com) is running or recently finished (players: AWP World Tour, the Multi-Template Ladder, P/R League, Titled Tuesday, the Seasonal Ladder; clans: Clan League, then Clan Cup and Nations Cup): the current season, how far it is, its leader or winner, Titled Tuesday's next start in your time zone with a countdown, and your own line when you're signed in (your place, record and points, or your clan's or country's). A series taking signups says until when and links to signing up.
 - **Search your friends in a team ladder proposal** — on a 2v2 or 3v3 ladder, Join Ladder → Join with Team lists your friends 40 at a time; a search box beside "Friends" finds a friend on any page and takes you to them.
 - **Standings on Community Events** — on war.app's Community Events page, each card for an event on [awp.wl-stats.com](https://awp.wl-stats.com) or [custom.wl-stats.com](https://custom.wl-stats.com) (AWP World Tour, Nations Cup, Clan Cup, Clan League, Titled Tuesdays) shows the current edition at the top right (running or finished, size, progress, leader or winner; the AWP race with a "Rankings: Top 16" link), and beside war.app's "You can join!" your place when you take part, or a link to the full standings or to signing up. Where you take part, "You can join!" itself becomes "You're in!", "You're signed up!", "You took part" or, on AWP World Tour, "You're in the race!". Hidden when the cards are too narrow for it.
+- **Community page** — war.app's Community page gets, in its Community Events box, Titled Tuesday's last winner (or the event being played) and the next start in your time zone, the Seasonal Ladder's leader, and the stage Nations Cup is at; and above New Maps, the [Multi-Template Ladder](https://custom.wl-stats.com/ladders/mtl)'s top 10 with links to the full ladder and warlight-mtl.com, and your rank when you're signed in and ranked lower. From custom.wl-stats.com; no maak.ch needed.
 - **Your rank on Quickmatch leaderboards** — on Quickmatch → Leaderboards, next to war.app's "Your rating: 1,309.8", your place: "Rank #104 of 190,968", for Global and for each template you pick. war.app only lists the players 50 at a time, so the script looks your rating up page by page, halving the range each time (about a dozen requests, a few seconds), and remembers the answer for 10 minutes. "≈" means your name wasn't on the page with your rating, so the rank counts the players rated above it.
 
 ### Clans
@@ -95,7 +96,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **BBCode editor toolbar** — adds formatting buttons (bold, italic, code, image, quote, list, etc.) above reply textareas.
 - **Tab key support** — inserts a tab character in textareas instead of moving focus.
 - **Community level previews** — single-player level links in forum posts are expanded into info cards, read from the level's page on war.app.
-- **MTL rankings in ladder threads** *(opt-in, via maak.ch)* — MTL-themed forum threads get a live rankings + recent games table below the reply area.
+- **MTL top 10 in MTL threads** — forum threads about the Multi-Template Ladder (MTL in the title, or "Multi-Template Ladder") get the ladder's top 10 below the reply box, with your rank when you're signed in and ranked lower, from [custom.wl-stats.com](https://custom.wl-stats.com/ladders/mtl).
 
 ### Chat rooms
 
@@ -176,7 +177,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
 | Read New Chat Messages Aloud | Off | Reads new chat messages from other players aloud while a game or the chat rooms are open |
 | Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
-| Load MTL Tables and Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
+| Load Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 
 The menu is split into foldable sections by area: Dashboard, Tournaments, Ladders & community, Profile, Clans, Forum, Maps & levels, Other, Third-party data and Backup. Each holds that area's settings and a switch for each of its features, so you can turn off anything you don't want. Click a heading to fold or unfold it; the menu remembers which ones you left open. The search box at the top finds any setting or feature by name. The title links to the project's [website](https://pdxlife.github.io/warlight-muli-script/) and GitHub. Changes apply after **Close & Refresh**.
 
@@ -194,7 +195,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **GitHub** (raw.githubusercontent.com): once a day, the script reads its own file there to see whether a newer version is out. No player data is sent.
 - **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
-- **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard both wl-stats sites are asked which of your games belong to their events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders and Community Events pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
+- **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard both wl-stats sites are asked which of your games belong to their events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Ladders, Community Events and Community pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 
 Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Dashboard, Profile, Tournaments, Clans and Community). maak.ch is contacted only if you turn on its setting.
 

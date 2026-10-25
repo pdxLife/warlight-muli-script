@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.51.0
+
+- **The Community page shows what's on.** war.app's Community Events box there was empty apart from "maintained by Kenny"; it now lists Titled Tuesday's last winner (or the event being played) with the next start in your time zone, the Seasonal Ladder's leader, and the stage Nations Cup is at, each linking to custom.wl-stats.com. Settings menu → Community → "Community events and the MTL top 10 on the Community page".
+- **The MTL top 10 without maak.ch.** Above New Maps on the Community page, and below the reply box in MTL threads, the Multi-Template Ladder's top 10 in two columns, from custom.wl-stats.com's copy of warlight-mtl.com, with links to the full ladder and to warlight-mtl.com. Signed in, your row is bold, or your rank is under the table. When warlight-mtl.com is down it says how old the figures are. The forum one is under Settings menu → Forum → "MTL top 10 in MTL threads".
+- The old maak.ch MTL tables are gone, and with them the recent-games list (custom.wl-stats.com has none) and the maak.ch HTTP→HTTPS proxy. The maak.ch setting is now "Load Community Level Records (via maak.ch)" and covers only that.
+- MTL threads are found by the ladder's name in the title ("MTL", "MDL", "Multi-Template Ladder"), not by those letters inside other words.
+
 ## 3.50.0
 
 - **Game notes: war.app's link shortcut.** In war.app's chat, Ctrl+click (Cmd+click on a Mac) or Shift+click on a territory links it. With your notes open, the same click puts the territory's name into the notes, with the chat open or closed, and does nothing else in the game; keep the key held to add several. Plain clicks work as usual. The 🔗 in the notes stays.
