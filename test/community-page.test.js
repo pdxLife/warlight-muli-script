@@ -41,6 +41,12 @@ const mtlPlayers = Array.from({ length: 12 }, (_, i) => ({
     url: `https://custom.wl-stats.com/ladders/mtl/players/${100 + i}`
 }));
 const mtl = { name: "Multi Template Ladder", url: "https://custom.wl-stats.com/ladders/mtl", copied_at: "2026-10-25T01:42:34Z", site_up: true, players: mtlPlayers };
+// Three days before the fixture's next Titled Tuesday, so its countdown doesn't depend on today's date.
+const NOW = Date.parse("2026-10-24T19:00:18Z");
+class FixedDate extends Date {
+    static now() { return NOW; }
+}
+
 const mine = (rank) => ({ rank, rating: 1612, best_rank: 9, url: "https://custom.wl-stats.com/ladders/mtl/players/2921525624" });
 
 // war.app's Community page, as served: blog posts with the (empty) Community Events box under them,
@@ -77,6 +83,7 @@ function page({ url = "https://war.app/Community", html = communityPage, playerI
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
         location: dom.window.location,
+        Date: FixedDate,
         log: (entry) => logs.push(entry),
         addCSS: () => {},
         playerDataReady: playerId ? $.Deferred().resolve({ PlayerId: playerId }).promise() : $.Deferred().reject().promise(),
@@ -100,7 +107,7 @@ test("the Community Events box lists Titled Tuesday, P/R League, the Seasonal La
     await flush();
     const found = lines($);
     assert.equal(found.length, 5, "Clan Cup isn't listed");
-    assert.match(found[0], /^● Titled Tuesday · Last winner: Pablo Platcasso \(92nd Titled Tuesday - TTU\)Next: .+ \(in \d+ days?\)$/);
+    assert.match(found[0], /^● Titled Tuesday · Last winner: Pablo Platcasso \(92nd Titled Tuesday - TTU\)Next: .+ \(in 3 days\)$/);
     assert.equal(found[1], "● P/R League · Season 38 · 99/161 games · Leader: Stales78", "a leader, not the division's standings");
     assert.equal(found[2], "● Seasonal Ladder · Season LXXI · Leader: Eraserhead");
     assert.equal(found[3], "● Clan League 19 · finished · Winner: Optimum");
