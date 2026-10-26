@@ -18,7 +18,7 @@ const GAMES = [
 ];
 const MAP_NAMES = { 1748: { id: "737", name: "Medium Earth" }, 74965: { id: "31916", name: "Elitist Africa 2.0" }, 70306: { id: "52000", name: "Small Earth" } };
 const FUNCTIONS = ["pastGamePlayer", "pastGameState", "pastGameResult", "pastGameType", "pastGamePlayerCount", "pastGameStatusText", "pastGameMatches",
-    "normalizePastGamesFilter", "pastGamesFilterIsSet", "pastGameMapOptions", "pastGameDate", "pastGamesListHtml", "isQuickmatchGameName", "htmlEscape", "setupPastGamesFilter"];
+    "normalizePastGamesFilter", "pastGamesFilterIsSet", "pastGameMapOptions", "pastGameDate", "pastGamesListHtml", "isQuickmatchGameName", "htmlEscape", "gamePlayerId", "setupPastGamesFilter"];
 
 function pastGamesPage() {
     return `<table id="MyGamesTable" class="dataTable"><thead><tr><td colspan="3">Sort: <select id="Sort"><option value="3">Ended Date</option></select></td></tr></thead>`
@@ -34,7 +34,7 @@ function setup({ loadPastGames } = {}) {
         addCSS: () => { },
         log: () => { },
         loadMapNames: (callback) => callback(MAP_NAMES),
-        signedInPlayerId: () => $.Deferred().resolve("7").promise(),
+        signedInPlayerId: () => $.Deferred().resolve("10712").promise(),
         loadPastGames: loadPastGames || ((id, maxAge, onProgress) => {
             loads.push([id, maxAge]);
             onProgress(9, 9);
@@ -60,6 +60,13 @@ test("reads each game's state, your result and its kind from war.app's data", ()
     assert.deepEqual(GAMES.map((game) => ctx.pastGameStatusText(game, ME)), ["Turn 8", "Won", "Lobby", "Surrendered", "Your turn", "Picking", "Booted", "Finished", "Ended by vote"]);
     assert.equal(ctx.pastGameStatusText({ ...GAMES[5], players: [pl(7, "Me", 2)] }, ME), "Your turn to pick");
     assert.equal(ctx.pastGameState(GAMES[0], { id: null, name: "Me" }), "running", "found by name when the ID isn't known");
+});
+
+test("your player ID in war.app's game data is your profile link's number without two digits at each end", () => {
+    const { gamePlayerId } = load(["gamePlayerId"]);
+    assert.equal(gamePlayerId("2921525624"), "215256");
+    assert.equal(gamePlayerId(null), null);
+    assert.equal(gamePlayerId("1234"), null);
 });
 
 test("war.app's list stays until a filter is set; then your whole history is searched", async () => {

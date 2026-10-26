@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.52.2
+
+- **Quickmatch stats find your games.** On the Quickmatch screen the record read "0 W – 0 L" and Past Games' result and "Your turn" filters found nothing: the script looked for you in war.app's game list by the number in your profile link (p=2921525624), which has two extra digits at each end of your player ID (215256), the number the game list uses. Your own profile's Quickmatch record didn't show for the same reason. After updating, open Quickmatch once to read your games again.
+
 ## 3.52.1
 
 - **Game chats load as they do on war.app.** "Load the whole chat in games" is gone: the script no longer presses war.app's "Load Older Messages" by itself. Each press downloads a game's whole older chat at once, and with war.app's App Settings → Chat Dialog on (its default), a chat with more than 300 older messages opened war.app's chat dialog over the game, which the script then opened again with every new message. A game's chat now shows war.app's newest messages, and older ones load when you press its button. The dashboard's game chat keeps its **Show all**.
