@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.51.0
+// @version 3.52.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.51.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5182,7 +5182,7 @@ function pageIsPointsPage() {
 }
 
 var GAME_CHAT_FRAME_ID = "tuydGameChatFrame";
-var GAME_MAP_FRAME_ID = "tuydGameMapFrame";
+var GAME_TEMPLATE_FRAME_ID = "tuydGameTemplateFrame";
 
 // A hidden copy of a game would otherwise play the game's sounds a second time: a chat bell for every new
 // message, the your-turn sound. war.app plays them through SoundManager 2, which uses HTML audio.
@@ -5199,10 +5199,11 @@ function muteScriptFrame() {
     window.setInterval(mute, 2000);
 }
 
-// The script's own hidden game frames: the dashboard's game chat, and Past Games looking up a game's map.
+// The script's own hidden game frames: the dashboard's game chat, and Quickmatch stats reading a game's
+// template.
 function inScriptFrame() {
     try {
-        return !!window.frameElement && [GAME_CHAT_FRAME_ID, GAME_MAP_FRAME_ID].indexOf(window.frameElement.id) !== -1;
+        return !!window.frameElement && [GAME_CHAT_FRAME_ID, GAME_TEMPLATE_FRAME_ID].indexOf(window.frameElement.id) !== -1;
     } catch (e) {
         return false;
     }
@@ -8286,10 +8287,12 @@ function pageFeatures() {
         { name: "AWP World Tour stats", section: "Profile", match: pageIsProfile, run: setupAwpProfileStats },
         { name: "custom.wl-stats.com stats", section: "Profile", match: pageIsProfile, run: setupCustomProfileStats },
         { name: "MTL and Seasonal Ladder in the Ladders table", section: "Profile", match: pageIsProfile, run: setupLadderProfileRows },
+        { name: "Your Quickmatch record on your profile", section: "Profile", match: pageIsProfile, run: setupQuickmatchProfileRecord },
         { name: "Sort and filter player search results", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchSort },
         { name: "Tags on players in search results", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchTags },
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
         { name: "Your rank next to your rating on Quickmatch leaderboards", section: "Community", match: pageIsQuickmatch, run: setupLeaderboardRank },
+        { name: "Your Quickmatch record and stats", section: "Community", match: pageIsQuickmatch, run: setupQuickmatchStats },
         { name: "Load the whole chat in games", section: "Games", match: pageIsGame, run: setupFullGameChat },
         { name: "Player pace in game lobbies", section: "Games", match: pageIsGame, run: setupLobbyPace },
         { name: "Private chat list: players still in the game first", section: "Games", match: pageIsGame, run: setupPrivateChatList },
@@ -9748,79 +9751,82 @@ function setupJoinedOpenGames() {
     });
 }
 
-function pastGameState(row) {
-    if ($(row).find("span").filter(function () {
-        return /^Your turn/i.test($(this).text().trim());
-    }).length) {
-        return "yourTurn";
-    }
-    var status = $(row).find("td p").first().text().replace(/\s+/g, " ").trim();
-    if (/^Lobby\b/i.test(status)) {
+function pastGamePlayer(game, me) {
+    return game.players.filter(function (player) {
+        return me.id ? String(player.id) === String(me.id) : player.name === me.name;
+    })[0] || null;
+}
+
+// A game's state in war.app's data: 2 lobby, 3 playing, 4 finished, 5 picking. A player's: 2 playing,
+// 3 eliminated, 4 won, 5 declined, 6 removed by the host, 7 surrendered, 8 booted, 9 ended by vote.
+// Past Games also lists games you created or run without playing in them.
+function pastGameState(game, me) {
+    if (game.state === 2) {
         return "lobby";
     }
-    if (/^(?:Turn \d+|Picking)\b/i.test(status)) {
-        return "running";
-    }
-    if (/^Finished\b/i.test(status)) {
+    if (game.state === 4) {
         return "finished";
     }
-    return "out";
-}
-
-function pastGameSpeed(row) {
-    var minutes = parseBootTime($(row).find(".BootTimeLabel").text());
-    return minutes === null ? "" : minutes <= 60 ? "realTime" : "multiDay";
-}
-
-// A game's thumbnail sits in its map's folder on war.app's CDN (Data/Thumbs/Maps/74965/41_Fogged.jpg);
-// war.app's map list uses the same folder for each map's own thumbnail, which gives the map's name.
-// Some games show a picture of the game instead (Data/Thumbs/Games/…/Turn7f.jpg), which says nothing
-// about the map: those count as "unknown".
-function pastGameMapKey(row, known) {
-    var match = /\/Thumbs\/Maps\/(\d+)\//.exec($(row).find("img.MyGamesGameThumbnail").attr("src") || "");
-    var found = known && known[$(row).attr("gameid")];
-    return match ? match[1] : found || "unknown";
-}
-
-var GAME_MAPS_KEY = "tidyUpYourDashboard.pastGameMaps";
-
-// Maps found by opening a game, by GameID. A game's map never changes, so they're kept for good.
-function storedGameMaps() {
-    try {
-        var stored = JSON.parse(localStorage.getItem(GAME_MAPS_KEY));
-        return stored && typeof stored === "object" ? stored : {};
-    } catch (e) {
-        return {};
+    var mine = pastGamePlayer(game, me);
+    if (mine && mine.state !== 2) {
+        return "out";
     }
+    return mine && !mine.committed ? "yourTurn" : "running";
 }
 
-// war.app's data for a game has its map's ID and thumbnail folder in two of its minified fields (737 and
-// 1748 for Medium Earth), next to small numbers such as 1, 2 and 3 that are by chance also a map's folder
-// and ID (Bracketology is folder 1, ID 1). So a map counts only when its folder and its ID are in two
-// different fields, and the largest folder wins: a chance match is a small number.
-function gameMapFolder(map, maps) {
-    var fields = Object.keys(map || {}).filter(function (key) {
-        var value = map[key];
-        return typeof value === "number" && value > 0 && Math.floor(value) === value;
-    });
-    var candidates = fields.filter(function (key) {
-        var entry = maps[String(map[key])];
-        return entry && fields.some(function (other) {
-            return other !== key && map[other] === Number(entry.id);
-        });
-    }).map(function (key) {
-        return map[key];
-    }).sort(function (a, b) {
-        return b - a;
-    });
-    return candidates.length ? String(candidates[0]) : null;
+function pastGameResult(game, me) {
+    var mine = pastGamePlayer(game, me);
+    return mine && { 3: "lost", 4: "won", 7: "lost", 8: "booted", 9: "vote" }[mine.state] || null;
 }
 
-function pastGamePlayers(row) {
-    return $(row).find(".MyGamesGameBox").length;
+// war.app's data marks tournament games; the other kinds are told apart by the names war.app gives them.
+function pastGameType(game) {
+    var name = String(game.name || "");
+    if (game.tournament) {
+        return "tournament";
+    }
+    if (isQuickmatchGameName(name)) {
+        return "quickmatch";
+    }
+    if (/^Season [IVXLC]+: /.test(name)) {
+        return "seasonal";
+    }
+    if (/^(?:\d+ v \d+|Real-Time) Ladder: /.test(name)) {
+        return "ladder";
+    }
+    if (/^MTL\|/.test(name)) {
+        return "mtl";
+    }
+    return /^CW: /.test(name) ? "clanWar" : "other";
+}
+
+function pastGamePlayerCount(game) {
+    return game.players.filter(function (player) {
+        return player.state !== 5 && player.state !== 6;
+    }).length;
+}
+
+function pastGameStatusText(game, me) {
+    var mine = pastGamePlayer(game, me);
+    var out = mine && { 3: "Eliminated", 4: "Won", 5: "Declined", 6: "Removed by the host", 7: "Surrendered", 8: "Booted", 9: "Ended by vote" }[mine.state];
+    if (out) {
+        return out;
+    }
+    if (game.state === 2 || game.state === 4) {
+        return game.state === 2 ? "Lobby" : "Finished";
+    }
+    if (mine && !mine.committed) {
+        return game.state === 5 ? "Your turn to pick" : "Your turn";
+    }
+    if (game.state === 5) {
+        return "Picking";
+    }
+    // A game's turn counts the turns played, so war.app shows the one being played as the next.
+    return game.turn >= 0 ? "Turn " + (game.turn + 1) : "In progress";
 }
 
 // war.app's map list (Ajax/EnumerateMaps, every map at once): each map's thumbnail folder, ID and name.
+// war.app's game data names a game's map by the same folder.
 function parseMapList(html) {
     var maps = {};
     $(new DOMParser().parseFromString(html, "text/html")).find("img").each(function () {
@@ -9835,31 +9841,25 @@ function parseMapList(html) {
     return maps;
 }
 
-function pastGameMatches(row, filter) {
-    var state = pastGameState(row);
+function pastGameMatches(game, filter, me) {
+    var state = pastGameState(game, me);
     if (filter.state === "running" ? state !== "running" && state !== "yourTurn" : filter.state && state !== filter.state) {
         return false;
     }
-    if (filter.speed && pastGameSpeed(row) !== filter.speed) {
+    if ((filter.result && pastGameResult(game, me) !== filter.result) || (filter.type && pastGameType(game) !== filter.type)
+        || (filter.map && String(game.map) !== filter.map)) {
         return false;
     }
-    if (filter.map && pastGameMapKey(row, filter.knownMaps) !== filter.map) {
-        return false;
-    }
-    var players = pastGamePlayers(row);
+    var players = pastGamePlayerCount(game);
     if ((filter.minPlayers && players < filter.minPlayers) || (filter.maxPlayers && players > filter.maxPlayers)
         || (filter.size === "oneVsOne" && players !== 2) || (filter.size === "more" && players <= 2)) {
         return false;
     }
     var query = String(filter.query || "").trim().toLowerCase();
-    if (!query) {
-        return true;
-    }
-    var names = [$(row).find("td").eq(1).find("a").first().text()].concat($(row).find(".MyGamesGameBox").map(function () {
-        return String($(this).attr("title") || "").split(": ")[0];
-    }).get());
-    return names.some(function (name) {
-        return name.toLowerCase().indexOf(query) !== -1;
+    return !query || [game.name].concat(game.players.map(function (player) {
+        return player.name;
+    })).some(function (name) {
+        return String(name || "").toLowerCase().indexOf(query) !== -1;
     });
 }
 
@@ -9869,49 +9869,25 @@ function normalizePastGamesFilter(value) {
         number = parseInt(number, 10);
         return number > 0 ? number : 0;
     };
+    var oneOf = function (choice, choices) {
+        return choices.indexOf(choice) !== -1 ? choice : "";
+    };
     return {
-        state: ["running", "yourTurn", "lobby", "finished", "out"].indexOf(value.state) !== -1 ? value.state : "",
-        speed: value.speed === "realTime" || value.speed === "multiDay" ? value.speed : "",
-        map: /^(?:\d+|unknown)$/.test(String(value.map || "")) ? String(value.map) : "",
+        state: oneOf(value.state, ["running", "yourTurn", "lobby", "finished", "out"]),
+        result: oneOf(value.result, ["won", "lost", "booted", "vote"]),
+        type: oneOf(value.type, ["quickmatch", "tournament", "seasonal", "ladder", "mtl", "clanWar", "other"]),
+        map: /^\d+$/.test(String(value.map || "")) ? String(value.map) : "",
         minPlayers: count(value.minPlayers),
         maxPlayers: count(value.maxPlayers),
-        size: value.size === "oneVsOne" || value.size === "more" ? value.size : "",
+        size: oneOf(value.size, ["oneVsOne", "more"]),
         reversed: value.reversed === true,
         query: typeof value.query === "string" ? value.query : ""
     };
 }
 
-function orderPastGames(tbody, reversed) {
-    var rows = $(tbody).children("tr.GameRow");
-    var next = rows.length ? Math.max.apply(null, rows.map(function () {
-        return Number($(this).attr("data-tuyd-order")) || 0;
-    }).get()) + 1 : 0;
-    rows.each(function () {
-        if (!$(this).attr("data-tuyd-order")) {
-            $(this).attr("data-tuyd-order", next++);
-        }
-    });
-    var sorted = rows.get().sort(function (a, b) {
-        var difference = Number($(a).attr("data-tuyd-order")) - Number($(b).attr("data-tuyd-order"));
-        return reversed ? -difference : difference;
-    });
-    var changed = sorted.some(function (row, i) {
-        return row !== rows[i];
-    });
-    if (changed) {
-        $(tbody).append(sorted);
-    }
-    return changed;
-}
-
-function applyPastGamesFilter(table, filter) {
-    var rows = $(table).find("tbody tr.GameRow");
-    var shown = rows.filter(function () {
-        return pastGameMatches(this, filter);
-    });
-    rows.not(shown).addClass("tuyd-pastHidden");
-    shown.removeClass("tuyd-pastHidden");
-    $("#PastGamesFilterCount").text(shown.length === rows.length ? "" : shown.length + " of " + rows.length + " shown");
+function pastGamesFilterIsSet(filter) {
+    return !!(filter.state || filter.result || filter.type || filter.map || filter.minPlayers || filter.maxPlayers
+        || filter.size || filter.reversed || String(filter.query || "").trim());
 }
 
 var MAP_NAMES_KEY = "tidyUpYourDashboard.mapNames";
@@ -9941,206 +9917,1296 @@ function loadMapNames(callback) {
     });
 }
 
-// The maps of the games on this page, by name, with how many games each.
-function pastGameMapOptions(rows, maps, selected, known) {
+// The maps of your games, by name, with how many games each. Maps missing from war.app's map list
+// (unpublished ones) come last, by number.
+function pastGameMapOptions(games, maps, selected) {
     var counts = {};
-    $(rows).each(function () {
-        var key = pastGameMapKey(this, known);
-        counts[key] = (counts[key] || 0) + 1;
+    games.forEach(function (game) {
+        counts[game.map] = (counts[game.map] || 0) + 1;
     });
     if (selected && !counts[selected]) {
         counts[selected] = 0;
     }
     return Object.keys(counts).map(function (key) {
-        return { key: key, name: key === "unknown" ? "Map not shown" : maps[key] ? maps[key].name : "Map " + key, games: counts[key] };
+        return { key: key, name: maps[key] ? maps[key].name : null, games: counts[key] };
     }).sort(function (a, b) {
-        return (a.key === "unknown") - (b.key === "unknown") || a.name.localeCompare(b.name);
+        return (a.name === null) - (b.name === null) || (a.name === null ? Number(a.key) - Number(b.key) : a.name.localeCompare(b.name));
+    }).map(function (option) {
+        option.name = option.name === null ? "Map " + option.key : option.name;
+        return option;
     });
 }
 
+// war.app's game dates count milliseconds from the start of 2000.
+function pastGameDate(game) {
+    return new Date(Date.UTC(2000, 0, 1) + game.date).toISOString().slice(0, 10);
+}
+
+function pastGamesListHtml(games, me, maps) {
+    var rows = games.map(function (game) {
+        var others = game.players.filter(function (player) {
+            return player !== pastGamePlayer(game, me) && player.state !== 5 && player.state !== 6;
+        });
+        var names = others.slice(0, 8).map(function (player) {
+            return player.state === 4 ? "<b>" + htmlEscape(player.name) + "</b>" : htmlEscape(player.name);
+        }).join(", ") + (others.length > 8 ? " and " + (others.length - 8) + " more" : "");
+        var meta = [pastGameDate(game)];
+        if (maps[game.map]) {
+            meta.push(maps[game.map].name);
+        }
+        var result = pastGameResult(game, me);
+        return '<tr><td><a href="/MultiPlayer?GameID=' + htmlEscape(game.id) + '">' + htmlEscape(game.name || "Game " + game.id) + "</a>"
+            + '<div class="tuydPastMeta">' + htmlEscape(meta.join(" · ")) + "</div></td>"
+            + '<td title="' + htmlEscape(others.map(function (player) {
+                return player.name;
+            }).join(", ")) + '">' + names + "</td>"
+            + '<td class="tuydPastResult' + (result ? " tuydPast-" + result : "") + '">' + htmlEscape(pastGameStatusText(game, me)) + "</td>"
+            + "<td>" + (game.turn > 0 ? game.turn : "") + "</td></tr>";
+    }).join("");
+    return '<table class="tuydPastList"><thead><tr><td>Game</td><td>Players</td><td>Result</td><td title="Number of turns played">Turns</td></tr></thead><tbody>' + rows + "</tbody></table>";
+}
+
+// The filters search your whole history: the first search reads every page of Past Games (loadPastGames),
+// and while any filter is set, the games that match replace war.app's table.
 function setupPastGamesFilter() {
     var table = $("#MyGamesTable");
     if (!table.length) {
         return;
     }
-    Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "pastGamesFilter", function (setting) {
-        var filter = normalizePastGamesFilter(setting && setting.value);
-        filter.query = "";
-        addCSS(`
-            #MyGamesTable tr.tuyd-pastHidden { display: none; }
-            #PastGamesFilterBar td { padding: 6px 8px 10px; }
-            #PastGamesFilterCount { white-space: nowrap; }
-            #PastGamesFilterBar input, #PastGamesFilterBar select { display: inline-block; width: auto; margin-right: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
-            #PastGamesFilterBar input[type=search] { width: 220px; max-width: 100%; }
-            #PastGamesFilterBar input[type=number] { width: 52px; margin-right: 4px; }
-            #PastGamesFilterBar select[name=map] { max-width: 220px; }
-            #PastGamesFilterBar .tuydPastRow { margin-top: 6px; }
-            #PastGamesFilterBar .tuydMapFind { margin-left: 4px; color: #999; white-space: nowrap; }
-            #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }
-            #PastGamesFilterBar input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
-            #PastGamesFilterCount { color: #999; }
-        `);
-        var bar = $(`<tr id="PastGamesFilterBar"><td colspan="3">
-            <input type="search" name="query" placeholder="Game or player name">
-            <select name="state">
-                <option value="">All games</option>
-                <option value="running">In progress</option>
-                <option value="yourTurn">Your turn</option>
-                <option value="lobby">Lobby</option>
-                <option value="finished">Finished</option>
-                <option value="out" title="Surrendered, booted, eliminated or declined">You're out</option>
+    addCSS(`
+        #PastGamesFilterBar td { padding: 6px 8px 10px; }
+        #PastGamesFilterBar input, #PastGamesFilterBar select { display: inline-block; width: auto; margin-right: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+        #PastGamesFilterBar input[type=search] { width: 220px; max-width: 100%; }
+        #PastGamesFilterBar input[type=number] { width: 52px; margin-right: 4px; }
+        #PastGamesFilterBar select[name=map] { max-width: 220px; }
+        #PastGamesFilterBar .tuydPastRow { margin-top: 6px; }
+        #PastGamesFilterBar label { font-weight: normal; margin: 0 8px 0 0; }
+        #PastGamesFilterBar input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
+        #tuydPastResults { margin: 4px 0 16px; color: #ccc; }
+        #tuydPastResults .tuydPastHead { margin: 4px 8px 8px; color: #999; }
+        #tuydPastResults .tuydPastList { width: 100%; }
+        #tuydPastResults .tuydPastList td { padding: 5px 8px; border-top: 1px solid #333; vertical-align: top; }
+        #tuydPastResults .tuydPastList thead td { color: #999; border-top: 0; }
+        #tuydPastResults .tuydPastList td:last-child { text-align: right; }
+        #tuydPastResults .tuydPastList a { color: #fff; }
+        #tuydPastResults .tuydPastMeta { color: #888; font-size: 12px; }
+        #tuydPastResults .tuydPastResult { white-space: nowrap; }
+        #tuydPastResults .tuydPast-won { color: #7c7; }
+        #tuydPastResults .tuydPast-lost, #tuydPastResults .tuydPast-booted { color: #e77; }
+        #tuydPastResults .tuydPastMore { margin: 8px; }
+    `);
+    var bar = $(`<tr id="PastGamesFilterBar"><td colspan="3">
+        <input type="search" name="query" placeholder="Game or player name">
+        <select name="state">
+            <option value="">All games</option>
+            <option value="running">In progress</option>
+            <option value="yourTurn">Your turn</option>
+            <option value="lobby">Lobby</option>
+            <option value="finished">Finished</option>
+            <option value="out" title="Games still going that you were eliminated, booted or surrendered from, or declined">You're out</option>
+        </select>
+        <select name="result">
+            <option value="">Any result</option>
+            <option value="won">Won</option>
+            <option value="lost">Eliminated or surrendered</option>
+            <option value="booted">Booted</option>
+            <option value="vote">Ended by vote</option>
+        </select>
+        <select name="type">
+            <option value="">Any kind of game</option>
+            <option value="quickmatch">Quickmatch</option>
+            <option value="tournament">Tournament</option>
+            <option value="seasonal">Seasonal Ladder</option>
+            <option value="ladder" title="1 v 1, 2 v 2, 3 v 3 and Real-Time Ladder">Other ladders</option>
+            <option value="mtl">MTL</option>
+            <option value="clanWar">Clan War</option>
+            <option value="other">Other games</option>
+        </select>
+        <label><input type="checkbox" name="reversed">Oldest first</label>
+        <div class="tuydPastRow">
+            <select name="map" title="The maps of your games"><option value="">Any map</option></select>
+            <select name="size">
+                <option value="">Any number of players</option>
+                <option value="oneVsOne">1 v 1</option>
+                <option value="more">More than 2 players</option>
             </select>
-            <select name="speed">
-                <option value="">Any speed</option>
-                <option value="realTime" title="Boot time of an hour or less">Real-time</option>
-                <option value="multiDay">Multi-day</option>
-            </select>
-            <label><input type="checkbox" name="reversed">Reverse order</label>
-            <span id="PastGamesFilterCount" title="Filters the games on this page. Number per page shows up to 200."></span>
-            <div class="tuydPastRow">
-                <select name="map" title="The maps of the games on this page"><option value="">Any map</option></select>
-                <select name="size">
-                    <option value="">Any number of players</option>
-                    <option value="oneVsOne">1 v 1</option>
-                    <option value="more">More than 2 players</option>
-                </select>
-                <label>Players from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"></label>
-                <span class="tuydMapFind"></span>
-            </div>
-        </td></tr>`);
-        bar.find("[name=state]").val(filter.state);
-        bar.find("[name=speed]").val(filter.speed);
-        bar.find("[name=reversed]").prop("checked", filter.reversed);
-        bar.find("[name=size]").val(filter.size);
-        bar.find("[name=minPlayers]").val(filter.minPlayers || "");
-        bar.find("[name=maxPlayers]").val(filter.maxPlayers || "");
-        table.children("thead").first().append(bar);
-        var tbody = table.children("tbody").first();
-        var maps = {};
-        var known = storedGameMaps();
-        filter.knownMaps = known;
-        var finding = null;
-        var unknownGames = function () {
-            return tbody.children("tr.GameRow").filter(function () {
-                return pastGameMapKey(this, known) === "unknown" && !(finding && finding.tried[$(this).attr("gameid")]);
-            }).map(function () {
-                return $(this).attr("gameid");
-            }).get();
+            <label>Players from <input type="number" name="minPlayers" min="0" step="1"> to <input type="number" name="maxPlayers" min="0" step="1"></label>
+        </div>
+    </td></tr>`).appendTo(table.children("thead").first());
+    var results = $('<div id="tuydPastResults"></div>').insertAfter(table).hide();
+    var filter = normalizePastGamesFilter({});
+    var me = { id: null, name: null };
+    var games = null;
+    var loading = false;
+    var failed = false;
+    var progress = "";
+    var maps = {};
+    var mapsLoading = false;
+    var limit = 100;
+    var fillMaps = function () {
+        var select = bar.find("[name=map]");
+        select.children("option").not("[value='']").remove();
+        pastGameMapOptions(games || [], maps, filter.map).forEach(function (option) {
+            select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")"));
+        });
+        select.val(filter.map);
+    };
+    var load = function () {
+        if (games || loading) {
+            return;
+        }
+        loading = true;
+        if (!mapsLoading) {
+            mapsLoading = true;
+            loadMapNames(function (names) {
+                maps = names;
+                fillMaps();
+                render();
+            });
+        }
+        Promise.resolve(signedInPlayerId()).then(function (id) {
+            me.id = id;
+            me.name = !id && window.WlPlayer ? WlPlayer.Name : null;
+            return loadPastGames(id, 10 * 60 * 1000, function (done, total) {
+                progress = done.toLocaleString("en-US") + " of " + total.toLocaleString("en-US");
+                render();
+            });
+        }).then(function (loaded) {
+            games = loaded.games;
+            loading = false;
+            fillMaps();
+            render();
+        }, function (error) {
+            log("Past Games: " + (error && error.message || error && error.statusText || error));
+            loading = false;
+            failed = true;
+            render();
+        });
+    };
+    var render = function () {
+        var set = pastGamesFilterIsSet(filter);
+        table.children("tbody").toggle(!set);
+        $("#PagerContainer").toggle(!set);
+        results.toggle(set);
+        if (!set) {
+            return;
+        }
+        var back = '<a href="#" class="tuydPastBack">Back to war.app\'s list</a>';
+        if (!games) {
+            if (!failed) {
+                load();
+            }
+            results.html('<div class="tuydPastHead">' + (failed ? 'Couldn\'t read your games. <a href="#" class="tuydPastRetry">Try again</a>'
+                : "Reading your games" + (progress ? ": " + htmlEscape(progress) : "") + "…") + " · " + back + "</div>");
+            return;
+        }
+        var shown = games.filter(function (game) {
+            return pastGameMatches(game, filter, me);
+        });
+        if (filter.reversed) {
+            shown.reverse();
+        }
+        results.html('<div class="tuydPastHead">' + shown.length.toLocaleString("en-US") + " of " + games.length.toLocaleString("en-US")
+            + " games · " + back + "</div>"
+            + (shown.length ? pastGamesListHtml(shown.slice(0, limit), me, maps) : '<div class="tuydPastHead">No game matches.</div>')
+            + (shown.length > limit ? '<div class="tuydPastMore"><a href="#" class="tuydPastShowMore">Show ' + Math.min(100, shown.length - limit) + " more</a></div>" : ""));
+    };
+    bar.on("input change", "input, select", function () {
+        filter = normalizePastGamesFilter({
+            query: bar.find("[name=query]").val(),
+            state: bar.find("[name=state]").val(),
+            result: bar.find("[name=result]").val(),
+            type: bar.find("[name=type]").val(),
+            reversed: bar.find("[name=reversed]").prop("checked"),
+            map: bar.find("[name=map]").val(),
+            size: bar.find("[name=size]").val(),
+            minPlayers: bar.find("[name=minPlayers]").val(),
+            maxPlayers: bar.find("[name=maxPlayers]").val()
+        });
+        limit = 100;
+        render();
+    }).on("focus", "[name=map]", load);
+    results.on("click", ".tuydPastBack", function (event) {
+        event.preventDefault();
+        bar.find("input[type=search], input[type=number], select").val("");
+        bar.find("[name=reversed]").prop("checked", false);
+        filter = normalizePastGamesFilter({});
+        render();
+    }).on("click", ".tuydPastRetry", function (event) {
+        event.preventDefault();
+        failed = false;
+        render();
+    }).on("click", ".tuydPastShowMore", function (event) {
+        event.preventDefault();
+        limit += 100;
+        render();
+    });
+}
+
+var QUICKMATCH_GAMES_KEY = "tidyUpYourDashboard.quickmatchGames";
+var QUICKMATCH_TEMPLATES_KEY = "tidyUpYourDashboard.quickmatchTemplates";
+var QUICKMATCH_VIEW_KEY = "tidyUpYourDashboard.quickmatchView";
+var PAST_GAMES_KEY = "tidyUpYourDashboard.pastGames";
+
+// war.app's Past Games pager posts Offset, Sort and PerPage to the page and gets its games back as hex: the
+// total, then the games in the order ujs.js reads them (GameInfo, GameInfoPlayer, GameInfoSettings and the
+// tournament info). Integers and doubles are little-endian, a bool or enum is a byte, a text is a "has value"
+// byte, a 7-bit length and UTF-8, a list is a count (-1 for none), and an optional value has a "has value"
+// byte first. Only the fields used here are kept. If war.app changes the layout, this returns null.
+function parsePastGamesData(hex) {
+    hex = String(hex || "").trim();
+    if (!/^(?:[0-9a-f]{2})+$/i.test(hex)) {
+        return null;
+    }
+    var bytes = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    var view = new DataView(bytes.buffer);
+    var decoder = new TextDecoder("utf-8", { fatal: true });
+    var p = 0;
+    var need = function (n) {
+        if (p + n > bytes.length) {
+            throw new Error("Past Games data ends early");
+        }
+    };
+    var byte = function () {
+        need(1);
+        return bytes[p++];
+    };
+    var bool = function () {
+        return byte() !== 0;
+    };
+    var int = function () {
+        need(4);
+        p += 4;
+        return view.getInt32(p - 4, true);
+    };
+    var double = function () {
+        need(8);
+        p += 8;
+        return view.getFloat64(p - 8, true);
+    };
+    var text = function () {
+        if (!bool()) {
+            return null;
+        }
+        var length = 0;
+        var shift = 0;
+        var b;
+        do {
+            b = byte();
+            length |= (b & 127) << shift;
+            shift += 7;
+        } while (b & 128 && shift < 35);
+        need(length);
+        p += length;
+        return decoder.decode(bytes.subarray(p - length, p));
+    };
+    var list = function (item) {
+        var count = int();
+        var items = [];
+        for (var i = 0; i < count; i++) {
+            items.push(item());
+        }
+        return items;
+    };
+    var player = function () {
+        if (!bool()) {
+            return null;
+        }
+        if (bool()) {
+            int();
+        }
+        bool();
+        var committed = bool();
+        int();
+        bool();
+        var name = text();
+        var id = int();
+        var state = byte();
+        var team = int();
+        bool();
+        return { id: id, name: name, state: state, team: team, committed: committed };
+    };
+    var settings = function () {
+        if (bool()) {
+            double();
+        }
+        bool();
+        int();
+        text();
+        bool();
+        bool();
+        if (bool()) {
+            int();
+        }
+        double();
+        bool();
+        int();
+        bool();
+        bool();
+        double();
+        bool();
+        double();
+        int();
+        byte();
+        bool();
+        bool();
+        int();
+        double();
+        bool();
+        bool();
+        byte();
+    };
+    var tournament = function () {
+        if (bool()) {
+            int();
+            int();
+            if (bool()) {
+                int();
+            }
+            if (bool()) {
+                list(function () {
+                    int();
+                    int();
+                });
+            }
+            if (bool()) {
+                need(2);
+                p += 2;
+            }
+        }
+        byte();
+        int();
+    };
+    var game = function () {
+        int();
+        double();
+        text();
+        int();
+        int();
+        double();
+        byte();
+        var id = int();
+        bool();
+        var date = double();
+        var map = int();
+        int();
+        if (bool()) {
+            int();
+        }
+        var name = text();
+        var turn = int();
+        if (bool()) {
+            list(int);
+        }
+        var players = bool() ? list(player) : [];
+        bool();
+        bool();
+        bool();
+        bool();
+        if (bool()) {
+            settings();
+        }
+        var state = int();
+        bool();
+        double();
+        var inTournament = bool();
+        if (inTournament) {
+            tournament();
+        }
+        double();
+        return {
+            id: id,
+            name: name || "",
+            state: state,
+            turn: turn,
+            date: date,
+            map: map,
+            tournament: inTournament,
+            players: players.filter(Boolean)
         };
-        var showFinder = function () {
-            var place = bar.find(".tuydMapFind").empty();
-            if (finding) {
-                place.text("Finding maps: " + finding.done + " of " + finding.total + " ").append('<a href="#" class="tuydMapFindStop">Stop</a>');
-                return;
+    };
+    try {
+        var total = int();
+        var games = list(game);
+        return p === bytes.length ? { total: total, games: games } : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Reads every page of Past Games, newest first. A game that ends during the scan moves up a page, so
+// games are kept once by ID.
+function fetchAllPastGames(fetchPage, pageSize, onProgress) {
+    var games = [];
+    var seen = {};
+    var next = function (offset) {
+        return fetchPage(offset, pageSize).then(function (page) {
+            if (!page) {
+                throw new Error("war.app's game list couldn't be read");
             }
-            var missing = unknownGames().length;
-            if (missing) {
-                $('<a href="#" class="tuydMapFindStart"></a>').text("Find the maps of " + missing + " game" + (missing === 1 ? "" : "s"))
-                    .attr("title", "Opens each of these games in the background, a couple of seconds each, to read its map. Remembered in this browser.")
-                    .appendTo(place);
+            page.games.forEach(function (game) {
+                if (!seen[game.id]) {
+                    seen[game.id] = true;
+                    games.push(game);
+                }
+            });
+            if (onProgress) {
+                onProgress(Math.min(offset + page.games.length, page.total), page.total);
             }
+            return page.games.length && offset + page.games.length < page.total ? next(offset + page.games.length) : games;
+        });
+    };
+    return next(0);
+}
+
+function fetchPastGamesPage(offset, count) {
+    return Promise.resolve($.ajax({
+        url: "/MultiPlayer/PastGames",
+        type: "POST",
+        data: { Offset: offset, Sort: 3, PerPage: count },
+        dataType: "text"
+    })).then(parsePastGamesData);
+}
+
+// Every game in your Past Games, newest first: a request per 200 games, about 8 seconds for 5,000. Kept for
+// this tab's session and read again when older than `maxAge`; Past Games and Quickmatch share it.
+function loadPastGames(playerId, maxAge, onProgress) {
+    try {
+        var cached = JSON.parse(sessionStorage.getItem(PAST_GAMES_KEY));
+        if (cached && cached.player === playerId && Array.isArray(cached.games) && Date.now() - cached.time < maxAge) {
+            return Promise.resolve({ time: cached.time, games: cached.games });
+        }
+    } catch (e) {
+        // An unreadable copy is read again.
+    }
+    return fetchAllPastGames(fetchPastGamesPage, 200, onProgress).then(function (games) {
+        var time = Date.now();
+        try {
+            sessionStorage.setItem(PAST_GAMES_KEY, JSON.stringify({ player: playerId, time: time, games: games }));
+        } catch (e) {
+            try {
+                sessionStorage.removeItem(PAST_GAMES_KEY);
+            } catch (ignored) {
+                // Without storage the games are read again next time.
+            }
+        }
+        return { time: time, games: games };
+    });
+}
+
+// war.app names Quickmatch games "QM: A vs B", or "QM: 2v2" for team templates.
+function isQuickmatchGameName(name) {
+    return /^QM: /.test(String(name || ""));
+}
+
+function quickmatchResult(game, me) {
+    var mine = pastGamePlayer(game, me);
+    if (!mine || mine.state === 5 || mine.state === 6) {
+        return null;
+    }
+    return game.state === 4 ? pastGameResult(game, me) : "playing";
+}
+
+function quickmatchOpponents(game, me) {
+    var mine = pastGamePlayer(game, me);
+    return game.players.filter(function (player) {
+        return player !== mine && (!mine || mine.team === -1 || player.team !== mine.team);
+    });
+}
+
+function quickmatchResultText(result, turn) {
+    return {
+        won: turn > 0 ? "Won in " + turn : "Won",
+        lost: "Lost",
+        booted: "Booted",
+        vote: "Ended by vote",
+        playing: "In progress"
+    }[result] || "";
+}
+
+// The record, by template and by opponent, of the Quickmatch games in `games` (newest first). `templates`
+// holds what's been read from each game, by GameID; a game that turned out not to be a Quickmatch game is
+// left out. Boot losses count as losses only when `countBoots` is set. Turns average the games that got
+// past their first turn.
+function quickmatchStats(games, me, templates, countBoots) {
+    var record = function () {
+        return { wins: 0, losses: 0, bootLosses: 0, votes: 0, turns: 0, turnGames: 0, games: [] };
+    };
+    var total = record();
+    total.playing = 0;
+    var byTemplate = {};
+    var byOpponent = {};
+    var groupIn = function (groups, key, fields) {
+        if (!groups[key]) {
+            groups[key] = record();
+            Object.keys(fields).forEach(function (field) {
+                groups[key][field] = fields[field];
+            });
+        }
+        return groups[key];
+    };
+    var count = function (entry, result, game, summary) {
+        if (result === "won") {
+            entry.wins++;
+        } else if (result === "lost" || (result === "booted" && countBoots)) {
+            entry.losses++;
+        } else if (result === "vote") {
+            entry.votes++;
+        }
+        if (result === "booted") {
+            entry.bootLosses++;
+        }
+        if (game.turn > 0 && (result !== "booted" || countBoots)) {
+            entry.turns += game.turn;
+            entry.turnGames++;
+        }
+        entry.games.push(summary);
+    };
+    games.forEach(function (game) {
+        var template = templates[game.id] || null;
+        if (!isQuickmatchGameName(game.name) || (template && template.none)) {
+            return;
+        }
+        var result = quickmatchResult(game, me);
+        if (result === "playing") {
+            total.playing++;
+        }
+        if (!result || result === "playing") {
+            return;
+        }
+        var opponents = quickmatchOpponents(game, me);
+        var summary = {
+            id: game.id,
+            result: result,
+            turn: game.turn,
+            template: template ? template.name : null,
+            opponents: opponents.map(function (player) {
+                return player.name;
+            })
         };
-        // One game at a time in a hidden frame, until war.app's data for it has its map.
-        var findNext = function () {
-            if (!finding) {
+        count(total, result, game, summary);
+        var templateKey = template ? template.name : "";
+        count(groupIn(byTemplate, templateKey, { key: templateKey, name: template ? template.name : null, templateId: template ? template.id : null }), result, game, summary);
+        opponents.forEach(function (player) {
+            count(groupIn(byOpponent, String(player.id), { key: String(player.id), name: player.name }), result, game, summary);
+        });
+    });
+    var finish = function (entry) {
+        var played = entry.wins + entry.losses;
+        entry.played = played;
+        entry.rate = played ? entry.wins / played : null;
+        entry.averageTurns = entry.turnGames ? entry.turns / entry.turnGames : null;
+        return entry;
+    };
+    var list = function (groups) {
+        return Object.keys(groups).map(function (key) {
+            return finish(groups[key]);
+        }).sort(function (a, b) {
+            return b.games.length - a.games.length || (a.name === null) - (b.name === null) || String(a.name).localeCompare(String(b.name));
+        });
+    };
+    finish(total);
+    total.templates = list(byTemplate);
+    total.opponents = list(byOpponent);
+    return total;
+}
+
+function quickmatchRateText(entry) {
+    return entry.rate === null ? "–" : (entry.rate * 100).toFixed(1) + "%";
+}
+
+function quickmatchRecordText(entry) {
+    return entry.wins + " W – " + entry.losses + " L (" + quickmatchRateText(entry) + ")";
+}
+
+// A Quickmatch game's settings, in war.app's data for the game (UJS_Hooks.za), are the object that holds the
+// game's name. Next to it they hold war.app's "This game was created by the Quickmatch…" message, the
+// template's name and its ID. The field names are minified, so they're found by value: the message, the one
+// other text, and the one optional number ({ val }) big enough to be a template ID. Returns null until the
+// game has loaded, and { none: true } for a game whose settings have no Quickmatch message.
+function gameTemplateFromData(data, gameName) {
+    var seen = new Set();
+    var queue = [data];
+    var settings = null;
+    while (queue.length && !settings && seen.size < 20000) {
+        var item = queue.shift();
+        if (!item || typeof item !== "object" || seen.has(item)) {
+            continue;
+        }
+        seen.add(item);
+        var keys;
+        try {
+            keys = Object.keys(item);
+        } catch (e) {
+            continue;
+        }
+        if (item !== data && keys.length >= 20 && keys.some(function (key) {
+            return item[key] === gameName;
+        })) {
+            settings = item;
+            break;
+        }
+        keys.forEach(function (key) {
+            try {
+                if (item[key] && typeof item[key] === "object") {
+                    queue.push(item[key]);
+                }
+            } catch (e) {
+                // A getter that throws holds nothing needed here.
+            }
+        });
+    }
+    if (!settings) {
+        return null;
+    }
+    var values = Object.keys(settings).map(function (key) {
+        return settings[key];
+    });
+    var texts = values.filter(function (value) {
+        return typeof value === "string" && value.trim() && value !== gameName;
+    });
+    if (!texts.some(function (value) {
+        return /created by the Quickmatch/i.test(value);
+    })) {
+        return { none: true };
+    }
+    var names = texts.filter(function (value) {
+        return !/created by the Quickmatch/i.test(value);
+    });
+    var ids = values.filter(function (value) {
+        return value && typeof value === "object" && typeof value.val === "number" && value.val >= 1000;
+    });
+    return names.length === 1 ? { name: names[0].trim(), id: ids.length === 1 ? ids[0].val : null } : null;
+}
+
+function storedQuickmatchTemplates() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(QUICKMATCH_TEMPLATES_KEY));
+        return stored && typeof stored === "object" ? stored : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// Starting a cell with = + - or @ makes a spreadsheet read it as a formula, so such cells get a leading '.
+function csvCell(value) {
+    var text = value === null || value === undefined ? "" : String(value);
+    if (/^[=+\-@\t\r]/.test(text)) {
+        text = "'" + text;
+    }
+    return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
+function quickmatchCsv(games, me, templates, origin) {
+    var rows = [["Game ID", "Game", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
+    games.forEach(function (game) {
+        var template = templates[game.id] || null;
+        var result = isQuickmatchGameName(game.name) && !(template && template.none) ? quickmatchResult(game, me) : null;
+        if (!result) {
+            return;
+        }
+        rows.push([game.id, game.name, quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
+            template ? template.name : "", template && template.id ? template.id : "",
+            quickmatchOpponents(game, me).map(function (player) {
+                return player.name;
+            }).join("; "), origin + "/MultiPlayer?GameID=" + game.id]);
+    });
+    return rows.map(function (row) {
+        return row.map(csvCell).join(",");
+    }).join("\r\n") + "\r\n";
+}
+
+function quickmatchSummaryText(stats, count) {
+    var lines = ["Quickmatch: " + stats.wins + "W - " + stats.losses + "L (" + quickmatchRateText(stats) + "), " + stats.games.length + " games"];
+    var section = function (title, groups) {
+        var named = groups.filter(function (entry) {
+            return entry.name !== null && entry.played;
+        }).slice(0, count);
+        if (named.length) {
+            lines.push("", title);
+            named.forEach(function (entry) {
+                lines.push(entry.name + ": " + entry.wins + "W - " + entry.losses + "L (" + quickmatchRateText(entry) + ")");
+            });
+        }
+    };
+    section("Top templates:", stats.templates);
+    section("Top opponents:", stats.opponents);
+    return lines.join("\n");
+}
+
+// One tab of the Quickmatch panel: the templates or the opponents, filtered by `view.query`, sorted by
+// `view.sort`, `view.limit` rows at most, with the games of the row whose key is `view.open` listed under it.
+function quickmatchTableHtml(groups, kind, view) {
+    var columns = [
+        { key: "name", label: "" },
+        { key: "games", label: "Games" },
+        { key: "wins", label: "Won" },
+        { key: "losses", label: "Lost" },
+        { key: "rate", label: "Win %" },
+        { key: "averageTurns", label: "Turns", title: "Average number of turns" }
+    ];
+    var query = String(view.query || "").trim().toLowerCase();
+    var unread = kind === "templates" ? "Template not read yet" : "";
+    var rows = groups.filter(function (entry) {
+        return !query || String(entry.name === null ? unread : entry.name).toLowerCase().indexOf(query) !== -1;
+    });
+    var sort = view.sort || { key: "games", descending: true };
+    var value = function (entry) {
+        if (sort.key === "name") {
+            return entry.name === null ? "￿" : entry.name.toLowerCase();
+        }
+        if (sort.key === "games") {
+            return entry.games.length;
+        }
+        return entry[sort.key] === null ? -1 : entry[sort.key];
+    };
+    rows = rows.slice().sort(function (a, b) {
+        var x = value(a);
+        var y = value(b);
+        var order = x < y ? -1 : x > y ? 1 : 0;
+        return (sort.descending ? -order : order) || b.games.length - a.games.length;
+    });
+    var shown = view.limit ? rows.slice(0, view.limit) : rows;
+    var head = columns.map(function (column) {
+        var label = column.key === "name" ? (kind === "templates" ? "Template" : "Opponent") : column.label;
+        var arrow = sort.key === column.key ? (sort.descending ? " ▾" : " ▴") : "";
+        return '<td data-sort="' + column.key + '"' + (column.title ? ' title="' + htmlEscape(column.title) + '"' : "") + ">" + htmlEscape(label) + arrow + "</td>";
+    }).join("");
+    var gameLinks = function (entry) {
+        var limit = 100;
+        return entry.games.slice(0, limit).map(function (game) {
+            var other = kind === "templates" ? (game.opponents.length ? " vs " + game.opponents.join(", ") : "") : (game.template ? " on " + game.template : "");
+            return '<span class="tuydQmGame tuydQm-' + htmlEscape(game.result) + '"><a href="/MultiPlayer?GameID=' + htmlEscape(game.id) + '">'
+                + htmlEscape(quickmatchResultText(game.result, game.turn)) + "</a>" + htmlEscape(other) + "</span>";
+        }).join(" · ") + (entry.games.length > limit ? " · " + (entry.games.length - limit) + " older games in the CSV" : "");
+    };
+    var body = shown.map(function (entry) {
+        var name = entry.name === null ? '<i>' + htmlEscape(unread) + "</i>" : htmlEscape(entry.name);
+        var templateId = parseInt(entry.templateId, 10);
+        if (kind === "templates" && templateId > 0) {
+            name += ' <a class="tuydQmTemplateLink" href="/MultiPlayer?TemplateID=' + templateId + '" title="Create a game with this template">#' + templateId + "</a>";
+        }
+        var open = view.open === entry.key;
+        return '<tr class="tuydQmRow' + (open ? " tuydQmOpen" : "") + '" data-key="' + htmlEscape(entry.key) + '" title="Show these games">'
+            + "<td>" + name + "</td><td>" + entry.games.length + "</td><td>" + entry.wins + "</td><td>" + entry.losses + "</td><td>"
+            + quickmatchRateText(entry) + "</td><td>" + (entry.averageTurns === null ? "–" : "~" + Math.round(entry.averageTurns)) + "</td></tr>"
+            + (open ? '<tr class="tuydQmGames"><td colspan="6">' + gameLinks(entry) + "</td></tr>" : "");
+    }).join("");
+    if (!rows.length) {
+        body = '<tr><td colspan="6">' + (query ? "Nothing matches your search." : "No finished Quickmatch games.") + "</td></tr>";
+    } else if (shown.length < rows.length) {
+        body += '<tr><td colspan="6"><a href="#" class="tuydQmAll">Show all ' + rows.length + "</a></td></tr>";
+    }
+    return '<table class="dataTable tuydQmTable"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
+}
+
+function readQuickmatchView() {
+    var view = {};
+    try {
+        view = JSON.parse(localStorage.getItem(QUICKMATCH_VIEW_KEY)) || {};
+    } catch (e) {
+        view = {};
+    }
+    return {
+        countBoots: view.countBoots === true,
+        tab: view.tab === "opponents" ? "opponents" : "templates"
+    };
+}
+
+function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    var area = $("<textarea>").val(text).css({ position: "fixed", left: "-10000px" }).appendTo("body");
+    area[0].select();
+    var copied = document.execCommand("copy");
+    area.remove();
+    return copied ? Promise.resolve() : Promise.reject(new Error("copy failed"));
+}
+
+function downloadText(name, text, type) {
+    var url = URL.createObjectURL(new Blob([text], { type: type }));
+    var link = $("<a>").attr({ href: url, download: name }).appendTo("body");
+    link[0].click();
+    link.remove();
+    setTimeout(function () {
+        URL.revokeObjectURL(url);
+    }, 1000);
+}
+
+function storedQuickmatchGames(playerId) {
+    try {
+        var stored = JSON.parse(localStorage.getItem(QUICKMATCH_GAMES_KEY));
+        return stored && stored.player === playerId && Array.isArray(stored.games) ? stored : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Your Quickmatch record on the Quickmatch screen: in the Settings dialog's header, next to "Your rating" on
+// each template, and by template and by opponent in a Stats dialog. war.app's viewport has no room to spare,
+// so the record sits in the empty ends of the Settings header. The games come from Past Games and are read
+// again when older than 10 minutes; each game's template is read once from the game in a hidden frame.
+function setupQuickmatchStats() {
+    var me = { id: null, name: null };
+    var ready = false;
+    var games = null;
+    var scannedAt = 0;
+    var triedAt = 0;
+    var scanning = false;
+    var failed = false;
+    var templates = storedQuickmatchTemplates();
+    var reading = null;
+    var stats = null;
+    var dialog = null;
+    var timer = null;
+    var view = readQuickmatchView();
+    view.query = "";
+    view.sort = null;
+    view.limit = 50;
+    view.openRow = null;
+    addCSS(`
+        #tuydQmSummary { position: absolute; height: 26px; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
+        #tuydQmSummary > * { pointer-events: auto; }
+        .tuydQmSummaryRecord, .tuydQmTemplateRecord { color: #e0c060; white-space: nowrap; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+        .tuydQmSummaryRecord { font-size: 14px; }
+        .tuydQmTemplateRecord { position: absolute; overflow: hidden; text-overflow: ellipsis; font-size: 14px; pointer-events: auto; }
+        .tuydQmButton { display: inline-block; padding: 0 12px; line-height: 20px; color: #fff; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            border-style: solid; border-color: #242d9a; border-width: 3px 4px; background: #242d9a padding-box;
+            border-image: var(--tuyd-button, none) 15 15 13 fill / 3px 4px stretch; }
+        .tuydQmButton:hover, .tuydQmButton:focus { color: #fff; text-decoration: none; filter: brightness(1.15); }
+        .tuydQmButton[disabled] { filter: grayscale(0.8); cursor: default; }
+        #tuydQmStats { display: flex; flex-direction: column; }
+        #tuydQmStats .tuydQmClose { position: absolute; top: -42px; right: 4px; color: #fff; font-size: 18px; text-decoration: none; }
+        #tuydQmStats .tuydQmTools, #tuydQmStats .tuydQmTemplateStatus, #tuydQmStats .tuydQmTabs { margin-top: 8px; }
+        #tuydQmStats .tuydQmRecordLine b { color: #fff; }
+        #tuydQmStats .tuydQmStatus, #tuydQmStats .tuydQmTemplateStatus, #tuydQmStats .tuydQmMeta { color: #8d8d8d; }
+        #tuydQmStats .tuydQmTemplateStatus:empty { display: none; }
+        #tuydQmStats a { color: #e0c060; }
+        #tuydQmStats label { font-weight: normal; margin: 0 12px 0 0; }
+        #tuydQmStats input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
+        #tuydQmStats input[type=search] { width: 180px; max-width: 100%; margin-left: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+        #tuydQmStats .tuydQmTabs a { margin-right: 12px; color: #babbbb; }
+        #tuydQmStats .tuydQmTabs a.tuydQmActive { color: #fff; font-weight: bold; text-decoration: none; }
+        #tuydQmStats .tuydQmTableHolder { flex: 1 1 auto; min-height: 80px; margin-top: 6px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #555 transparent; }
+        #tuydQmStats .tuydQmTable { width: 100%; }
+        #tuydQmStats .tuydQmTable td { padding: 3px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+        #tuydQmStats .tuydQmTable thead td { cursor: pointer; white-space: nowrap; color: #fff; border-top: 0; }
+        #tuydQmStats .tuydQmTable td + td { text-align: right; white-space: nowrap; }
+        #tuydQmStats .tuydQmRow { cursor: pointer; }
+        #tuydQmStats .tuydQmRow:hover, #tuydQmStats .tuydQmOpen { background: rgba(255, 255, 255, 0.06); }
+        #tuydQmStats .tuydQmGames td { text-align: left; font-size: 12px; line-height: 1.7; }
+        #tuydQmStats .tuydQmGame { white-space: nowrap; }
+        #tuydQmStats .tuydQm-won a { color: #7c7; }
+        #tuydQmStats .tuydQm-lost a, #tuydQmStats .tuydQm-booted a { color: #e77; }
+        #tuydQmStats .communityLaddersCredit { margin-top: 6px; }
+    `);
+    var scene = function () {
+        var element = ujsElement("QuickmatchScene");
+        return element && shownUjsElement(element) ? element : null;
+    };
+    var wearArt = function (element) {
+        var art = warappArt(scene() || document.body);
+        Object.keys(art).forEach(function (name) {
+            if (art[name]) {
+                element[0].style.setProperty(name, art[name]);
+            }
+        });
+    };
+    // Our own changes set off the page observer too, so only what differs is written.
+    var setText = function (element, text, title) {
+        if (element.text() !== text) {
+            element.text(text);
+        }
+        if ((element.attr("title") || "") !== (title || "")) {
+            element.attr("title", title || null);
+        }
+    };
+    var setPlace = function (element, place) {
+        Object.keys(place).forEach(function (key) {
+            var value = Math.round(place[key]) + "px";
+            if (element[0].style[key] !== value) {
+                element[0].style[key] = value;
+            }
+        });
+    };
+    var unreadGames = function () {
+        return (games || []).filter(function (game) {
+            var result = isQuickmatchGameName(game.name) ? quickmatchResult(game, me) : null;
+            return result && result !== "playing" && !templates[game.id] && !(reading && reading.tried[game.id]);
+        });
+    };
+    var stale = function () {
+        return Date.now() - Math.max(scannedAt, triedAt) > 10 * 60 * 1000;
+    };
+    var saveView = function () {
+        try {
+            localStorage.setItem(QUICKMATCH_VIEW_KEY, JSON.stringify({ countBoots: view.countBoots, tab: view.tab }));
+        } catch (e) {
+            // The view is just the default next time.
+        }
+    };
+    var recordTitle = function () {
+        var meta = [stats.games.length + " finished Quickmatch game" + (stats.games.length === 1 ? "" : "s")];
+        if (stats.playing) {
+            meta.push(stats.playing + " in progress");
+        }
+        if (stats.bootLosses && !view.countBoots) {
+            meta.push(stats.bootLosses + " boot loss" + (stats.bootLosses === 1 ? "" : "es") + " left out");
+        }
+        return meta.join(" · ");
+    };
+    var placeSummary = function () {
+        var container = scene() && ujsElement("SettingsContainer");
+        var header = container && $(container).find("[id^='ujs_HeaderText'][id$='_tmp']")[0];
+        var backing = container && $(container).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']")[0];
+        var summary = $("#tuydQmSummary");
+        if (!header || !backing) {
+            summary.remove();
+            return;
+        }
+        if (summary.parent()[0] !== container) {
+            summary.remove();
+            summary = $('<div id="tuydQmSummary"><span class="tuydQmSummaryRecord"></span><a href="#" class="tuydQmButton tuydQmStatsButton" title="Your Quickmatch record by template and by opponent (Muli\'s Userscript)">Stats</a></div>').appendTo(container);
+            wearArt(summary);
+        }
+        var origin = container.getBoundingClientRect();
+        var box = backing.getBoundingClientRect();
+        var head = header.getBoundingClientRect();
+        setPlace(summary, { left: box.left - origin.left + 16, top: head.top + head.height / 2 - origin.top - 13, width: box.width - 32 });
+        var record = summary.find(".tuydQmSummaryRecord");
+        if (stats) {
+            setText(record, quickmatchRecordText(stats), recordTitle() + " (Muli's Userscript)");
+        } else {
+            setText(record, scanning ? "Reading your games…" : failed ? "Couldn't read your games" : "", "");
+        }
+    };
+    var placeTemplateRecords = function () {
+        var byName = {};
+        (stats ? stats.templates : []).forEach(function (entry) {
+            if (entry.name !== null && entry.games.length) {
+                byName[entry.name] = entry;
+            }
+        });
+        $("[id^='ujs_YourRatingLabel']").filter(function () {
+            return /^ujs_YourRatingLabel(?:_\d+)?_tmp$/.test(this.id);
+        }).each(function () {
+            var holder = $(this).parent();
+            var tag = holder.children(".tuydQmTemplateRecord");
+            var name = $(this).closest("[id^='ujs_TemplatesSceneTemplate']").find("[id^='ujs_TemplateNameLabel']").filter(function () {
+                return /_tmp$/.test(this.id);
+            }).first().text().trim();
+            var entry = byName[name];
+            if (!entry) {
+                tag.remove();
                 return;
             }
-            var id = unknownGames()[0];
-            if (!id) {
-                finding = null;
-                update();
+            if (!tag.length) {
+                tag = $('<span class="tuydQmTemplateRecord"></span>').appendTo(holder);
+            }
+            var range = document.createRange();
+            range.selectNodeContents(this);
+            setText(tag, "· " + quickmatchRecordText(entry), entry.games.length + " game" + (entry.games.length === 1 ? "" : "s")
+                + (entry.averageTurns === null ? "" : ", ~" + Math.round(entry.averageTurns) + " turns on average") + " (Muli's Userscript)");
+            var left = this.offsetLeft + range.getBoundingClientRect().width + 8;
+            setPlace(tag, { left: left, top: this.offsetTop + (this.offsetHeight - tag[0].offsetHeight) / 2, maxWidth: Math.max(0, this.offsetLeft + this.offsetWidth - left) });
+        });
+    };
+    var renderTemplateStatus = function () {
+        var place = dialog.find(".tuydQmTemplateStatus").empty();
+        if (reading) {
+            place.text("Reading templates: " + reading.done + " of " + reading.total + " games ").append('<a href="#" class="tuydQmReadStop">Stop</a>');
+            return;
+        }
+        var unread = unreadGames().length;
+        if (unread) {
+            var minutes = Math.max(1, Math.round(unread * 1.5 / 60));
+            place.text("The template isn't known yet for " + unread + " game" + (unread === 1 ? "" : "s") + ". ");
+            $('<a href="#" class="tuydQmReadStart"></a>').text("Read " + (unread === 1 ? "it" : "them"))
+                .attr("title", "Opens each game in the background, one at a time, to read its template: about " + minutes + " minute" + (minutes === 1 ? "" : "s") + ". Remembered in this browser.")
+                .appendTo(place);
+        }
+    };
+    var renderDialog = function () {
+        dialog.find("[name=countBoots]").prop("checked", view.countBoots);
+        dialog.find(".tuydQmRescan").prop("disabled", scanning);
+        dialog.find(".tuydQmCopy, .tuydQmCsv").prop("disabled", !stats);
+        dialog.find(".tuydQmStatus").text(scanning ? "Reading your games…" : failed ? "Couldn't read your games. Try Rescan later." : scannedAt ? "Read " + new Date(scannedAt).toLocaleString() : "");
+        var line = dialog.find(".tuydQmRecordLine").empty();
+        if (!stats) {
+            return;
+        }
+        line.append($("<b>").text(quickmatchRecordText(stats)), $('<span class="tuydQmMeta">').text(" · " + recordTitle()));
+        dialog.find("[data-tab=templates]").text("Templates (" + stats.templates.length + ")").toggleClass("tuydQmActive", view.tab === "templates");
+        dialog.find("[data-tab=opponents]").text("Opponents (" + stats.opponents.length + ")").toggleClass("tuydQmActive", view.tab === "opponents");
+        renderTemplateStatus();
+        dialog.find(".tuydQmTableHolder").html(quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
+    };
+    var refresh = function () {
+        stats = games && ready ? quickmatchStats(games, me, templates, view.countBoots) : null;
+        placeSummary();
+        placeTemplateRecords();
+        if (dialog) {
+            renderDialog();
+        }
+    };
+    var readNext = function () {
+        if (!reading) {
+            return;
+        }
+        var game = unreadGames()[0];
+        if (!game) {
+            reading = null;
+            refresh();
+            return;
+        }
+        reading.tried[game.id] = true;
+        var frame = $('<iframe tabindex="-1" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 1000px; height: 800px; border: 0;"></iframe>')
+            .attr({ id: GAME_TEMPLATE_FRAME_ID, src: "/MultiPlayer?GameID=" + encodeURIComponent(game.id) }).appendTo("body");
+        var started = Date.now();
+        reading.timer = setInterval(function () {
+            var template = null;
+            try {
+                var hooks = frame[0].contentWindow.UJS_Hooks;
+                template = hooks && hooks.za ? gameTemplateFromData(hooks.za, game.name) : null;
+            } catch (e) {
+                template = null;
+            }
+            if (!template && Date.now() - started < 30000) {
                 return;
             }
-            finding.tried[id] = true;
-            var frame = $('<iframe tabindex="-1" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 1000px; height: 800px; border: 0;"></iframe>')
-                .attr({ id: GAME_MAP_FRAME_ID, src: "/MultiPlayer?GameID=" + encodeURIComponent(id) }).appendTo("body");
-            var started = Date.now();
-            finding.timer = setInterval(function () {
-                var map = null;
+            clearInterval(reading.timer);
+            frame.remove();
+            if (template) {
+                templates[game.id] = template;
                 try {
-                    var hooks = frame[0].contentWindow.UJS_Hooks;
-                    map = hooks && hooks.za && hooks.za.Map;
+                    localStorage.setItem(QUICKMATCH_TEMPLATES_KEY, JSON.stringify(templates));
                 } catch (e) {
-                    map = null;
+                    // Without storage the templates are read again next time.
                 }
-                if (!map && Date.now() - started < 30000) {
-                    return;
-                }
-                clearInterval(finding.timer);
-                frame.remove();
-                var folder = map ? gameMapFolder(map, maps) : null;
-                if (folder) {
-                    known[id] = folder;
-                    try {
-                        localStorage.setItem(GAME_MAPS_KEY, JSON.stringify(known));
-                    } catch (e) {
-                        // Without storage the maps are found again next time.
-                    }
-                } else {
-                    log("Past Games: couldn't read the map of game " + id);
-                }
-                finding.done++;
-                update();
-                findNext();
-            }, 300);
-        };
-        var fillMaps = function () {
-            showFinder();
-            var select = bar.find("[name=map]");
-            var options = pastGameMapOptions(tbody.children("tr.GameRow"), maps, filter.map, known);
-            select.children("option").not("[value='']").remove();
-            options.forEach(function (option) {
-                select.append($("<option>").val(option.key).text(option.name + " (" + option.games + ")")
-                    .attr("title", option.key === "unknown" ? "These games show a picture of the game instead of the map, so their map isn't known" : null));
-            });
-            select.val(filter.map);
-        };
-        var observer = new MutationObserver(function () {
-            update();
-        });
-        var update = function () {
-            observer.disconnect();
-            orderPastGames(tbody, filter.reversed);
-            applyPastGamesFilter(table, filter);
-            fillMaps();
-            observer.observe(tbody[0], { childList: true });
-        };
-        bar.on("input change", "input, select", function (event) {
-            filter = normalizePastGamesFilter({
-                state: bar.find("[name=state]").val(),
-                speed: bar.find("[name=speed]").val(),
-                reversed: bar.find("[name=reversed]").prop("checked"),
-                query: bar.find("[name=query]").val(),
-                map: bar.find("[name=map]").val(),
-                size: bar.find("[name=size]").val(),
-                minPlayers: bar.find("[name=minPlayers]").val(),
-                maxPlayers: bar.find("[name=maxPlayers]").val()
-            });
-            filter.knownMaps = known;
-            if (event.type === "change" && event.target.name !== "query") {
-                Database.update(Database.Table.Settings, { name: "pastGamesFilter", value: { state: filter.state, speed: filter.speed, reversed: filter.reversed, map: filter.map, size: filter.size, minPlayers: filter.minPlayers, maxPlayers: filter.maxPlayers } }, undefined);
+            } else {
+                log("Quickmatch stats: couldn't read the template of game " + game.id);
             }
-            update();
-        });
-        bar.on("click", ".tuydMapFindStart", function (event) {
-            event.preventDefault();
-            finding = { done: 0, total: unknownGames().length, tried: {}, timer: null };
-            showFinder();
-            findNext();
-        }).on("click", ".tuydMapFindStop", function (event) {
-            event.preventDefault();
-            if (finding) {
-                clearInterval(finding.timer);
+            reading.done++;
+            refresh();
+            readNext();
+        }, 300);
+    };
+    var startReading = function () {
+        reading = { done: 0, total: unreadGames().length, tried: {}, timer: null };
+        refresh();
+        readNext();
+    };
+    var scan = function (maxAge) {
+        if (scanning) {
+            return;
+        }
+        scanning = true;
+        failed = false;
+        triedAt = Date.now();
+        refresh();
+        loadPastGames(me.id, maxAge).then(function (loaded) {
+            games = loaded.games.filter(function (game) {
+                return isQuickmatchGameName(game.name);
+            });
+            scannedAt = loaded.time;
+            try {
+                localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ player: me.id, time: scannedAt, games: games }));
+            } catch (e) {
+                // Without storage Past Games is read again next time.
             }
-            $("#" + GAME_MAP_FRAME_ID).remove();
-            finding = null;
-            update();
+            scanning = false;
+            refresh();
+            var unread = unreadGames().length;
+            if (!reading && unread && unread <= 10) {
+                startReading();
+            }
+        }, function (error) {
+            log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
+            scanning = false;
+            failed = true;
+            refresh();
         });
-        update();
-        loadMapNames(function (names) {
-            maps = names;
-            fillMaps();
+    };
+    var fitDialog = function () {
+        var area = dialog.parent()[0].getBoundingClientRect();
+        var width = Math.max(300, Math.min(area.width - 32, 760));
+        dialog.css({ width: width + "px", left: Math.round(Math.max(0, (area.width - width) / 2)) + "px", top: "10px", maxHeight: Math.round(Math.max(240, area.height - 20)) + "px" });
+    };
+    var closeDialog = function () {
+        if (dialog) {
+            dialog.remove();
+            dialog = null;
+        }
+    };
+    var openDialog = function () {
+        var holder = $("#UjsCanvasHolder");
+        if (dialog || !holder.length) {
+            return;
+        }
+        addCommunityLaddersStyles();
+        dialog = $(`<div id="tuydQmStats" class="tuydCommunityPanel" role="dialog" aria-label="Your Quickmatch stats">
+            <h3>Your Quickmatch stats</h3>
+            <a href="#" class="tuydQmClose" title="Close" aria-label="Close">✕</a>
+            <div class="tuydQmRecordLine"></div>
+            <div class="tuydQmTools">
+                <label title="A game you were booted from counts as a loss"><input type="checkbox" name="countBoots">Count boot losses</label>
+                <button type="button" class="tuydQmButton tuydQmRescan" title="Read your Past Games again">Rescan</button>
+                <button type="button" class="tuydQmButton tuydQmCopy" title="Copy your record and top templates and opponents as text">Copy</button>
+                <button type="button" class="tuydQmButton tuydQmCsv" title="Download every Quickmatch game as a spreadsheet (CSV)">CSV</button>
+                <span class="tuydQmStatus"></span>
+            </div>
+            <div class="tuydQmTemplateStatus"></div>
+            <div class="tuydQmTabs">
+                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><input type="search" placeholder="Search">
+            </div>
+            <div class="tuydQmTableHolder"></div>
+            <div class="communityLaddersCredit">From your Past Games, by Muli's Userscript</div>
+        </div>`).appendTo(holder);
+        wearArt(dialog);
+        fitDialog();
+        dialog.on("click", ".tuydQmClose", function (event) {
+            event.preventDefault();
+            closeDialog();
+        }).on("click", ".tuydQmRescan", function () {
+            scan(0);
+        }).on("change", "[name=countBoots]", function () {
+            view.countBoots = this.checked;
+            saveView();
+            refresh();
+        }).on("click", ".tuydQmTabs a", function (event) {
+            event.preventDefault();
+            view.tab = $(this).attr("data-tab");
+            view.sort = null;
+            view.limit = 50;
+            view.openRow = null;
+            saveView();
+            refresh();
+        }).on("input", "input[type=search]", function () {
+            view.query = this.value;
+            refresh();
+        }).on("click", ".tuydQmTable thead td", function () {
+            var key = $(this).attr("data-sort");
+            var current = view.sort || { key: "games", descending: true };
+            view.sort = { key: key, descending: current.key === key ? !current.descending : key !== "name" };
+            refresh();
+        }).on("click", ".tuydQmRow", function (event) {
+            if ($(event.target).closest("a").length) {
+                return;
+            }
+            var key = $(this).attr("data-key");
+            view.openRow = view.openRow === key ? null : key;
+            refresh();
+        }).on("click", ".tuydQmAll", function (event) {
+            event.preventDefault();
+            view.limit = 0;
+            refresh();
+        }).on("click", ".tuydQmReadStart", function (event) {
+            event.preventDefault();
+            startReading();
+        }).on("click", ".tuydQmReadStop", function (event) {
+            event.preventDefault();
+            if (reading) {
+                clearInterval(reading.timer);
+            }
+            $("#" + GAME_TEMPLATE_FRAME_ID).remove();
+            reading = null;
+            refresh();
+        }).on("click", ".tuydQmCopy", function () {
+            copyText(quickmatchSummaryText(stats, 5)).then(function () {
+                dialog.find(".tuydQmStatus").text("Copied.");
+            }, function () {
+                dialog.find(".tuydQmStatus").text("Couldn't copy.");
+            });
+        }).on("click", ".tuydQmCsv", function () {
+            downloadText("quickmatch-games.csv", quickmatchCsv(games, me, templates, location.origin), "text/csv;charset=utf-8");
         });
+        renderDialog();
+    };
+    var check = function () {
+        timer = null;
+        if (!ready) {
+            return;
+        }
+        if (dialog && !scene()) {
+            closeDialog();
+        }
+        placeSummary();
+        placeTemplateRecords();
+        if (stale() && !scanning) {
+            scan(10 * 60 * 1000);
+        }
+    };
+    $(document).on("click", ".tuydQmStatsButton", function (event) {
+        event.preventDefault();
+        if (dialog) {
+            closeDialog();
+        } else {
+            openDialog();
+        }
+    }).on("keydown", function (event) {
+        if (event.key === "Escape" && dialog) {
+            closeDialog();
+        }
+    });
+    $(window).on("resize", function () {
+        if (dialog) {
+            fitDialog();
+        }
+    });
+    signedInPlayerId().done(function (id) {
+        me.id = id;
+        me.name = !id && window.WlPlayer ? WlPlayer.Name : null;
+        if (!me.id && !me.name) {
+            return;
+        }
+        var stored = storedQuickmatchGames(me.id);
+        if (stored) {
+            games = stored.games;
+            scannedAt = stored.time || 0;
+        }
+        ready = true;
+        refresh();
+        check();
+        new MutationObserver(function () {
+            if (!timer) {
+                timer = setTimeout(check, 300);
+            }
+        }).observe(document.body, { childList: true, subtree: true });
+    });
+}
+
+// Your Quickmatch record under war.app's Quickmatch ratings on your own profile, from what the Quickmatch
+// screen last read: nothing is loaded here.
+function setupQuickmatchProfileRecord() {
+    signedInPlayerId().done(function (id) {
+        var stored = id && extractProfileId(location.href) === id ? storedQuickmatchGames(id) : null;
+        var heading = $("h3").filter(function () {
+            return $(this).text().trim() === "Quickmatch";
+        }).first();
+        if (!stored || !heading.length || $("#tuydQmProfileRecord").length) {
+            return;
+        }
+        var stats = quickmatchStats(stored.games, { id: id }, storedQuickmatchTemplates(), readQuickmatchView().countBoots);
+        if (!stats.games.length) {
+            return;
+        }
+        var line = $('<span id="tuydQmProfileRecord"></span>').text("Record: " + quickmatchRecordText(stats) + " in " + stats.games.length + " games")
+            .attr("title", "From your Past Games on " + new Date(stored.time).toLocaleString() + ", when you last opened Quickmatch (Muli's Userscript)")
+            .add("<br>");
+        var folded = heading.next("div.exp");
+        var next = heading.nextAll("h3").first();
+        if (folded.length) {
+            folded.append(line);
+        } else if (next.length) {
+            line.insertBefore(next);
+        } else {
+            heading.parent().append(line);
+        }
     });
 }
 

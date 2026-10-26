@@ -248,3 +248,21 @@ test("the dashboard's game chat panel escapes names, times and messages read fro
     assertInert(container);
     assert.equal(container.querySelector(".tuydGameChatText").textContent, PAYLOAD);
 });
+
+test("the Quickmatch stats table escapes game, player and template names", () => {
+    const ctx = load(["quickmatchTableHtml", "quickmatchStats", "quickmatchResult", "pastGamePlayer", "pastGameResult", "quickmatchOpponents", "quickmatchResultText", "quickmatchRateText", "isQuickmatchGameName", "htmlEscape"]);
+    const games = [{ id: PAYLOAD, name: "QM: " + PAYLOAD, state: 4, turn: 3, players: [{ id: 1, name: "Me", state: 4, team: -1 }, { id: 2, name: PAYLOAD, state: 7, team: -1 }] }];
+    const stats = ctx.quickmatchStats(games, { id: "1" }, { [PAYLOAD]: { name: PAYLOAD, id: PAYLOAD } }, false);
+    const container = render(ctx.quickmatchTableHtml(stats.templates, "templates", { open: PAYLOAD }) + ctx.quickmatchTableHtml(stats.opponents, "opponents", { open: "2" }));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});
+
+test("the Past Games list escapes game, player and map names", () => {
+    const ctx = load(["pastGamesListHtml", "pastGamePlayer", "pastGameResult", "pastGameStatusText", "pastGameDate", "htmlEscape"]);
+    const players = [{ id: 1, name: "Me", state: 4, team: -1 }, { id: 2, name: PAYLOAD, state: 7, team: -1 }, { id: 3, name: PAYLOAD, state: 4, team: -1 }];
+    const games = [{ id: PAYLOAD, name: PAYLOAD, state: 4, turn: 3, date: 0, map: 1748, players: players }];
+    const container = render(ctx.pastGamesListHtml(games, { id: "1" }, { 1748: { id: "737", name: PAYLOAD } }));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});
