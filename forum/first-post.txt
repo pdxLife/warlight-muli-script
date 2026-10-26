@@ -37,7 +37,6 @@ The script is for war.app in a desktop browser. war.app's phone app can't run us
 [b]In your games[/b]
 [list]
 [*][b]Notes in a game[/b]: a Notes button next to war.app's Game button. General notes, which turns you move first on (odd or even: "Turn 7: you move first"), and a note per player. Private, saved as you type; a gold dot shows which games have notes.
-[*][b]The whole chat at once[/b]: the script presses "Load Older Messages" for you until the whole chat is there.
 [*][b]Read chat aloud[/b]: a 🔊 on each message reads it and the ones after it with your browser's voice. A setting reads new messages as they arrive, so you can listen while entering orders.
 [*][b]Private chat list[/b]: players still in the game first, A to Z, then a line and the ones who are out. Handy in big diplomacy games.
 [*][b]Tag players[/b]: type @ in a chat box and pick a name from the list.

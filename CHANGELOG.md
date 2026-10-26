@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.52.1
+
+- **Game chats load as they do on war.app.** "Load the whole chat in games" is gone: the script no longer presses war.app's "Load Older Messages" by itself. Each press downloads a game's whole older chat at once, and with war.app's App Settings → Chat Dialog on (its default), a chat with more than 300 older messages opened war.app's chat dialog over the game, which the script then opened again with every new message. A game's chat now shows war.app's newest messages, and older ones load when you press its button. The dashboard's game chat keeps its **Show all**.
+
 ## 3.52.0
 
 - **Past Games filters search all your games.** The filter bar on Past Games now covers your whole history, not just the page on screen: the first search reads every page of Past Games from war.app (about 8 seconds for 5,000 games, kept for the session), and the games that match replace war.app's list, "37 of 4,796 games", with each game's name, date and map, the other players (winners in bold), your result and its turns, 100 at a time, and "Back to war.app's list". New filters: your result (won, eliminated or surrendered, booted, ended by vote) and the kind of game (Quickmatch, tournament, Seasonal Ladder, other ladders, MTL, Clan War, other). The map list covers every map you've played on, and every game's map is known, so "Find the maps" is gone. The speed filter is gone, and the filters start empty on each visit. "Reverse order" is now "Oldest first".
