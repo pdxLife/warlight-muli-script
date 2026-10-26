@@ -243,7 +243,7 @@ function screen({ cached, ajax, sessionCopy } = {}) {
         };
     }
     const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "loadPastGames",
-        "fetchPastGamesPage", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt",
+        "fetchPastGamesPage", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", "gamePlayerId", "ujsElement", "shownUjsElement", "warappArt",
         "addCommunityLaddersStyles", ...STATS_FUNCTIONS], {
         ...domGlobals(dom, $),
         window: dom.window,
@@ -252,7 +252,7 @@ function screen({ cached, ajax, sessionCopy } = {}) {
         log: () => { },
         Promise, TextDecoder, Uint8Array, DataView, Set,
         setTimeout: (fn) => fn(),
-        signedInPlayerId: () => $.Deferred().resolve("7").promise(),
+        signedInPlayerId: () => $.Deferred().resolve("10712").promise(),
         QUICKMATCH_GAMES_KEY: "tidyUpYourDashboard.quickmatchGames",
         QUICKMATCH_TEMPLATES_KEY: "tidyUpYourDashboard.quickmatchTemplates",
         QUICKMATCH_VIEW_KEY: "tidyUpYourDashboard.quickmatchView",
@@ -315,6 +315,7 @@ test("without a recent scan the Quickmatch screen reads Past Games and keeps its
     assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => [r.url, r.type, r.data]))), [["/MultiPlayer/PastGames", "POST", { Offset: 0, Sort: 3, PerPage: 200 }]]);
     assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 0 L (100.0%)");
     assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).games.map((g) => g.id), [1]);
+    assert.equal(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).player, "7", "kept under the ID war.app's game data uses, not the profile link's");
     assert.equal(JSON.parse(sessionStorage.getItem("tidyUpYourDashboard.pastGames")).games.length, 2, "every game is kept for Past Games");
 });
 
@@ -342,11 +343,11 @@ test("your own profile shows your Quickmatch record under war.app's ratings, oth
         const { dom, $ } = createDom(`<div class="p-3"><h3>Quickmatch</h3>${folded ? `<div class="exp">${lines}</div>` : lines}<h3>Single-player stats</h3></div>`, url);
         dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchGames", JSON.stringify({ player: "7", time: Date.now(), games: GAMES }));
         dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchTemplates", JSON.stringify(TEMPLATES));
-        const ctx = load(["setupQuickmatchProfileRecord", "storedQuickmatchGames", "storedQuickmatchTemplates", "readQuickmatchView", "extractProfileId", ...STATS_FUNCTIONS], {
+        const ctx = load(["setupQuickmatchProfileRecord", "storedQuickmatchGames", "storedQuickmatchTemplates", "readQuickmatchView", "extractPlayerId", "gamePlayerId", ...STATS_FUNCTIONS], {
             ...domGlobals(dom, $),
             localStorage: dom.window.localStorage,
             location: dom.window.location,
-            signedInPlayerId: () => $.Deferred().resolve("7").promise(),
+            signedInPlayerId: () => $.Deferred().resolve("10712").promise(),
             QUICKMATCH_GAMES_KEY: "tidyUpYourDashboard.quickmatchGames",
             QUICKMATCH_TEMPLATES_KEY: "tidyUpYourDashboard.quickmatchTemplates",
             QUICKMATCH_VIEW_KEY: "tidyUpYourDashboard.quickmatchView"

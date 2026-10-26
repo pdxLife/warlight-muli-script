@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.52.1
+// @version 3.52.2
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -9702,6 +9702,13 @@ function setupJoinedOpenGames() {
     });
 }
 
+// A profile link's p= (2921525624) is the player's ID (215256) with two more digits at each end; war.app's
+// game data has the ID itself.
+function gamePlayerId(playerId) {
+    var match = /^\d{5,}$/.exec(String(playerId || ""));
+    return match ? match[0].slice(2, -2) : null;
+}
+
 function pastGamePlayer(game, me) {
     return game.players.filter(function (player) {
         return me.id ? String(player.id) === String(me.id) : player.name === me.name;
@@ -10016,9 +10023,9 @@ function setupPastGamesFilter() {
             });
         }
         Promise.resolve(signedInPlayerId()).then(function (id) {
-            me.id = id;
-            me.name = !id && window.WlPlayer ? WlPlayer.Name : null;
-            return loadPastGames(id, 10 * 60 * 1000, function (done, total) {
+            me.id = gamePlayerId(id);
+            me.name = !me.id && window.WlPlayer ? WlPlayer.Name : null;
+            return loadPastGames(me.id, 10 * 60 * 1000, function (done, total) {
                 progress = done.toLocaleString("en-US") + " of " + total.toLocaleString("en-US");
                 render();
             });
@@ -11110,8 +11117,8 @@ function setupQuickmatchStats() {
         }
     });
     signedInPlayerId().done(function (id) {
-        me.id = id;
-        me.name = !id && window.WlPlayer ? WlPlayer.Name : null;
+        me.id = gamePlayerId(id);
+        me.name = !me.id && window.WlPlayer ? WlPlayer.Name : null;
         if (!me.id && !me.name) {
             return;
         }
@@ -11134,8 +11141,9 @@ function setupQuickmatchStats() {
 // Your Quickmatch record under war.app's Quickmatch ratings on your own profile, from what the Quickmatch
 // screen last read: nothing is loaded here.
 function setupQuickmatchProfileRecord() {
-    signedInPlayerId().done(function (id) {
-        var stored = id && extractProfileId(location.href) === id ? storedQuickmatchGames(id) : null;
+    signedInPlayerId().done(function (playerId) {
+        var id = gamePlayerId(playerId);
+        var stored = id && extractPlayerId(location.href) === playerId ? storedQuickmatchGames(id) : null;
         var heading = $("h3").filter(function () {
             return $(this).text().trim() === "Quickmatch";
         }).first();
