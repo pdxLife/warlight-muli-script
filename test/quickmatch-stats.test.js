@@ -308,6 +308,35 @@ test("the Stats dialog lists templates and opponents, counts boot losses when as
     assert.equal($("#tuydQmStats").length, 0);
 });
 
+test("the Stats search has a clear button, Esc clears it before closing, and it's kept when the dialog opens again", () => {
+    const { $ } = screen({ cached: { player: "7", time: Date.now(), games: GAMES } });
+    $(".tuydQmStatsButton").trigger("click");
+    $("#tuydQmStats [data-tab=opponents]").trigger("click");
+    const input = () => $("#tuydQmStats input[type=search]");
+    const clear = () => $("#tuydQmStats .tuydQmSearchClear");
+    assert.equal(clear().prop("hidden"), true);
+    input().val("bo").trigger("input");
+    assert.equal(clear().prop("hidden"), false);
+    assert.equal($("#tuydQmStats .tuydQmRow").length, 1);
+    clear().trigger("click");
+    assert.equal(input().val(), "");
+    assert.equal(clear().prop("hidden"), true);
+    assert.equal($("#tuydQmStats .tuydQmRow").length, 3);
+    input().val("bo").trigger("input");
+    input().trigger($.Event("keydown", { key: "Escape" }));
+    assert.equal(input().val(), "");
+    assert.equal($("#tuydQmStats").length, 1, "the first Esc only clears the search");
+    input().trigger($.Event("keydown", { key: "Escape" }));
+    assert.equal($("#tuydQmStats").length, 0);
+    $(".tuydQmStatsButton").trigger("click");
+    input().val("ann").trigger("input");
+    $("#tuydQmStats .tuydQmClose").trigger("click");
+    $(".tuydQmStatsButton").trigger("click");
+    assert.equal(input().val(), "ann");
+    assert.equal(clear().prop("hidden"), false);
+    assert.equal($("#tuydQmStats .tuydQmRow").length, 1);
+});
+
 test("without a recent scan the Quickmatch screen reads Past Games and keeps its Quickmatch games", async () => {
     const hex = page(2, [GAMES[0], GAMES[5]].map((g) => ({ ...g })));
     const { $, storage, requests, sessionStorage } = screen({ cached: { player: "7", time: Date.now() - 11 * 60 * 1000, games: GAMES }, ajax: () => hex });
