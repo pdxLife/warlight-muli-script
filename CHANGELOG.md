@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.52.3
+
+- **Quickmatch stats: clear the search.** The Search box in the Stats dialog has a ✕ that clears it, shown while there's a search; Esc in the box clears it too (a second Esc closes the dialog). A search you leave in place is shown in the box when you open Stats again; before, the box came back empty while the list stayed filtered.
+
 ## 3.52.2
 
 - **Quickmatch stats find your games.** On the Quickmatch screen the record read "0 W – 0 L" and Past Games' result and "Your turn" filters found nothing: the script looked for you in war.app's game list by the number in your profile link (p=2921525624), which has two extra digits at each end of your player ID (215256), the number the game list uses. Your own profile's Quickmatch record didn't show for the same reason. After updating, open Quickmatch once to read your games again.

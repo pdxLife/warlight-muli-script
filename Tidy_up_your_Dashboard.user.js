@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.52.2
+// @version 3.52.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10747,9 +10747,13 @@ function setupQuickmatchStats() {
         #tuydQmStats a { color: #e0c060; }
         #tuydQmStats label { font-weight: normal; margin: 0 12px 0 0; }
         #tuydQmStats input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
-        #tuydQmStats input[type=search] { width: 180px; max-width: 100%; margin-left: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
-        #tuydQmStats .tuydQmTabs a { margin-right: 12px; color: #babbbb; }
-        #tuydQmStats .tuydQmTabs a.tuydQmActive { color: #fff; font-weight: bold; text-decoration: none; }
+        #tuydQmStats .tuydQmSearch { position: relative; display: inline-block; max-width: 100%; margin-left: 8px; }
+        #tuydQmStats input[type=search] { width: 180px; max-width: 100%; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 22px 1px 4px; }
+        #tuydQmStats input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+        #tuydQmStats .tuydQmSearchClear { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); color: #babbbb; text-decoration: none; line-height: 1; }
+        #tuydQmStats .tuydQmSearchClear:hover { color: #fff; }
+        #tuydQmStats .tuydQmTabs a[data-tab] { margin-right: 12px; color: #babbbb; }
+        #tuydQmStats .tuydQmTabs a[data-tab].tuydQmActive { color: #fff; font-weight: bold; text-decoration: none; }
         #tuydQmStats .tuydQmTableHolder { flex: 1 1 auto; min-height: 80px; margin-top: 6px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #555 transparent; }
         #tuydQmStats .tuydQmTable { width: 100%; }
         #tuydQmStats .tuydQmTable td { padding: 3px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
@@ -10995,6 +10999,15 @@ function setupQuickmatchStats() {
         var width = Math.max(300, Math.min(area.width - 32, 760));
         dialog.css({ width: width + "px", left: Math.round(Math.max(0, (area.width - width) / 2)) + "px", top: "10px", maxHeight: Math.round(Math.max(240, area.height - 20)) + "px" });
     };
+    var search = function (query) {
+        view.query = query;
+        var input = dialog.find("input[type=search]");
+        if (input.val() !== query) {
+            input.val(query);
+        }
+        dialog.find(".tuydQmSearchClear").prop("hidden", !query);
+        refresh();
+    };
     var closeDialog = function () {
         if (dialog) {
             dialog.remove();
@@ -11020,7 +11033,7 @@ function setupQuickmatchStats() {
             </div>
             <div class="tuydQmTemplateStatus"></div>
             <div class="tuydQmTabs">
-                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><input type="search" placeholder="Search">
+                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><span class="tuydQmSearch"><input type="search" placeholder="Search"><a href="#" class="tuydQmSearchClear" title="Clear the search" aria-label="Clear the search" hidden>✕</a></span>
             </div>
             <div class="tuydQmTableHolder"></div>
             <div class="communityLaddersCredit">From your Past Games, by Muli's Userscript</div>
@@ -11036,7 +11049,7 @@ function setupQuickmatchStats() {
             view.countBoots = this.checked;
             saveView();
             refresh();
-        }).on("click", ".tuydQmTabs a", function (event) {
+        }).on("click", ".tuydQmTabs a[data-tab]", function (event) {
             event.preventDefault();
             view.tab = $(this).attr("data-tab");
             view.sort = null;
@@ -11045,8 +11058,11 @@ function setupQuickmatchStats() {
             saveView();
             refresh();
         }).on("input", "input[type=search]", function () {
-            view.query = this.value;
-            refresh();
+            search(this.value);
+        }).on("click", ".tuydQmSearchClear", function (event) {
+            event.preventDefault();
+            search("");
+            dialog.find("input[type=search]").trigger("focus");
         }).on("click", ".tuydQmTable thead td", function () {
             var key = $(this).attr("data-sort");
             var current = view.sort || { key: "games", descending: true };
@@ -11083,7 +11099,7 @@ function setupQuickmatchStats() {
         }).on("click", ".tuydQmCsv", function () {
             downloadText("quickmatch-games.csv", quickmatchCsv(games, me, templates, location.origin), "text/csv;charset=utf-8");
         });
-        renderDialog();
+        search(view.query);
     };
     var check = function () {
         timer = null;
@@ -11107,7 +11123,13 @@ function setupQuickmatchStats() {
             openDialog();
         }
     }).on("keydown", function (event) {
-        if (event.key === "Escape" && dialog) {
+        if (event.key !== "Escape" || !dialog) {
+            return;
+        }
+        if ($(event.target).is("#tuydQmStats input[type=search]") && view.query) {
+            event.preventDefault();
+            search("");
+        } else {
             closeDialog();
         }
     });
