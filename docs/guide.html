@@ -241,6 +241,16 @@
   </ul>
   <p>It filters the page war.app shows. To search more games at once, set war.app's <strong>Number per page</strong> to 200. The state, speed, map, players and order are remembered; the search box starts empty. A game's settings (No-Split, cards…) and its map's size can't be filtered: the Past Games page doesn't carry them.</p>
 
+  <h3>Quickmatch stats</h3>
+  <p>Above the list, a <strong>Quickmatch</strong> line with your record over all your Quickmatch games, not just the page shown: "559 W – 117 L (82.7%) · 676 games". The first time, click <strong>Count my Quickmatch games</strong>: the script reads all of your Past Games from war.app, about a second for every 1,000 games, and remembers them; opening the panel again reads them anew after 10 minutes, and <strong>Rescan</strong> does it at once. <strong>Details</strong> opens the panel, <strong>Hide</strong> closes it, and it stays as you left it.</p>
+  <ul>
+    <li><strong>Templates</strong> and <strong>Opponents</strong>: games, won, lost, win % and the average number of turns for each. Click a heading to sort by it, type in <strong>Search</strong> to find one, and click a row to list its games, each linking to the game. A template's number (#1070736) creates a game with that template.</li>
+    <li>War.app's list doesn't say which template a game used, so the panel reads it from each game once: <strong>Read them</strong> opens the games in the background one at a time, about a second and a half each, and remembers each template for good (<strong>Stop</strong> stops it). Until then those games are under <strong>Template not read yet</strong>. A few new games are read by themselves.</li>
+    <li><strong>Count boot losses</strong> (off): games you were booted from count as losses. Off, they're left out and the line says how many.</li>
+    <li><strong>Copy</strong> copies your record and your top 5 templates and opponents as text, for a forum post. <strong>CSV</strong> downloads every Quickmatch game (result, turns, template, opponents, link) for a spreadsheet.</li>
+  </ul>
+  <p>War.app names Quickmatch games "QM: A vs B" (or "QM: 2v2"), and that's how the panel finds them; a game you named "QM: …" yourself is dropped once its template is read. Games ended by vote count in the games but not as wins or losses.</p>
+
   <h2 id="chat-rooms">Chat rooms</h2>
   <p class="where">Dashboard → <strong>Chat</strong>, or Community → Chat (Global, Clan and your groups)</p>
   <figure>

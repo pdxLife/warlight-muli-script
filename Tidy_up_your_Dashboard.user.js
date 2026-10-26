@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.51.0
+// @version 3.52.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.51.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5183,6 +5183,7 @@ function pageIsPointsPage() {
 
 var GAME_CHAT_FRAME_ID = "tuydGameChatFrame";
 var GAME_MAP_FRAME_ID = "tuydGameMapFrame";
+var GAME_TEMPLATE_FRAME_ID = "tuydGameTemplateFrame";
 
 // A hidden copy of a game would otherwise play the game's sounds a second time: a chat bell for every new
 // message, the your-turn sound. war.app plays them through SoundManager 2, which uses HTML audio.
@@ -5199,10 +5200,11 @@ function muteScriptFrame() {
     window.setInterval(mute, 2000);
 }
 
-// The script's own hidden game frames: the dashboard's game chat, and Past Games looking up a game's map.
+// The script's own hidden game frames: the dashboard's game chat, and Past Games looking up a game's map or
+// a Quickmatch game's template.
 function inScriptFrame() {
     try {
-        return !!window.frameElement && [GAME_CHAT_FRAME_ID, GAME_MAP_FRAME_ID].indexOf(window.frameElement.id) !== -1;
+        return !!window.frameElement && [GAME_CHAT_FRAME_ID, GAME_MAP_FRAME_ID, GAME_TEMPLATE_FRAME_ID].indexOf(window.frameElement.id) !== -1;
     } catch (e) {
         return false;
     }
@@ -8329,6 +8331,7 @@ function mainFeatures() {
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "Refresh Open Games every few minutes", section: "Dashboard", match: pageIsDashboard, run: setupOpenGamesAutoRefresh },
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
+        { name: "Quickmatch stats on Past Games", section: "Games", match: pageIsPastGames, run: setupQuickmatchStats },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
@@ -10141,6 +10144,859 @@ function setupPastGamesFilter() {
             maps = names;
             fillMaps();
         });
+    });
+}
+
+var QUICKMATCH_GAMES_KEY = "tidyUpYourDashboard.quickmatchGames";
+var QUICKMATCH_TEMPLATES_KEY = "tidyUpYourDashboard.quickmatchTemplates";
+var QUICKMATCH_VIEW_KEY = "tidyUpYourDashboard.quickmatchView";
+
+// war.app's Past Games pager posts Offset, Sort and PerPage to the page and gets its games back as hex: the
+// total, then the games in the order ujs.js reads them (GameInfo, GameInfoPlayer, GameInfoSettings and the
+// tournament info). Integers and doubles are little-endian, a bool or enum is a byte, a text is a "has value"
+// byte, a 7-bit length and UTF-8, and a list is a count (-1 for none) after its own "has value" byte.
+// Only the fields used here are kept. If war.app changes the layout, this returns null.
+function parsePastGamesData(hex) {
+    hex = String(hex || "").trim();
+    if (!/^(?:[0-9a-f]{2})+$/i.test(hex)) {
+        return null;
+    }
+    var bytes = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    var view = new DataView(bytes.buffer);
+    var decoder = new TextDecoder("utf-8", { fatal: true });
+    var p = 0;
+    var need = function (n) {
+        if (p + n > bytes.length) {
+            throw new Error("Past Games data ends early");
+        }
+    };
+    var byte = function () {
+        need(1);
+        return bytes[p++];
+    };
+    var bool = function () {
+        return byte() !== 0;
+    };
+    var int = function () {
+        need(4);
+        p += 4;
+        return view.getInt32(p - 4, true);
+    };
+    var double = function () {
+        need(8);
+        p += 8;
+    };
+    var text = function () {
+        if (!bool()) {
+            return null;
+        }
+        var length = 0;
+        var shift = 0;
+        var b;
+        do {
+            b = byte();
+            length |= (b & 127) << shift;
+            shift += 7;
+        } while (b & 128 && shift < 35);
+        need(length);
+        p += length;
+        return decoder.decode(bytes.subarray(p - length, p));
+    };
+    var list = function (item) {
+        var count = int();
+        var items = [];
+        for (var i = 0; i < count; i++) {
+            items.push(item());
+        }
+        return items;
+    };
+    var player = function () {
+        if (!bool()) {
+            return null;
+        }
+        if (bool()) {
+            int();
+        }
+        bool();
+        bool();
+        int();
+        bool();
+        var name = text();
+        var id = int();
+        var state = byte();
+        var team = int();
+        bool();
+        return { id: id, name: name, state: state, team: team };
+    };
+    var settings = function () {
+        if (bool()) {
+            double();
+        }
+        bool();
+        int();
+        text();
+        bool();
+        bool();
+        if (bool()) {
+            int();
+        }
+        double();
+        bool();
+        int();
+        bool();
+        bool();
+        double();
+        bool();
+        double();
+        int();
+        byte();
+        bool();
+        bool();
+        int();
+        double();
+        bool();
+        bool();
+        byte();
+    };
+    var tournament = function () {
+        if (bool()) {
+            int();
+            int();
+            if (bool()) {
+                int();
+            }
+            if (bool()) {
+                list(function () {
+                    int();
+                    int();
+                });
+            }
+            if (bool()) {
+                need(2);
+                p += 2;
+            }
+        }
+        byte();
+        int();
+    };
+    var game = function () {
+        int();
+        double();
+        text();
+        int();
+        int();
+        double();
+        byte();
+        var id = int();
+        bool();
+        double();
+        int();
+        int();
+        if (bool()) {
+            int();
+        }
+        var name = text();
+        var turn = int();
+        if (bool()) {
+            list(int);
+        }
+        var players = bool() ? list(player) : [];
+        bool();
+        bool();
+        bool();
+        bool();
+        if (bool()) {
+            settings();
+        }
+        var state = int();
+        bool();
+        double();
+        if (bool()) {
+            tournament();
+        }
+        double();
+        return {
+            id: id,
+            name: name || "",
+            state: state,
+            turn: turn,
+            players: players.filter(Boolean)
+        };
+    };
+    try {
+        var total = int();
+        var games = list(game);
+        return p === bytes.length ? { total: total, games: games } : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Reads every page of Past Games, newest first. A game that ends during the scan moves up a page, so
+// games are kept once by ID.
+function fetchAllPastGames(fetchPage, pageSize) {
+    var games = [];
+    var seen = {};
+    var next = function (offset) {
+        return fetchPage(offset, pageSize).then(function (page) {
+            if (!page) {
+                throw new Error("war.app's game list couldn't be read");
+            }
+            page.games.forEach(function (game) {
+                if (!seen[game.id]) {
+                    seen[game.id] = true;
+                    games.push(game);
+                }
+            });
+            return page.games.length && offset + page.games.length < page.total ? next(offset + page.games.length) : games;
+        });
+    };
+    return next(0);
+}
+
+// war.app names Quickmatch games "QM: A vs B", or "QM: 2v2" for team templates.
+function isQuickmatchGameName(name) {
+    return /^QM: /.test(String(name || ""));
+}
+
+function quickmatchPlayer(game, me) {
+    return game.players.filter(function (player) {
+        return me.id ? String(player.id) === String(me.id) : player.name === me.name;
+    })[0] || null;
+}
+
+// war.app's player states: 3 eliminated, 4 won, 5 declined, 6 removed by the host, 7 surrendered, 8 booted,
+// 9 ended by vote. A game is finished in state 4.
+function quickmatchResult(game, me) {
+    var mine = quickmatchPlayer(game, me);
+    if (!mine || mine.state === 5 || mine.state === 6) {
+        return null;
+    }
+    if (game.state !== 4) {
+        return "playing";
+    }
+    return { 3: "lost", 4: "won", 7: "lost", 8: "booted", 9: "vote" }[mine.state] || null;
+}
+
+function quickmatchOpponents(game, me) {
+    var mine = quickmatchPlayer(game, me);
+    return game.players.filter(function (player) {
+        return player !== mine && (!mine || mine.team === -1 || player.team !== mine.team);
+    });
+}
+
+function quickmatchResultText(result, turn) {
+    return {
+        won: turn > 0 ? "Won in " + turn : "Won",
+        lost: "Lost",
+        booted: "Booted",
+        vote: "Ended by vote",
+        playing: "In progress"
+    }[result] || "";
+}
+
+// The record, by template and by opponent, of the Quickmatch games in `games` (newest first). `templates`
+// holds what's been read from each game, by GameID; a game that turned out not to be a Quickmatch game is
+// left out. Boot losses count as losses only when `countBoots` is set. Turns average the games that got
+// past their first turn.
+function quickmatchStats(games, me, templates, countBoots) {
+    var record = function () {
+        return { wins: 0, losses: 0, bootLosses: 0, votes: 0, turns: 0, turnGames: 0, games: [] };
+    };
+    var total = record();
+    total.playing = 0;
+    var byTemplate = {};
+    var byOpponent = {};
+    var groupIn = function (groups, key, fields) {
+        if (!groups[key]) {
+            groups[key] = record();
+            Object.keys(fields).forEach(function (field) {
+                groups[key][field] = fields[field];
+            });
+        }
+        return groups[key];
+    };
+    var count = function (entry, result, game, summary) {
+        if (result === "won") {
+            entry.wins++;
+        } else if (result === "lost" || (result === "booted" && countBoots)) {
+            entry.losses++;
+        } else if (result === "vote") {
+            entry.votes++;
+        }
+        if (result === "booted") {
+            entry.bootLosses++;
+        }
+        if (game.turn > 0 && (result !== "booted" || countBoots)) {
+            entry.turns += game.turn;
+            entry.turnGames++;
+        }
+        entry.games.push(summary);
+    };
+    games.forEach(function (game) {
+        var template = templates[game.id] || null;
+        if (!isQuickmatchGameName(game.name) || (template && template.none)) {
+            return;
+        }
+        var result = quickmatchResult(game, me);
+        if (result === "playing") {
+            total.playing++;
+        }
+        if (!result || result === "playing") {
+            return;
+        }
+        var opponents = quickmatchOpponents(game, me);
+        var summary = {
+            id: game.id,
+            result: result,
+            turn: game.turn,
+            template: template ? template.name : null,
+            opponents: opponents.map(function (player) {
+                return player.name;
+            })
+        };
+        count(total, result, game, summary);
+        var templateKey = template ? template.name : "";
+        count(groupIn(byTemplate, templateKey, { key: templateKey, name: template ? template.name : null, templateId: template ? template.id : null }), result, game, summary);
+        opponents.forEach(function (player) {
+            count(groupIn(byOpponent, String(player.id), { key: String(player.id), name: player.name }), result, game, summary);
+        });
+    });
+    var finish = function (entry) {
+        var played = entry.wins + entry.losses;
+        entry.played = played;
+        entry.rate = played ? entry.wins / played : null;
+        entry.averageTurns = entry.turnGames ? entry.turns / entry.turnGames : null;
+        return entry;
+    };
+    var list = function (groups) {
+        return Object.keys(groups).map(function (key) {
+            return finish(groups[key]);
+        }).sort(function (a, b) {
+            return b.games.length - a.games.length || (a.name === null) - (b.name === null) || String(a.name).localeCompare(String(b.name));
+        });
+    };
+    finish(total);
+    total.templates = list(byTemplate);
+    total.opponents = list(byOpponent);
+    return total;
+}
+
+function quickmatchRateText(entry) {
+    return entry.rate === null ? "–" : (entry.rate * 100).toFixed(1) + "%";
+}
+
+function quickmatchRecordText(entry) {
+    return entry.wins + " W – " + entry.losses + " L (" + quickmatchRateText(entry) + ")";
+}
+
+// A Quickmatch game's settings, in war.app's data for the game (UJS_Hooks.za), are the object that holds the
+// game's name. Next to it they hold war.app's "This game was created by the Quickmatch…" message, the
+// template's name and its ID. The field names are minified, so they're found by value: the message, the one
+// other text, and the one optional number ({ val }) big enough to be a template ID. Returns null until the
+// game has loaded, and { none: true } for a game whose settings have no Quickmatch message.
+function gameTemplateFromData(data, gameName) {
+    var seen = new Set();
+    var queue = [data];
+    var settings = null;
+    while (queue.length && !settings && seen.size < 20000) {
+        var item = queue.shift();
+        if (!item || typeof item !== "object" || seen.has(item)) {
+            continue;
+        }
+        seen.add(item);
+        var keys;
+        try {
+            keys = Object.keys(item);
+        } catch (e) {
+            continue;
+        }
+        if (item !== data && keys.length >= 20 && keys.some(function (key) {
+            return item[key] === gameName;
+        })) {
+            settings = item;
+            break;
+        }
+        keys.forEach(function (key) {
+            try {
+                if (item[key] && typeof item[key] === "object") {
+                    queue.push(item[key]);
+                }
+            } catch (e) {
+                // A getter that throws holds nothing needed here.
+            }
+        });
+    }
+    if (!settings) {
+        return null;
+    }
+    var values = Object.keys(settings).map(function (key) {
+        return settings[key];
+    });
+    var texts = values.filter(function (value) {
+        return typeof value === "string" && value.trim() && value !== gameName;
+    });
+    if (!texts.some(function (value) {
+        return /created by the Quickmatch/i.test(value);
+    })) {
+        return { none: true };
+    }
+    var names = texts.filter(function (value) {
+        return !/created by the Quickmatch/i.test(value);
+    });
+    var ids = values.filter(function (value) {
+        return value && typeof value === "object" && typeof value.val === "number" && value.val >= 1000;
+    });
+    return names.length === 1 ? { name: names[0].trim(), id: ids.length === 1 ? ids[0].val : null } : null;
+}
+
+function storedQuickmatchTemplates() {
+    try {
+        var stored = JSON.parse(localStorage.getItem(QUICKMATCH_TEMPLATES_KEY));
+        return stored && typeof stored === "object" ? stored : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// Starting a cell with = + - or @ makes a spreadsheet read it as a formula, so such cells get a leading '.
+function csvCell(value) {
+    var text = value === null || value === undefined ? "" : String(value);
+    if (/^[=+\-@\t\r]/.test(text)) {
+        text = "'" + text;
+    }
+    return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
+function quickmatchCsv(games, me, templates, origin) {
+    var rows = [["Game ID", "Game", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
+    games.forEach(function (game) {
+        var template = templates[game.id] || null;
+        var result = isQuickmatchGameName(game.name) && !(template && template.none) ? quickmatchResult(game, me) : null;
+        if (!result) {
+            return;
+        }
+        rows.push([game.id, game.name, quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
+            template ? template.name : "", template && template.id ? template.id : "",
+            quickmatchOpponents(game, me).map(function (player) {
+                return player.name;
+            }).join("; "), origin + "/MultiPlayer?GameID=" + game.id]);
+    });
+    return rows.map(function (row) {
+        return row.map(csvCell).join(",");
+    }).join("\r\n") + "\r\n";
+}
+
+function quickmatchSummaryText(stats, count) {
+    var lines = ["Quickmatch: " + stats.wins + "W - " + stats.losses + "L (" + quickmatchRateText(stats) + "), " + stats.games.length + " games"];
+    var section = function (title, groups) {
+        var named = groups.filter(function (entry) {
+            return entry.name !== null && entry.played;
+        }).slice(0, count);
+        if (named.length) {
+            lines.push("", title);
+            named.forEach(function (entry) {
+                lines.push(entry.name + ": " + entry.wins + "W - " + entry.losses + "L (" + quickmatchRateText(entry) + ")");
+            });
+        }
+    };
+    section("Top templates:", stats.templates);
+    section("Top opponents:", stats.opponents);
+    return lines.join("\n");
+}
+
+// One tab of the Quickmatch panel: the templates or the opponents, filtered by `view.query`, sorted by
+// `view.sort`, `view.limit` rows at most, with the games of the row whose key is `view.open` listed under it.
+function quickmatchTableHtml(groups, kind, view) {
+    var columns = [
+        { key: "name", label: "" },
+        { key: "games", label: "Games" },
+        { key: "wins", label: "Won" },
+        { key: "losses", label: "Lost" },
+        { key: "rate", label: "Win %" },
+        { key: "averageTurns", label: "Turns", title: "Average number of turns" }
+    ];
+    var query = String(view.query || "").trim().toLowerCase();
+    var unread = kind === "templates" ? "Template not read yet" : "";
+    var rows = groups.filter(function (entry) {
+        return !query || String(entry.name === null ? unread : entry.name).toLowerCase().indexOf(query) !== -1;
+    });
+    var sort = view.sort || { key: "games", descending: true };
+    var value = function (entry) {
+        if (sort.key === "name") {
+            return entry.name === null ? "￿" : entry.name.toLowerCase();
+        }
+        if (sort.key === "games") {
+            return entry.games.length;
+        }
+        return entry[sort.key] === null ? -1 : entry[sort.key];
+    };
+    rows = rows.slice().sort(function (a, b) {
+        var x = value(a);
+        var y = value(b);
+        var order = x < y ? -1 : x > y ? 1 : 0;
+        return (sort.descending ? -order : order) || b.games.length - a.games.length;
+    });
+    var shown = view.limit ? rows.slice(0, view.limit) : rows;
+    var head = columns.map(function (column) {
+        var label = column.key === "name" ? (kind === "templates" ? "Template" : "Opponent") : column.label;
+        var arrow = sort.key === column.key ? (sort.descending ? " ▾" : " ▴") : "";
+        return '<td data-sort="' + column.key + '"' + (column.title ? ' title="' + htmlEscape(column.title) + '"' : "") + ">" + htmlEscape(label) + arrow + "</td>";
+    }).join("");
+    var gameLinks = function (entry) {
+        var limit = 100;
+        return entry.games.slice(0, limit).map(function (game) {
+            var other = kind === "templates" ? (game.opponents.length ? " vs " + game.opponents.join(", ") : "") : (game.template ? " on " + game.template : "");
+            return '<span class="tuydQmGame tuydQm-' + htmlEscape(game.result) + '"><a href="/MultiPlayer?GameID=' + htmlEscape(game.id) + '">'
+                + htmlEscape(quickmatchResultText(game.result, game.turn)) + "</a>" + htmlEscape(other) + "</span>";
+        }).join(" · ") + (entry.games.length > limit ? " · " + (entry.games.length - limit) + " older games in the CSV" : "");
+    };
+    var body = shown.map(function (entry) {
+        var name = entry.name === null ? '<i>' + htmlEscape(unread) + "</i>" : htmlEscape(entry.name);
+        var templateId = parseInt(entry.templateId, 10);
+        if (kind === "templates" && templateId > 0) {
+            name += ' <a class="tuydQmTemplateLink" href="/MultiPlayer?TemplateID=' + templateId + '" title="Create a game with this template">#' + templateId + "</a>";
+        }
+        var open = view.open === entry.key;
+        return '<tr class="tuydQmRow' + (open ? " tuydQmOpen" : "") + '" data-key="' + htmlEscape(entry.key) + '" title="Show these games">'
+            + "<td>" + name + "</td><td>" + entry.games.length + "</td><td>" + entry.wins + "</td><td>" + entry.losses + "</td><td>"
+            + quickmatchRateText(entry) + "</td><td>" + (entry.averageTurns === null ? "–" : "~" + Math.round(entry.averageTurns)) + "</td></tr>"
+            + (open ? '<tr class="tuydQmGames"><td colspan="6">' + gameLinks(entry) + "</td></tr>" : "");
+    }).join("");
+    if (!rows.length) {
+        body = '<tr><td colspan="6">' + (query ? "Nothing matches your search." : "No finished Quickmatch games.") + "</td></tr>";
+    } else if (shown.length < rows.length) {
+        body += '<tr><td colspan="6"><a href="#" class="tuydQmAll">Show all ' + rows.length + "</a></td></tr>";
+    }
+    return '<table class="dataTable tuydQmTable"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
+}
+
+function readQuickmatchView() {
+    var view = {};
+    try {
+        view = JSON.parse(localStorage.getItem(QUICKMATCH_VIEW_KEY)) || {};
+    } catch (e) {
+        view = {};
+    }
+    return {
+        open: view.open === true,
+        countBoots: view.countBoots === true,
+        tab: view.tab === "opponents" ? "opponents" : "templates"
+    };
+}
+
+function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+    }
+    var area = $("<textarea>").val(text).css({ position: "fixed", left: "-10000px" }).appendTo("body");
+    area[0].select();
+    var copied = document.execCommand("copy");
+    area.remove();
+    return copied ? Promise.resolve() : Promise.reject(new Error("copy failed"));
+}
+
+function downloadText(name, text, type) {
+    var url = URL.createObjectURL(new Blob([text], { type: type }));
+    var link = $("<a>").attr({ href: url, download: name }).appendTo("body");
+    link[0].click();
+    link.remove();
+    setTimeout(function () {
+        URL.revokeObjectURL(url);
+    }, 1000);
+}
+
+// A panel above Past Games with your Quickmatch record, by template and by opponent. The games come from
+// war.app's own Past Games pages (about a second per 1,000 games) and are kept for the next visit; each
+// game's template is read once from the game in a hidden frame, as "Find the maps" does, and kept for good.
+function setupQuickmatchStats() {
+    var table = $("#MyGamesTable");
+    if (!table.length || $("#tuydQuickmatchStats").length) {
+        return;
+    }
+    addCSS(`
+        #tuydQuickmatchStats { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #444; background: #1b1b1b; color: #ccc; }
+        #tuydQuickmatchStats .tuydQmTitle { font-weight: bold; color: #eee; margin-right: 8px; }
+        #tuydQuickmatchStats .tuydQmRecord b { color: #eee; }
+        #tuydQuickmatchStats .tuydQmMeta, #tuydQuickmatchStats .tuydQmStatus, #tuydQuickmatchStats .tuydQmTemplateStatus { color: #999; }
+        #tuydQuickmatchStats .tuydQmToggle { margin-left: 8px; white-space: nowrap; }
+        #tuydQuickmatchStats .tuydQmTools, #tuydQuickmatchStats .tuydQmTemplateStatus, #tuydQuickmatchStats .tuydQmTabs { margin-top: 8px; }
+        #tuydQuickmatchStats button { background: #222; color: #ddd; border: 1px solid #555; padding: 1px 8px; margin-right: 4px; }
+        #tuydQuickmatchStats button:disabled { color: #777; }
+        #tuydQuickmatchStats label { font-weight: normal; margin: 0 12px 0 0; }
+        #tuydQuickmatchStats input[type=checkbox] { margin: 0 4px 0 0; vertical-align: middle; }
+        #tuydQuickmatchStats input[type=search] { width: 180px; max-width: 100%; margin-left: 8px; background: #222; color: #ddd; border: 1px solid #555; padding: 1px 4px; }
+        #tuydQuickmatchStats .tuydQmTabs a { margin-right: 12px; }
+        #tuydQuickmatchStats .tuydQmTabs a.tuydQmActive { color: #eee; font-weight: bold; text-decoration: none; }
+        #tuydQuickmatchStats .tuydQmTable { width: 100%; margin-top: 6px; }
+        #tuydQuickmatchStats .tuydQmTable thead td { cursor: pointer; white-space: nowrap; }
+        #tuydQuickmatchStats .tuydQmTable td + td { text-align: right; white-space: nowrap; }
+        #tuydQuickmatchStats .tuydQmRow { cursor: pointer; }
+        #tuydQuickmatchStats .tuydQmRow:hover, #tuydQuickmatchStats .tuydQmOpen { background: #262626; }
+        #tuydQuickmatchStats .tuydQmGames td { text-align: left; font-size: 12px; line-height: 1.7; }
+        #tuydQuickmatchStats .tuydQmGame { white-space: nowrap; }
+        #tuydQuickmatchStats .tuydQm-won a { color: #7c7; }
+        #tuydQuickmatchStats .tuydQm-lost a, #tuydQuickmatchStats .tuydQm-booted a { color: #e77; }
+    `);
+    var panel = $(`<div id="tuydQuickmatchStats">
+        <div><span class="tuydQmTitle">Quickmatch</span><span class="tuydQmRecord"></span><a href="#" class="tuydQmToggle"></a></div>
+        <div class="tuydQmBody">
+            <div class="tuydQmTools">
+                <label title="A game you were booted from counts as a loss"><input type="checkbox" name="countBoots">Count boot losses</label>
+                <button type="button" class="tuydQmRescan" title="Read your Past Games again">Rescan</button>
+                <button type="button" class="tuydQmCopy" title="Copy your record and top templates and opponents as text">Copy</button>
+                <button type="button" class="tuydQmCsv" title="Download every Quickmatch game as a spreadsheet (CSV)">CSV</button>
+                <span class="tuydQmStatus"></span>
+            </div>
+            <div class="tuydQmTemplateStatus"></div>
+            <div class="tuydQmTabs">
+                <a href="#" data-tab="templates"></a><a href="#" data-tab="opponents"></a><input type="search" placeholder="Search">
+            </div>
+            <div class="tuydQmTableHolder"></div>
+        </div>
+    </div>`).insertBefore(table);
+    var view = readQuickmatchView();
+    view.query = "";
+    view.sort = null;
+    view.limit = 50;
+    view.openRow = null;
+    var games = null;
+    var scannedAt = 0;
+    var scanning = false;
+    var templates = storedQuickmatchTemplates();
+    var reading = null;
+    var me = { id: null, name: null };
+    var ready = false;
+    var stats = null;
+    try {
+        var cached = JSON.parse(localStorage.getItem(QUICKMATCH_GAMES_KEY));
+        if (cached && Array.isArray(cached.games)) {
+            games = cached.games;
+            scannedAt = cached.time || 0;
+        }
+    } catch (e) {
+        games = null;
+    }
+    var saveView = function () {
+        try {
+            localStorage.setItem(QUICKMATCH_VIEW_KEY, JSON.stringify({ open: view.open, countBoots: view.countBoots, tab: view.tab }));
+        } catch (e) {
+            // The view is just the default next time.
+        }
+    };
+    var status = function (text) {
+        panel.find(".tuydQmStatus").text(text || "");
+    };
+    var unreadGames = function () {
+        return (games || []).filter(function (game) {
+            var result = isQuickmatchGameName(game.name) ? quickmatchResult(game, me) : null;
+            return result && result !== "playing" && !templates[game.id] && !(reading && reading.tried[game.id]);
+        });
+    };
+    var renderTemplateStatus = function () {
+        var place = panel.find(".tuydQmTemplateStatus").empty();
+        if (reading) {
+            place.text("Reading templates: " + reading.done + " of " + reading.total + " games ").append('<a href="#" class="tuydQmReadStop">Stop</a>');
+            return;
+        }
+        var unread = unreadGames().length;
+        if (unread) {
+            var minutes = Math.max(1, Math.round(unread * 1.5 / 60));
+            place.text("The template isn't known yet for " + unread + " game" + (unread === 1 ? "" : "s") + ". ");
+            $('<a href="#" class="tuydQmReadStart"></a>').text("Read " + (unread === 1 ? "it" : "them"))
+                .attr("title", "Opens each game in the background, one at a time, to read its template: about " + minutes + " minute" + (minutes === 1 ? "" : "s") + ". Remembered in this browser.")
+                .appendTo(place);
+        }
+    };
+    var render = function () {
+        var body = panel.find(".tuydQmBody");
+        panel.find(".tuydQmToggle").text(view.open ? "Hide" : games ? "Details" : "Count my Quickmatch games");
+        body.toggle(view.open && !!games);
+        panel.find("[name=countBoots]").prop("checked", view.countBoots);
+        panel.find(".tuydQmRescan, .tuydQmCopy, .tuydQmCsv").prop("disabled", scanning || !games);
+        if (!games || !ready) {
+            panel.find(".tuydQmRecord").text(scanning ? "Reading your Past Games…" : "");
+            body.hide();
+            return;
+        }
+        stats = quickmatchStats(games, me, templates, view.countBoots);
+        var record = panel.find(".tuydQmRecord").empty().append($("<b>").text(quickmatchRecordText(stats)));
+        var meta = [stats.games.length + " game" + (stats.games.length === 1 ? "" : "s")];
+        if (stats.playing) {
+            meta.push(stats.playing + " in progress");
+        }
+        if (stats.bootLosses && !view.countBoots) {
+            meta.push(stats.bootLosses + " boot loss" + (stats.bootLosses === 1 ? "" : "es") + " left out");
+        }
+        record.append($('<span class="tuydQmMeta">').text(" · " + meta.join(" · ")));
+        panel.find("[data-tab=templates]").text("Templates (" + stats.templates.length + ")").toggleClass("tuydQmActive", view.tab === "templates");
+        panel.find("[data-tab=opponents]").text("Opponents (" + stats.opponents.length + ")").toggleClass("tuydQmActive", view.tab === "opponents");
+        if (!scanning) {
+            status(scannedAt ? "Read " + new Date(scannedAt).toLocaleString() : "");
+        }
+        renderTemplateStatus();
+        if (view.open) {
+            panel.find(".tuydQmTableHolder").html(quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
+        }
+    };
+    var readNext = function () {
+        if (!reading) {
+            return;
+        }
+        var game = unreadGames()[0];
+        if (!game) {
+            reading = null;
+            render();
+            return;
+        }
+        reading.tried[game.id] = true;
+        var frame = $('<iframe tabindex="-1" aria-hidden="true" style="position: fixed; left: -10000px; top: 0; width: 1000px; height: 800px; border: 0;"></iframe>')
+            .attr({ id: GAME_TEMPLATE_FRAME_ID, src: "/MultiPlayer?GameID=" + encodeURIComponent(game.id) }).appendTo("body");
+        var started = Date.now();
+        reading.timer = setInterval(function () {
+            var template = null;
+            try {
+                var hooks = frame[0].contentWindow.UJS_Hooks;
+                template = hooks && hooks.za ? gameTemplateFromData(hooks.za, game.name) : null;
+            } catch (e) {
+                template = null;
+            }
+            if (!template && Date.now() - started < 30000) {
+                return;
+            }
+            clearInterval(reading.timer);
+            frame.remove();
+            if (template) {
+                templates[game.id] = template;
+                try {
+                    localStorage.setItem(QUICKMATCH_TEMPLATES_KEY, JSON.stringify(templates));
+                } catch (e) {
+                    // Without storage the templates are read again next time.
+                }
+            } else {
+                log("Quickmatch stats: couldn't read the template of game " + game.id);
+            }
+            reading.done++;
+            render();
+            readNext();
+        }, 300);
+    };
+    var startReading = function () {
+        reading = { done: 0, total: unreadGames().length, tried: {}, timer: null };
+        render();
+        readNext();
+    };
+    var scan = function () {
+        if (scanning) {
+            return;
+        }
+        scanning = true;
+        status("Reading your Past Games…");
+        render();
+        fetchAllPastGames(function (offset, count) {
+            return Promise.resolve($.ajax({
+                url: "/MultiPlayer/PastGames",
+                type: "POST",
+                data: { Offset: offset, Sort: 3, PerPage: count },
+                dataType: "text"
+            })).then(parsePastGamesData);
+        }, 200).then(function (all) {
+            games = all.filter(function (game) {
+                return isQuickmatchGameName(game.name);
+            });
+            scannedAt = Date.now();
+            try {
+                localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ time: scannedAt, games: games }));
+            } catch (e) {
+                // Without storage Past Games is read again next time.
+            }
+            scanning = false;
+            render();
+            if (!reading && unreadGames().length && unreadGames().length <= 10) {
+                startReading();
+            }
+        }, function (error) {
+            scanning = false;
+            log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
+            render();
+            status("Couldn't read your Past Games. Try Rescan later.");
+        });
+    };
+    panel.on("click", ".tuydQmToggle", function (event) {
+        event.preventDefault();
+        view.open = !view.open;
+        saveView();
+        if (view.open && (!games || Date.now() - scannedAt > 10 * 60 * 1000)) {
+            scan();
+        }
+        render();
+    }).on("click", ".tuydQmRescan", scan).on("change", "[name=countBoots]", function () {
+        view.countBoots = this.checked;
+        saveView();
+        render();
+    }).on("click", ".tuydQmTabs a", function (event) {
+        event.preventDefault();
+        view.tab = $(this).attr("data-tab");
+        view.sort = null;
+        view.limit = 50;
+        view.openRow = null;
+        saveView();
+        render();
+    }).on("input", "input[type=search]", function () {
+        view.query = this.value;
+        render();
+    }).on("click", ".tuydQmTable thead td", function () {
+        var key = $(this).attr("data-sort");
+        var current = view.sort || { key: "games", descending: true };
+        view.sort = { key: key, descending: current.key === key ? !current.descending : key !== "name" };
+        render();
+    }).on("click", ".tuydQmRow", function (event) {
+        if ($(event.target).closest("a").length) {
+            return;
+        }
+        var key = $(this).attr("data-key");
+        view.openRow = view.openRow === key ? null : key;
+        render();
+    }).on("click", ".tuydQmAll", function (event) {
+        event.preventDefault();
+        view.limit = 0;
+        render();
+    }).on("click", ".tuydQmReadStart", function (event) {
+        event.preventDefault();
+        startReading();
+    }).on("click", ".tuydQmReadStop", function (event) {
+        event.preventDefault();
+        if (reading) {
+            clearInterval(reading.timer);
+        }
+        $("#" + GAME_TEMPLATE_FRAME_ID).remove();
+        reading = null;
+        render();
+    }).on("click", ".tuydQmCopy", function () {
+        copyText(quickmatchSummaryText(stats, 5)).then(function () {
+            status("Copied.");
+        }, function () {
+            status("Couldn't copy.");
+        });
+    }).on("click", ".tuydQmCsv", function () {
+        downloadText("quickmatch-games.csv", quickmatchCsv(games, me, templates, location.origin), "text/csv;charset=utf-8");
+    });
+    render();
+    signedInPlayerId().done(function (id) {
+        me.id = id;
+        if (!id && window.WlPlayer) {
+            me.name = WlPlayer.Name;
+        }
+        ready = true;
+        render();
+        if (view.open && (!games || Date.now() - scannedAt > 10 * 60 * 1000)) {
+            scan();
+        } else if (view.open && unreadGames().length && unreadGames().length <= 10) {
+            startReading();
+        }
     });
 }
 

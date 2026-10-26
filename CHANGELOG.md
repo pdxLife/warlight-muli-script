@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.52.0
+
+- **Quickmatch stats on Past Games.** A panel above Past Games shows your record over every Quickmatch game you've played, not just the page on screen: "559 W – 117 L (82.7%) · 676 games". It has a tab for templates and one for opponents, each with games, won, lost, win % and average turns; click a heading to sort, search by name, and click a row to list its games. War.app's game list doesn't say which template a game used, so "Read them" opens each game once in the background (about a second and a half a game) and remembers its template for good; a template's number creates a game with it. Boot losses are left out unless you tick "Count boot losses". Copy puts your record and top templates and opponents on the clipboard, and CSV downloads every Quickmatch game. The first time, click "Count my Quickmatch games": it reads all your Past Games, about a second per 1,000 games. Settings menu → Games → "Quickmatch stats on Past Games". After Johnny Silverhand's Quickmatch Stats Extension for Chrome.
+
 ## 3.51.0
 
 - **The Community page shows what's on.** war.app's Community Events box there was empty apart from "maintained by Kenny"; it now lists Titled Tuesday's last winner (or the event being played) with the next start in your time zone, P/R League's games played and leader, the Seasonal Ladder's leader, Clan League's progress and leader (or winner), and the stage Nations Cup is at, each linking to custom.wl-stats.com. Recent Blog Posts above it shows its 5 latest posts, so the two columns stay level. Settings menu → Community → "Community page: community events, the MTL top 10 and the 5 latest blog posts".
