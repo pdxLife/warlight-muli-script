@@ -2,121 +2,192 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
-// Mirrors a row of war.app's Past Games page (names and ids are invented).
-function pastGameRow(id, name, { status = "Finished", boot = "3 days", players = ["Me", "Alice"], yourTurn = false, map = "1748", picture = "" } = {}) {
-    return `<tr class="GameRow" gameid="${id}"><td style="width:142px"><span style="position: relative"><a href="/MultiPlayer?GameID=${id}&amp;From=PastGames"><img class="MyGamesGameThumbnail" src="https://warappcdn.com/s3/Data/Thumbs/${picture || "Maps/" + map + "/3_Fogged.jpg"}"></a><span class="BootTimeLabel">${boot}</span></span></td>`
-        + `<td><a style="font-size: 17px; color: white" href="/MultiPlayer?GameID=${id}&amp;From=PastGames">${name}</a><br>`
-        + (yourTurn ? `<span style="color: #FFFF00">Your turn for 2 hours</span><br>` : "")
-        + `<div class="MyGamesGameBoxesRow">${players.map((title) => `<span class="MyGamesGameBox" title="${title}">&nbsp;</span>`).join("")}</div>`
-        + `<p style="margin: -10px 0px -4px 0px">${status}</p></td></tr>`;
-}
-
-function pastGames(rows) {
-    return `<table id="MyGamesTable" class="dataTable"><thead><tr><td colspan="3">Sort: <select id="Sort"><option value="3">Ended Date</option></select></td></tr></thead>`
-        + `<tbody>${rows.join("")}</tbody></table>`;
-}
-
-const FUNCTIONS = ["parseBootTime", "pastGameState", "pastGameSpeed", "pastGameMapKey", "storedGameMaps", "gameMapFolder", "pastGamePlayers", "pastGameMapOptions", "pastGameMatches", "normalizePastGamesFilter", "orderPastGames", "applyPastGamesFilter", "setupPastGamesFilter"];
-const MAP_NAMES = { 1748: { id: "737", name: "Medium Earth" }, 74965: { id: "31916", name: "Elitist Africa 2.0" } };
-
-const ROWS = [
-    pastGameRow("1", "Nations' Cup R2 - Group C", { status: "Turn 7.  Waiting on Alice for 2 minutes", boot: "4 days 13 hours" }),
-    pastGameRow("2", "Quick 1v1", { status: "Finished", boot: "5 minutes", players: ["Me", "Bob"] }),
-    pastGameRow("3", "Seasonal", { status: "Lobby" }),
-    pastGameRow("4", "Big FFA", { status: "Surrendered", players: ["Me", "Carol: This player has surrendered", "Dan", "Eve"], map: "74965" }),
-    pastGameRow("5", "My move", { status: "Turn 3", yourTurn: true }),
-    pastGameRow("6", "Draft", { status: "Picking.  Waiting on Dave for 2 hours 30 minutes", picture: "Games/4542/45424572/Turn7f.jpg" })
+// Shaped like parsePastGamesData's games (names and ids are invented).
+const pl = (id, name, state, extra = {}) => ({ id, name, state, team: -1, committed: false, ...extra });
+const ME = { id: "7", name: null };
+const GAMES = [
+    { id: 1, name: "Nations' Cup R2 - Group C", state: 3, turn: 7, date: 846335988177, map: 1748, tournament: true, players: [pl(7, "Me", 2, { committed: true }), pl(8, "Alice", 2)] },
+    { id: 2, name: "QM: Me vs Bob", state: 4, turn: 9, date: 846000000000, map: 70306, tournament: false, players: [pl(7, "Me", 4), pl(9, "Bob", 7)] },
+    { id: 3, name: "Season LXXI: Carol vs Me", state: 2, turn: -1, date: 845000000000, map: 1748, tournament: false, players: [pl(10, "Carol", 2), pl(7, "Me", 2)] },
+    { id: 4, name: "Big FFA", state: 3, turn: 12, date: 844000000000, map: 74965, tournament: false, players: [pl(7, "Me", 7), pl(10, "Carol", 2), pl(11, "Dan", 2), pl(12, "Eve", 3), pl(13, "Fay", 5)] },
+    { id: 5, name: "MTL|Me vs Alice", state: 3, turn: 3, date: 843000000000, map: 1748, tournament: false, players: [pl(7, "Me", 2), pl(8, "Alice", 2, { committed: true })] },
+    { id: 6, name: "Real-Time Ladder: Me vs Bob", state: 5, turn: -1, date: 842000000000, map: 2738, tournament: false, players: [pl(7, "Me", 2, { committed: true }), pl(9, "Bob", 2)] },
+    { id: 7, name: "CW: Me vs Dan", state: 4, turn: 4, date: 841000000000, map: 1748, tournament: false, players: [pl(7, "Me", 8), pl(11, "Dan", 4)] },
+    { id: 8, name: "P/R League Season 38 - Division A", state: 4, turn: 15, date: 840000000000, map: 1748, tournament: false, players: [pl(8, "Alice", 4), pl(9, "Bob", 3)] },
+    { id: 9, name: "2 v 2 Ladder: Me and Alice vs Bob and Cy", state: 4, turn: 20, date: 839000000000, map: 1748, tournament: false, players: [pl(7, "Me", 9), pl(8, "Alice", 9), pl(9, "Bob", 9), pl(14, "Cy", 9)] }
 ];
+const MAP_NAMES = { 1748: { id: "737", name: "Medium Earth" }, 74965: { id: "31916", name: "Elitist Africa 2.0" }, 70306: { id: "52000", name: "Small Earth" } };
+const FUNCTIONS = ["pastGamePlayer", "pastGameState", "pastGameResult", "pastGameType", "pastGamePlayerCount", "pastGameStatusText", "pastGameMatches",
+    "normalizePastGamesFilter", "pastGamesFilterIsSet", "pastGameMapOptions", "pastGameDate", "pastGamesListHtml", "isQuickmatchGameName", "htmlEscape", "setupPastGamesFilter"];
 
-function setup(rows, saved) {
-    const { dom, $ } = createDom(pastGames(rows), "https://war.app/MultiPlayer/PastGames");
-    const writes = [];
+function pastGamesPage() {
+    return `<table id="MyGamesTable" class="dataTable"><thead><tr><td colspan="3">Sort: <select id="Sort"><option value="3">Ended Date</option></select></td></tr></thead>`
+        + `<tbody><tr class="GameRow" gameid="1"><td></td><td>war.app's own row</td></tr></tbody></table><div id="PagerContainer">1 - 25 of 9</div>`;
+}
+
+function setup({ loadPastGames } = {}) {
+    const { dom, $ } = createDom(pastGamesPage(), "https://war.app/MultiPlayer/PastGames");
+    const loads = [];
     const ctx = load(FUNCTIONS, {
         ...domGlobals(dom, $),
+        Promise,
         addCSS: () => { },
+        log: () => { },
         loadMapNames: (callback) => callback(MAP_NAMES),
-        localStorage: dom.window.localStorage,
-        GAME_MAPS_KEY: "tidyUpYourDashboard.pastGameMaps",
-        Database: {
-            Table: { Settings: "Settings" },
-            Row: { Settings: { Name: "name" } },
-            readIndex: (table, row, value, callback) => callback(saved === undefined ? undefined : { name: value, value: saved }),
-            update: (table, row) => writes.push(JSON.parse(JSON.stringify(row)))
-        }
+        signedInPlayerId: () => $.Deferred().resolve("7").promise(),
+        loadPastGames: loadPastGames || ((id, maxAge, onProgress) => {
+            loads.push([id, maxAge]);
+            onProgress(9, 9);
+            return Promise.resolve({ time: Date.now(), games: GAMES });
+        })
     });
     ctx.setupPastGamesFilter();
-    const shownIds = () => Array.from($("#MyGamesTable tbody tr.GameRow").filter(function () {
-        return !$(this).hasClass("tuyd-pastHidden");
-    }).map(function () {
-        return $(this).attr("gameid");
-    }).get());
-    const choose = (name, value) => {
+    const shownIds = () => Array.from($("#tuydPastResults .tuydPastList tbody tr").get().map((row) => /GameID=(\d+)/.exec($(row).find("a").attr("href"))[1]));
+    const choose = async (name, value) => {
         const field = $(`#PastGamesFilterBar [name=${name}]`);
         if (field.is(":checkbox")) field.prop("checked", value); else field.val(value);
         field.trigger(name === "query" ? "input" : "change");
+        await flush();
     };
-    return { ctx, $, writes, shownIds, choose };
+    return { ctx, $, loads, shownIds, choose };
 }
 
-test("reads each game's state from its status line", () => {
-    const { ctx, $ } = setup(ROWS);
-    const states = $("#MyGamesTable tr.GameRow").map(function () {
-        return ctx.pastGameState(this);
-    }).get();
-    assert.deepEqual(Array.from(states), ["running", "finished", "lobby", "out", "yourTurn", "running"]);
+test("reads each game's state, your result and its kind from war.app's data", () => {
+    const ctx = load(["pastGamePlayer", "pastGameState", "pastGameResult", "pastGameType", "pastGameStatusText", "isQuickmatchGameName"]);
+    assert.deepEqual(GAMES.map((game) => ctx.pastGameState(game, ME)), ["running", "finished", "lobby", "out", "yourTurn", "running", "finished", "finished", "finished"]);
+    assert.deepEqual(GAMES.map((game) => ctx.pastGameResult(game, ME)), [null, "won", null, "lost", null, null, "booted", null, "vote"]);
+    assert.deepEqual(GAMES.map((game) => ctx.pastGameType(game)), ["tournament", "quickmatch", "seasonal", "other", "mtl", "ladder", "clanWar", "other", "ladder"]);
+    assert.deepEqual(GAMES.map((game) => ctx.pastGameStatusText(game, ME)), ["Turn 8", "Won", "Lobby", "Surrendered", "Your turn", "Picking", "Booted", "Finished", "Ended by vote"]);
+    assert.equal(ctx.pastGameStatusText({ ...GAMES[5], players: [pl(7, "Me", 2)] }, ME), "Your turn to pick");
+    assert.equal(ctx.pastGameState(GAMES[0], { id: null, name: "Me" }), "running", "found by name when the ID isn't known");
 });
 
-test("filters by state, with your-turn games counted as in progress", () => {
-    const { $, shownIds, choose } = setup(ROWS);
-    assert.equal($("#PastGamesFilterCount").text(), "");
-    choose("state", "running");
+test("war.app's list stays until a filter is set; then your whole history is searched", async () => {
+    const { $, loads, shownIds, choose } = setup();
+    assert.equal(loads.length, 0, "nothing is read before a search");
+    assert.equal($("#tuydPastResults").css("display"), "none");
+    await choose("state", "running");
+    assert.deepEqual(JSON.parse(JSON.stringify(loads)), [["7", 600000]]);
+    assert.equal($("#MyGamesTable > tbody").css("display"), "none");
+    assert.equal($("#PagerContainer").css("display"), "none");
     assert.deepEqual(shownIds(), ["1", "5", "6"]);
-    assert.equal($("#PastGamesFilterCount").text(), "3 of 6 shown");
-    choose("state", "yourTurn");
+    assert.equal($("#tuydPastResults .tuydPastHead").first().text(), "3 of 9 games · Back to war.app's list");
+    await choose("state", "yourTurn");
     assert.deepEqual(shownIds(), ["5"]);
-    choose("state", "out");
+    await choose("state", "out");
     assert.deepEqual(shownIds(), ["4"]);
-    choose("state", "lobby");
+    await choose("state", "lobby");
     assert.deepEqual(shownIds(), ["3"]);
+    $("#tuydPastResults .tuydPastBack").trigger("click");
+    assert.equal($("#PastGamesFilterBar [name=state]").val(), "");
+    assert.notEqual($("#MyGamesTable > tbody").css("display"), "none");
+    assert.equal($("#tuydPastResults").css("display"), "none");
+    assert.equal(loads.length, 1);
 });
 
-test("filters by speed and searches game and player names", () => {
-    const { shownIds, choose } = setup(ROWS);
-    choose("speed", "realTime");
+test("filters by your result and by kind of game, and searches game and player names", async () => {
+    const { shownIds, choose } = setup();
+    await choose("result", "won");
     assert.deepEqual(shownIds(), ["2"]);
-    choose("speed", "multiDay");
-    assert.deepEqual(shownIds(), ["1", "3", "4", "5", "6"]);
-    choose("speed", "");
-    choose("query", "carol");
-    assert.deepEqual(shownIds(), ["4"], "a player's name matches without the status after the colon");
-    choose("query", "CUP");
+    await choose("result", "lost");
+    assert.deepEqual(shownIds(), ["4"]);
+    await choose("result", "booted");
+    assert.deepEqual(shownIds(), ["7"]);
+    await choose("result", "vote");
+    assert.deepEqual(shownIds(), ["9"]);
+    await choose("result", "");
+    await choose("type", "quickmatch");
+    assert.deepEqual(shownIds(), ["2"]);
+    await choose("type", "ladder");
+    assert.deepEqual(shownIds(), ["6", "9"]);
+    await choose("type", "other");
+    assert.deepEqual(shownIds(), ["4", "8"]);
+    await choose("type", "");
+    await choose("query", "carol");
+    assert.deepEqual(shownIds(), ["3", "4"]);
+    await choose("query", "CUP");
     assert.deepEqual(shownIds(), ["1"]);
 });
 
-test("reverses the page and keeps the order when the site adds rows", async () => {
-    const { $, shownIds, choose } = setup(ROWS.slice(0, 3));
-    choose("reversed", true);
-    assert.deepEqual(shownIds(), ["3", "2", "1"]);
-    choose("reversed", false);
-    assert.deepEqual(shownIds(), ["1", "2", "3"]);
-    choose("reversed", true);
-    $("#MyGamesTable tbody").html(ROWS.slice(3).join(""));
-    await flush();
-    assert.deepEqual(shownIds(), ["6", "5", "4"]);
+test("filters by number of players and by map, and lists oldest first", async () => {
+    const { $, shownIds, choose } = setup();
+    await choose("size", "more");
+    assert.deepEqual(shownIds(), ["4", "9"], "a player who declined doesn't count");
+    await choose("size", "oneVsOne");
+    assert.deepEqual(shownIds(), ["1", "2", "3", "5", "6", "7", "8"]);
+    await choose("size", "");
+    await choose("minPlayers", "4");
+    assert.deepEqual(shownIds(), ["4", "9"]);
+    await choose("maxPlayers", "4");
+    assert.deepEqual(shownIds(), ["4", "9"]);
+    await choose("minPlayers", "");
+    await choose("maxPlayers", "");
+    const options = Array.from($("#PastGamesFilterBar [name=map] option").get().map((o) => o.value + "=" + o.textContent));
+    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (6)", "70306=Small Earth (1)", "2738=Map 2738 (1)"]);
+    await choose("map", "1748");
+    await choose("reversed", true);
+    assert.deepEqual(shownIds(), ["9", "8", "7", "5", "3", "1"]);
+    await choose("map", "");
+    assert.deepEqual(shownIds(), ["9", "8", "7", "6", "5", "4", "3", "2", "1"], "oldest first is a filter of its own");
 });
 
-test("saves state, speed and order but not the search, and starts from them", () => {
-    const { writes, choose } = setup(ROWS);
-    choose("query", "cup");
-    assert.equal(writes.length, 0);
-    choose("state", "finished");
-    assert.deepEqual(writes.at(-1), { name: "pastGamesFilter", value: { state: "finished", speed: "", reversed: false, map: "", size: "", minPlayers: 0, maxPlayers: 0 } });
+test("each game in the list has its link, date, map, the other players, your result and its turns", async () => {
+    const { $, choose } = setup();
+    await choose("query", "FFA");
+    const cells = $("#tuydPastResults .tuydPastList tbody tr").first().children("td");
+    assert.equal(cells.eq(0).find("a").attr("href"), "/MultiPlayer?GameID=4");
+    assert.equal(cells.eq(0).find(".tuydPastMeta").text(), "2026-09-29 · Elitist Africa 2.0");
+    assert.equal(cells.eq(1).text(), "Carol, Dan, Eve");
+    assert.equal(cells.eq(2).text(), "Surrendered");
+    assert.ok(cells.eq(2).hasClass("tuydPast-lost"));
+    assert.equal(cells.eq(3).text(), "12");
+    await choose("query", "QM");
+    assert.equal($("#tuydPastResults .tuydPastList tbody td").eq(1).html(), "Bob");
+    await choose("query", "Division A");
+    assert.equal($("#tuydPastResults .tuydPastList tbody td").eq(1).html(), "<b>Alice</b>, Bob", "the winner in bold, in a game you didn't play");
+});
 
-    const again = setup(ROWS, { state: "lobby", speed: "nonsense", reversed: true, query: "old" });
-    assert.equal(again.$("#PastGamesFilterBar [name=query]").val(), "");
-    assert.equal(again.$("#PastGamesFilterBar [name=speed]").val(), "");
-    assert.deepEqual(again.shownIds(), ["3"]);
-    assert.equal(again.$("#MyGamesTable tbody tr.GameRow").first().attr("gameid"), "6");
+test("shows 100 games at a time", async () => {
+    const many = Array.from({ length: 230 }, (_, i) => ({ ...GAMES[1], id: 1000 + i }));
+    const { $, shownIds, choose } = setup({ loadPastGames: () => Promise.resolve({ time: 0, games: many }) });
+    await choose("type", "quickmatch");
+    assert.equal(shownIds().length, 100);
+    $("#tuydPastResults .tuydPastShowMore").trigger("click");
+    assert.equal(shownIds().length, 200);
+    assert.equal($("#tuydPastResults .tuydPastShowMore").text(), "Show 30 more");
+});
+
+test("says so when the games can't be read, and tries again on request", async () => {
+    let attempts = 0;
+    const { $, shownIds, choose } = setup({ loadPastGames: () => ++attempts === 1 ? Promise.reject(new Error("war.app's game list couldn't be read")) : Promise.resolve({ time: 0, games: GAMES }) });
+    await choose("state", "lobby");
+    assert.equal($("#tuydPastResults .tuydPastHead").text(), "Couldn't read your games. Try again · Back to war.app's list");
+    await choose("state", "finished");
+    assert.equal(attempts, 1, "not again on each change");
+    $("#tuydPastResults .tuydPastRetry").trigger("click");
+    await flush();
+    assert.deepEqual(shownIds(), ["2", "7", "8", "9"]);
+});
+
+test("loadPastGames keeps every game for the session and reads again when it's too old or another player's", async () => {
+    const { dom } = createDom("");
+    const pages = [];
+    const ctx = load(["loadPastGames"], {
+        Promise,
+        sessionStorage: dom.window.sessionStorage,
+        PAST_GAMES_KEY: "tidyUpYourDashboard.pastGames",
+        fetchPastGamesPage: () => { },
+        fetchAllPastGames: (fetchPage, pageSize) => {
+            pages.push(pageSize);
+            return Promise.resolve([{ id: pages.length }]);
+        }
+    });
+    const first = await ctx.loadPastGames("7", 60000);
+    assert.equal(first.games[0].id, 1);
+    assert.equal((await ctx.loadPastGames("7", 60000)).games[0].id, 1, "this session's copy");
+    assert.equal((await ctx.loadPastGames("8", 60000)).games[0].id, 2, "another player's copy isn't used");
+    assert.equal((await ctx.loadPastGames("8", 0)).games[0].id, 3, "too old");
+    assert.deepEqual(pages, [200, 200, 200]);
 });
 
 test("recognizes the Past Games page", () => {
@@ -126,47 +197,13 @@ test("recognizes the Past Games page", () => {
     assert.ok(!at("https://war.app/MultiPlayer/").pageIsPastGames());
 });
 
-test("a boot time of up to an hour is real-time, anything longer multi-day", () => {
-    const { dom, $ } = createDom(pastGames([
-        pastGameRow("1", "a", { boot: "5 minutes" }),
-        pastGameRow("2", "b", { boot: "1 hour" }),
-        pastGameRow("3", "c", { boot: "1 hour 30 minutes" }),
-        pastGameRow("4", "d", { boot: "3 days" })
-    ]), "https://war.app/MultiPlayer/PastGames");
-    const ctx = load(["parseBootTime", "pastGameSpeed"], domGlobals(dom, $));
-    assert.deepEqual(Array.from($("tr.GameRow").get().map((row) => ctx.pastGameSpeed(row))), ["realTime", "realTime", "multiDay", "multiDay"]);
-});
-
-test("the map list names this page's maps, with how many games each, and filters by one", () => {
-    const { $, choose, shownIds } = setup(ROWS);
-    const options = Array.from($("#PastGamesFilterBar [name=map] option").get().map((o) => o.value + "=" + o.textContent));
-    assert.deepEqual(options, ["=Any map", "74965=Elitist Africa 2.0 (1)", "1748=Medium Earth (4)", "unknown=Map not shown (1)"]);
-    choose("map", "74965");
-    assert.deepEqual(shownIds(), ["4"]);
-    choose("map", "unknown");
-    assert.deepEqual(shownIds(), ["6"], "games showing a picture of the game instead of the map");
-});
-
-test("filters by number of players: 1 v 1, more than two, and from–to", () => {
-    const { choose, shownIds } = setup(ROWS);
-    choose("size", "more");
-    assert.deepEqual(shownIds(), ["4"]);
-    choose("size", "oneVsOne");
-    assert.deepEqual(shownIds(), ["1", "2", "3", "5", "6"]);
-    choose("size", "");
-    choose("minPlayers", "3");
-    assert.deepEqual(shownIds(), ["4"]);
-    choose("minPlayers", "");
-    choose("maxPlayers", "2");
-    assert.deepEqual(shownIds(), ["1", "2", "3", "5", "6"]);
-});
-
-test("a saved map filter stays in the list even when this page has no game on that map", () => {
-    const { dom, $ } = createDom("");
-    const ctx = load(["pastGameMapKey", "pastGameMapOptions"], domGlobals(dom, $));
-    const options = JSON.parse(JSON.stringify(ctx.pastGameMapOptions([], MAP_NAMES, "74965")));
-    assert.deepEqual(options, [{ key: "74965", name: "Elitist Africa 2.0", games: 0 }]);
-    assert.equal(JSON.parse(JSON.stringify(ctx.pastGameMapOptions([], {}, "5"))).at(0).name, "Map 5", "an unknown map is named by its number");
+test("a chosen map stays in the list even when no game is on it, and filters are cleaned up", () => {
+    const ctx = load(["pastGameMapOptions", "normalizePastGamesFilter", "pastGamesFilterIsSet"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.pastGameMapOptions([], MAP_NAMES, "74965"))), [{ key: "74965", name: "Elitist Africa 2.0", games: 0 }]);
+    const filter = ctx.normalizePastGamesFilter({ state: "running", speed: "realTime", map: "unknown", type: "nonsense", result: "won", minPlayers: "-2" });
+    assert.deepEqual(JSON.parse(JSON.stringify(filter)), { state: "running", result: "won", type: "", map: "", minPlayers: 0, maxPlayers: 0, size: "", reversed: false, query: "" });
+    assert.equal(ctx.pastGamesFilterIsSet(ctx.normalizePastGamesFilter({ query: "  " })), false);
+    assert.equal(ctx.pastGamesFilterIsSet(ctx.normalizePastGamesFilter({ reversed: true })), true);
 });
 
 test("war.app's map list gives each map's thumbnail folder, ID and name", () => {
@@ -177,26 +214,4 @@ test("war.app's map list gives each map's thumbnail folder, ID and name", () => 
     </td></tr></table>`;
     const ctx = load(["parseMapList"], { ...domGlobals(dom, $), DOMParser: dom.window.DOMParser });
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseMapList(html))), { 95065: { id: "41539", name: "!" }, 1748: { id: "737", name: "Medium Earth" } });
-});
-
-test("a game's map is read from war.app's game data only when both its folder and ID are there", () => {
-    const ctx = load(["gameMapFolder"]);
-    const maps = { ...MAP_NAMES, 1: { id: "1", name: "Bracketology" }, 2: { id: "2", name: "Small Earth" } };
-    const mediumEarth = { a2: 1, bt: 3, ny: 737, AN: 2, aa: 1748, Xs: 3, n9: 1.0 };
-    assert.equal(ctx.gameMapFolder(mediumEarth, maps), "1748", "shaped like war.app's data for a Medium Earth game; Bracketology and Small Earth match by chance");
-    assert.equal(ctx.gameMapFolder({ a2: 1, bt: 3, AN: 2, n9: 1.0 }, { 1: { id: "1", name: "Bracketology" } }), "1", "a Bracketology game itself");
-    assert.equal(ctx.gameMapFolder({ x: 31916, y: 2 }, MAP_NAMES), null, "the map ID alone isn't trusted");
-    assert.equal(ctx.gameMapFolder({ x: 1748 }, MAP_NAMES), null, "nor the folder alone");
-    assert.equal(ctx.gameMapFolder({ x: 5, y: "Medium Earth" }, MAP_NAMES), null);
-    assert.equal(ctx.gameMapFolder(null, MAP_NAMES), null);
-});
-
-test("maps found earlier count for games war.app shows without their map, and the rest can be looked up", () => {
-    const { dom, $ } = createDom(pastGames(ROWS), "https://war.app/MultiPlayer/PastGames");
-    dom.window.localStorage.setItem("tidyUpYourDashboard.pastGameMaps", JSON.stringify({}));
-    const before = setup(ROWS);
-    assert.equal(before.$("#PastGamesFilterBar .tuydMapFind").text(), "Find the maps of 1 game");
-    const ctx = load(["pastGameMapKey", "pastGameMapOptions"], domGlobals(dom, $));
-    const options = JSON.parse(JSON.stringify(ctx.pastGameMapOptions($("tr.GameRow"), MAP_NAMES, "", { 6: "74965" })));
-    assert.deepEqual(options.map((o) => o.name + " " + o.games), ["Elitist Africa 2.0 2", "Medium Earth 4"], "game 6 is now on its map, and nothing is left unknown");
 });

@@ -227,29 +227,17 @@
 
   <h2 id="past-games">Past Games</h2>
   <p class="where">war.app → Multi-Player → Past Games</p>
-  <figure>
-    <img src="media/past-games-filter.png" width="664" height="408" alt="The Past Games filter bar: a search box, All games, Any speed, Reverse order, 16 of 25 shown, and a second row with Medium Earth (16), 1 v 1 and Players from to">
-    <figcaption>The filter bar above your past games.</figcaption>
-  </figure>
+  <p>A filter bar above the list searches all of your games, not just the page shown. The first search reads every page of your Past Games from war.app, about 8 seconds for 5,000 games, and keeps them while the tab is open (they're read again after 10 minutes). While a filter is set, the games that match take the place of war.app's list: "37 of 4,796 games", 100 at a time, each with its name (a link to the game), date and map, the other players (winners in bold), your result and the number of turns. <strong>Back to war.app's list</strong> clears the filters.</p>
   <ul>
     <li><strong>Search</strong> a game name or a player's name.</li>
-    <li><strong>State</strong>: in progress, your turn, lobby, finished, or games you're out of (surrendered, booted…).</li>
-    <li><strong>Speed</strong>: real-time (boot time of an hour or less) or multi-day.</li>
-    <li><strong>Map</strong>: the maps of the games on the page, by name, with how many games each. The names come from war.app's map list, read once a week. War.app shows most finished games with a picture of the game instead of the map: they're under <strong>Map not shown</strong> until you click <strong>Find the maps of N games</strong>, which opens each in the background (about a second and a half each; <strong>Stop</strong> stops it) and remembers its map for good.</li>
-    <li><strong>Players</strong>: 1 v 1, more than 2 players, or a from–to number of players.</li>
-    <li><strong>Reverse order</strong> flips the list.</li>
+    <li><strong>State</strong>: in progress, your turn, lobby, finished, or games still going that you're out of (eliminated, surrendered, booted, declined).</li>
+    <li><strong>Result</strong>: won, eliminated or surrendered, booted, or ended by vote.</li>
+    <li><strong>Kind of game</strong>: Quickmatch, tournament, Seasonal Ladder, other ladders (war.app's 1 v 1, 2 v 2, 3 v 3 and Real-Time ladders), MTL, Clan War, or other games. Tournament games are marked in war.app's data; the others are told apart by the names war.app gives them ("QM: …", "Season LXXI: …", "MTL|…", "CW: …").</li>
+    <li><strong>Map</strong>: every map you've played on, by name, with how many games each. The names come from war.app's map list, read once a week; a map that isn't in it shows as its number.</li>
+    <li><strong>Players</strong>: 1 v 1, more than 2 players, or a from–to number of players. Players who declined don't count.</li>
+    <li><strong>Oldest first</strong> lists your games from the first one.</li>
   </ul>
-  <p>It filters the page war.app shows. To search more games at once, set war.app's <strong>Number per page</strong> to 200. The state, speed, map, players and order are remembered; the search box starts empty. A game's settings (No-Split, cards…) and its map's size can't be filtered: the Past Games page doesn't carry them.</p>
-
-  <h3>Quickmatch stats</h3>
-  <p>Above the list, a <strong>Quickmatch</strong> line with your record over all your Quickmatch games, not just the page shown: "559 W – 117 L (82.7%) · 676 games". The first time, click <strong>Count my Quickmatch games</strong>: the script reads all of your Past Games from war.app, about a second for every 1,000 games, and remembers them; opening the panel again reads them anew after 10 minutes, and <strong>Rescan</strong> does it at once. <strong>Details</strong> opens the panel, <strong>Hide</strong> closes it, and it stays as you left it.</p>
-  <ul>
-    <li><strong>Templates</strong> and <strong>Opponents</strong>: games, won, lost, win % and the average number of turns for each. Click a heading to sort by it, type in <strong>Search</strong> to find one, and click a row to list its games, each linking to the game. A template's number (#1070736) creates a game with that template.</li>
-    <li>War.app's list doesn't say which template a game used, so the panel reads it from each game once: <strong>Read them</strong> opens the games in the background one at a time, about a second and a half each, and remembers each template for good (<strong>Stop</strong> stops it). Until then those games are under <strong>Template not read yet</strong>. A few new games are read by themselves.</li>
-    <li><strong>Count boot losses</strong> (off): games you were booted from count as losses. Off, they're left out and the line says how many.</li>
-    <li><strong>Copy</strong> copies your record and your top 5 templates and opponents as text, for a forum post. <strong>CSV</strong> downloads every Quickmatch game (result, turns, template, opponents, link) for a spreadsheet.</li>
-  </ul>
-  <p>War.app names Quickmatch games "QM: A vs B" (or "QM: 2v2"), and that's how the panel finds them; a game you named "QM: …" yourself is dropped once its template is read. Games ended by vote count in the games but not as wins or losses.</p>
+  <p>The filters start empty on each visit. A game's settings (No-Split, cards…) and its map's size can't be filtered: war.app's game list doesn't carry them.</p>
 
   <h2 id="chat-rooms">Chat rooms</h2>
   <p class="where">Dashboard → <strong>Chat</strong>, or Community → Chat (Global, Clan and your groups)</p>
@@ -290,6 +278,16 @@
   <h3>The Community page</h3>
   <p class="where">war.app → Community</p>
   <p>war.app's Community Events box lists Titled Tuesday's last winner (or, while one is being played, how far it is) and the next one in your time zone, P/R League's games played and leader, the Seasonal Ladder's leader, Clan League's progress and leader (or winner), and the stage Nations Cup is at, each linking to custom.wl-stats.com. To make room, Recent Blog Posts shows its 5 latest posts; Show All lists the rest. Above New Maps, the Multi-Template Ladder (MTL) top 10, with links to the full ladder and to warlight-mtl.com; your row is in bold, or your rank is below when you're further down. <span class="setting">Community page: community events, the MTL top 10 and the 5 latest blog posts</span> (on; settings → Community).</p>
+  <h3 id="quickmatch-stats">Your Quickmatch record and stats</h3>
+  <p class="where">war.app → Multi-Player → Quickmatch</p>
+  <p>In the Settings dialog's header, your record over all your Quickmatch games, "559 W – 117 L (82.7%)" (hover it for the number of games, games in progress and boot losses left out), and a <strong>Stats</strong> button. On war.app's <strong>Templates</strong> screen, each template you've played shows your record there next to "Your rating". The games come from your Past Games: the script reads them while you're on the Quickmatch screen, about 8 seconds for 5,000 games, and again when they're over 10 minutes old.</p>
+  <ul>
+    <li><strong>Stats</strong> opens a dialog with <strong>Templates</strong> and <strong>Opponents</strong> tabs: games, won, lost, win % and the average number of turns for each. Click a heading to sort by it, type in <strong>Search</strong> to find one, and click a row to list its games, each linking to the game. A template's number (#1070736) creates a game with that template. ✕ or Esc closes it.</li>
+    <li>War.app's game list doesn't say which template a game used, so the script reads it from each game once: <strong>Read them</strong> in the dialog opens the games in the background one at a time, about a second and a half each, and remembers each template for good (<strong>Stop</strong> stops it). Until then those games are under <strong>Template not read yet</strong>, and their templates show no record on the Templates screen. A few new games are read by themselves.</li>
+    <li><strong>Count boot losses</strong> (off): games you were booted from count as losses. Off, they're left out.</li>
+    <li><strong>Rescan</strong> reads your Past Games again at once. <strong>Copy</strong> copies your record and your top 5 templates and opponents as text, for a forum post. <strong>CSV</strong> downloads every Quickmatch game (result, turns, template, opponents, link) for a spreadsheet.</li>
+  </ul>
+  <p>War.app names Quickmatch games "QM: A vs B" (or "QM: 2v2"), and that's how the script finds them; a game you named "QM: …" yourself is dropped once its template is read. Games ended by vote count in the games but not as wins or losses. <span class="setting">Your Quickmatch record and stats</span> (on; settings → Ladders &amp; community). Your own profile shows the same record under war.app's Quickmatch ratings, as of your last visit to Quickmatch: <span class="setting">Your Quickmatch record on your profile</span> (on; settings → Profile).</p>
   <h3>Your rank on Quickmatch leaderboards</h3>
   <p class="where">war.app → Multi-Player → Quickmatch → Leaderboards</p>
   <figure>
@@ -324,6 +322,7 @@
     <li><strong>AWP World Tour</strong>: race place, 12-month rank, games and win rate, tournaments, titles, with a link to awp.wl-stats.com.</li>
     <li><strong>Community tournaments</strong>: games, titles, best placement, tournaments organized, and records in the formats the player plays most.</li>
     <li><strong>MTL and Seasonal Ladder</strong> in the player's Ladders table, MTL at the top and the Seasonal Ladder after war.app's ladders: their best and current MTL rank and rating, and their best final Seasonal Ladder place over all seasons ("· champion ×6" for a champion) with this season's place. From custom.wl-stats.com. <span class="setting">MTL and Seasonal Ladder in the Ladders table</span> (on).</li>
+    <li><strong>Your Quickmatch record</strong> on your own profile, under war.app's Quickmatch ratings: "Record: 559 W – 117 L (82.7%) in 676 games", as of your last visit to Quickmatch. <a href="#quickmatch-stats">More</a></li>
     <li><strong>Private notes</strong>: the note you keep about the player on war.app (the profile's "Private Notes" link), shown on their profile. <span class="setting">Show Private Notes on Profile</span> (on).</li>
     <li>Click a stat section's heading to fold it.</li>
   </ul>

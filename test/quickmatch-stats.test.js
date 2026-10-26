@@ -24,11 +24,11 @@ function writer() {
     return w;
 }
 
-function writeGame(w, { id, name, state = 4, turn = 5, players = [], settings = false, tournament = false, teams = null }) {
-    w.int(0).double(259200000).text(null).int(0).int(0).double(259200000).byte(4).int(id).bool(false).double(8.9e11).int(1748).int(3).bool(false).text(name).int(turn);
+function writeGame(w, { id, name, state = 4, turn = 5, players = [], settings = false, tournament = false, teams = null, date = 8.9e11, map = 1748 }) {
+    w.int(0).double(259200000).text(null).int(0).int(0).double(259200000).byte(4).int(id).bool(false).double(date).int(map).int(3).bool(false).text(name).int(turn);
     if (teams) { w.bool(true).int(teams.length); teams.forEach((t) => w.int(t)); } else w.bool(false);
     w.bool(true).int(players.length);
-    players.forEach((p) => w.bool(true).bool(true).int(17).bool(true).bool(false).int(0x7fffffff).bool(false).text(p.name).int(p.id).byte(p.state).int(p.team ?? -1).bool(false));
+    players.forEach((p) => w.bool(true).bool(true).int(17).bool(true).bool(!!p.committed).int(0x7fffffff).bool(false).text(p.name).int(p.id).byte(p.state).int(p.team ?? -1).bool(false));
     w.bool(false).bool(false).bool(false).bool(false);
     if (settings) {
         w.bool(true).bool(true).double(1).bool(true).int(0).text("x").bool(false).bool(false).bool(true).int(2).double(0.7).bool(false).int(0).bool(false).bool(false)
@@ -55,16 +55,21 @@ function parse(hex) {
     return JSON.parse(JSON.stringify(parsePastGamesData(hex)));
 }
 
-test("parsePastGamesData reads each game's id, name, state, turn and players, past settings and tournament data", () => {
+test("parsePastGamesData reads each game's id, name, state, turn, date, map and players, past settings and tournament data", () => {
     const hex = page(4796, [
-        { id: 101, name: "QM: Me vs Ann", turn: 9, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
-        { id: 102, name: "Cup: Round of 16 ✓", state: 3, turn: -1, players: [p(7, "Me", 2), p(9, "Bø", 2)], settings: true, tournament: true },
+        { id: 101, name: "QM: Me vs Ann", turn: 9, players: [p(7, "Me", 4), p(8, "Ann", 7)], date: 846335988177, map: 70306 },
+        { id: 102, name: "Cup: Round of 16 ✓", state: 3, turn: -1, players: [{ ...p(7, "Me", 2), committed: true }, p(9, "Bø", 2)], settings: true, tournament: true },
         { id: 103, name: "QM: 2v2", players: [p(7, "Me", 4, 1), p(8, "Ann", 7, 0), p(10, "Cy", 4, 1), p(11, "Di", 7, 0)], teams: [0, 1] }
     ]);
     const data = parse(hex);
     assert.equal(data.total, 4796);
-    assert.deepEqual(data.games.map((g) => [g.id, g.name, g.state, g.turn]), [[101, "QM: Me vs Ann", 4, 9], [102, "Cup: Round of 16 ✓", 3, -1], [103, "QM: 2v2", 4, 5]]);
-    assert.deepEqual(data.games[0].players, [{ id: 7, name: "Me", state: 4, team: -1 }, { id: 8, name: "Ann", state: 7, team: -1 }]);
+    assert.deepEqual(data.games.map((g) => [g.id, g.name, g.state, g.turn, g.date, g.map, g.tournament]), [
+        [101, "QM: Me vs Ann", 4, 9, 846335988177, 70306, false],
+        [102, "Cup: Round of 16 ✓", 3, -1, 8.9e11, 1748, true],
+        [103, "QM: 2v2", 4, 5, 8.9e11, 1748, false]
+    ]);
+    assert.deepEqual(data.games[0].players, [{ id: 7, name: "Me", state: 4, team: -1, committed: false }, { id: 8, name: "Ann", state: 7, team: -1, committed: false }]);
+    assert.deepEqual(data.games[1].players.map((pl) => pl.committed), [true, false]);
     assert.deepEqual(data.games[2].players.map((pl) => pl.team), [1, 0, 1, 0]);
 });
 
@@ -81,16 +86,18 @@ test("fetchAllPastGames reads page after page until the total, keeping each game
     const { fetchAllPastGames } = load(["fetchAllPastGames"], { Promise });
     const pages = { 0: [1, 2], 2: [2, 3], 4: [4] };
     const offsets = [];
+    const progress = [];
     const games = await fetchAllPastGames((offset, count) => {
         offsets.push([offset, count]);
         return Promise.resolve({ total: 5, games: pages[offset].map((id) => ({ id })) });
-    }, 2);
+    }, 2, (done, total) => progress.push(done + "/" + total));
     assert.deepEqual(offsets, [[0, 2], [2, 2], [4, 2]]);
+    assert.deepEqual(progress, ["2/5", "4/5", "5/5"]);
     assert.deepEqual(Array.from(games, (g) => g.id), [1, 2, 3, 4]);
     await assert.rejects(fetchAllPastGames(() => Promise.resolve(null), 2), /couldn't be read/);
 });
 
-const STATS_FUNCTIONS = ["isQuickmatchGameName", "quickmatchPlayer", "quickmatchResult", "quickmatchOpponents", "quickmatchStats", "quickmatchResultText", "quickmatchRateText", "quickmatchRecordText"];
+const STATS_FUNCTIONS = ["isQuickmatchGameName", "pastGamePlayer", "pastGameResult", "quickmatchResult", "quickmatchOpponents", "quickmatchStats", "quickmatchResultText", "quickmatchRateText", "quickmatchRecordText"];
 
 const GAMES = [
     { id: 1, name: "QM: Me vs Ann", state: 4, turn: 8, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
@@ -204,11 +211,29 @@ test("the table sorts, filters, limits and lists the games of the open row", () 
     assert.match(table("templates", { query: "nothing" }).$("tbody").text(), /Nothing matches/);
 });
 
-function panel({ cached, view, ajax } = {}) {
-    const { dom, $ } = createDom(`<div><table id="MyGamesTable" class="dataTable"><thead></thead><tbody></tbody></table></div>`, "https://war.app/MultiPlayer/PastGames");
+// Mirrors war.app's Quickmatch screen: the main scene's Settings dialog and the Templates scene's rows.
+const TEMPLATE_ROW = (n, name, rating) => {
+    const suffix = n > 1 ? "_" + n : "";
+    return `<div id="ujs_TemplatesSceneTemplate${suffix}"><div id="ujs_Hamburger${suffix}"><div id="ujs_InfoVert${suffix}">`
+        + `<div id="ujs_TemplateNameLabel${suffix}"><div id="ujs_TemplateNameLabel${suffix}_tmp">${name}</div></div>`
+        + `<div id="ujs_YourRatingLabel${suffix}"><div id="ujs_YourRatingLabel${suffix}_tmp">Your rating: ${rating}</div></div></div></div></div>`;
+};
+const QUICKMATCH_SCREEN = `<div id="UjsCanvasHolder"><div id="ujs_QuickmatchScene"><div id="ujs_Viewport"><div id="ujs_Content">
+    <div id="ujs_SettingsContainer">
+        <div id="ujs_DialogBackgroundForDropShadow_3"><div id="ujs_DialogBackgroundForDropShadow_3_img"></div></div>
+        <div id="ujs_Header_3"><div id="ujs_HeaderText_3"><div id="ujs_HeaderText_3_tmp">Settings</div></div></div>
+        <div id="ujs_WinsLabel"><div id="ujs_WinsLabel_tmp">You've won 2 quickmatch games (rank 35)</div></div>
+    </div></div></div></div>
+    <div id="ujs_TemplatesScene" style="display: none"><div id="ujs_TemplatesContainer">
+        ${TEMPLATE_ROW(1, "Strategic 1v1", "1,309.8")}${TEMPLATE_ROW(2, "Guiroma", "364.48")}${TEMPLATE_ROW(3, "Biomes of Americas 1 v 1", "337.73")}
+    </div></div></div>`;
+
+function screen({ cached, ajax, sessionCopy } = {}) {
+    const { dom, $ } = createDom(QUICKMATCH_SCREEN, "https://war.app/MultiPlayer?Quickmatch=1");
+    dom.window.Range.prototype.getBoundingClientRect = () => ({ left: 0, right: 140, width: 140 });
     const storage = dom.window.localStorage;
     if (cached) storage.setItem("tidyUpYourDashboard.quickmatchGames", JSON.stringify(cached));
-    if (view) storage.setItem("tidyUpYourDashboard.quickmatchView", JSON.stringify(view));
+    if (sessionCopy) dom.window.sessionStorage.setItem("tidyUpYourDashboard.pastGames", JSON.stringify(sessionCopy));
     storage.setItem("tidyUpYourDashboard.quickmatchTemplates", JSON.stringify(TEMPLATES));
     const requests = [];
     if (ajax) {
@@ -217,52 +242,122 @@ function panel({ cached, view, ajax } = {}) {
             return $.Deferred().resolve(ajax(options)).promise();
         };
     }
-    const ctx = load(["setupQuickmatchStats", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", ...STATS_FUNCTIONS], {
+    const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "loadPastGames",
+        "fetchPastGamesPage", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt",
+        "addCommunityLaddersStyles", ...STATS_FUNCTIONS], {
         ...domGlobals(dom, $),
+        window: dom.window,
         localStorage: storage,
         addCSS: () => { },
         log: () => { },
         Promise, TextDecoder, Uint8Array, DataView, Set,
+        setTimeout: (fn) => fn(),
         signedInPlayerId: () => $.Deferred().resolve("7").promise(),
         QUICKMATCH_GAMES_KEY: "tidyUpYourDashboard.quickmatchGames",
         QUICKMATCH_TEMPLATES_KEY: "tidyUpYourDashboard.quickmatchTemplates",
         QUICKMATCH_VIEW_KEY: "tidyUpYourDashboard.quickmatchView",
+        PAST_GAMES_KEY: "tidyUpYourDashboard.pastGames",
         GAME_TEMPLATE_FRAME_ID: "tuydGameTemplateFrame"
     });
     ctx.setupQuickmatchStats();
-    return { $, storage, requests };
+    const showTemplates = async () => {
+        $("#ujs_QuickmatchScene").hide();
+        $("#ujs_TemplatesScene").show();
+        await flush();
+    };
+    return { $, storage, requests, showTemplates, sessionStorage: dom.window.sessionStorage };
 }
 
-test("the Quickmatch panel shows the record from the last scan and opens to the templates", () => {
-    const { $ } = panel({ cached: { time: Date.now(), games: GAMES } });
-    assert.equal($("#tuydQuickmatchStats").next().attr("id"), "MyGamesTable");
-    assert.equal($(".tuydQmRecord").text(), "2 W – 1 L (66.7%) · 5 games · 1 in progress · 1 boot loss left out");
-    assert.equal($(".tuydQmBody").css("display"), "none");
-    $(".tuydQmToggle").trigger("click");
-    assert.notEqual($(".tuydQmBody").css("display"), "none");
-    assert.equal($(".tuydQmTable tr.tuydQmRow").length, 3);
-    assert.equal($(".tuydQmTemplateStatus").text(), "The template isn't known yet for 2 games. Read them");
-    $("[name=countBoots]").prop("checked", true).trigger("change");
-    assert.match($(".tuydQmRecord").text(), /^2 W – 2 L \(50\.0%\)/);
-    $("[data-tab=opponents]").trigger("click");
-    assert.equal($(".tuydQmTable thead td").first().text(), "Opponent");
-    $(".tuydQmRow").first().trigger("click");
-    assert.equal($("tr.tuydQmGames").length, 1);
+test("the Settings dialog's header has your Quickmatch record and a Stats button", () => {
+    const { $, requests } = screen({ cached: { player: "7", time: Date.now(), games: GAMES } });
+    assert.equal(requests.length, 0, "a recent scan isn't read again");
+    assert.equal($("#tuydQmSummary").parent().attr("id"), "ujs_SettingsContainer");
+    assert.equal($(".tuydQmSummaryRecord").text(), "2 W – 1 L (66.7%)");
+    assert.equal($(".tuydQmSummaryRecord").attr("title"), "5 finished Quickmatch games · 1 in progress · 1 boot loss left out (Muli's Userscript)");
+    assert.equal($(".tuydQmStatsButton").text(), "Stats");
 });
 
-test("the Quickmatch panel reads Past Games when it's opened without a recent scan", async () => {
+test("each template on the Templates screen shows your record there, and unplayed ones nothing", async () => {
+    const { $, showTemplates } = screen({ cached: { player: "7", time: Date.now(), games: GAMES } });
+    await showTemplates();
+    assert.equal($("#ujs_YourRatingLabel").children(".tuydQmTemplateRecord").text(), "· 1 W – 1 L (50.0%)");
+    assert.equal($("#ujs_YourRatingLabel_2").children(".tuydQmTemplateRecord").text(), "· 0 W – 0 L (–)");
+    assert.equal($("#ujs_YourRatingLabel_3").children(".tuydQmTemplateRecord").length, 0);
+    assert.equal($("#ujs_YourRatingLabel").children(".tuydQmTemplateRecord")[0].style.left, "148px", "after the rating's text");
+    assert.equal($("#tuydQmSummary").length, 0, "the main scene is hidden");
+});
+
+test("the Stats dialog lists templates and opponents, counts boot losses when asked, and closes with the scene", async () => {
+    const { $, showTemplates } = screen({ cached: { player: "7", time: Date.now(), games: GAMES } });
+    $(".tuydQmStatsButton").trigger("click");
+    assert.equal($("#tuydQmStats").parent().attr("id"), "UjsCanvasHolder");
+    assert.ok($("#tuydQmStats").hasClass("tuydCommunityPanel"));
+    assert.equal($("#tuydQmStats .tuydQmTable tr.tuydQmRow").length, 3);
+    assert.equal($("#tuydQmStats .tuydQmTemplateStatus").text(), "The template isn't known yet for 2 games. Read them");
+    $("#tuydQmStats [name=countBoots]").prop("checked", true).trigger("change");
+    assert.match($("#tuydQmStats .tuydQmRecordLine").text(), /^2 W – 2 L \(50\.0%\)/);
+    assert.equal($(".tuydQmSummaryRecord").text(), "2 W – 2 L (50.0%)");
+    $("#tuydQmStats [data-tab=opponents]").trigger("click");
+    assert.equal($("#tuydQmStats .tuydQmTable thead td").first().text(), "Opponent");
+    $("#tuydQmStats .tuydQmRow").first().trigger("click");
+    assert.equal($("#tuydQmStats tr.tuydQmGames").length, 1);
+    $("#tuydQmStats .tuydQmClose").trigger("click");
+    assert.equal($("#tuydQmStats").length, 0);
+    $(".tuydQmStatsButton").trigger("click");
+    await showTemplates();
+    assert.equal($("#tuydQmStats").length, 0);
+});
+
+test("without a recent scan the Quickmatch screen reads Past Games and keeps its Quickmatch games", async () => {
     const hex = page(2, [GAMES[0], GAMES[5]].map((g) => ({ ...g })));
-    const { $, storage, requests } = panel({ ajax: () => hex });
-    assert.equal($(".tuydQmToggle").text(), "Count my Quickmatch games");
-    $(".tuydQmToggle").trigger("click");
+    const { $, storage, requests, sessionStorage } = screen({ cached: { player: "7", time: Date.now() - 11 * 60 * 1000, games: GAMES }, ajax: () => hex });
     await flush();
     assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => [r.url, r.type, r.data]))), [["/MultiPlayer/PastGames", "POST", { Offset: 0, Sort: 3, PerPage: 200 }]]);
-    assert.equal($(".tuydQmRecord").text(), "1 W – 0 L (100.0%) · 1 game");
+    assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 0 L (100.0%)");
     assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).games.map((g) => g.id), [1]);
+    assert.equal(JSON.parse(sessionStorage.getItem("tidyUpYourDashboard.pastGames")).games.length, 2, "every game is kept for Past Games");
 });
 
-test("the Quickmatch panel says so when war.app's answer can't be read", async () => {
-    const { $ } = panel({ ajax: () => "<html></html>", view: { open: true } });
+test("the Quickmatch screen uses this session's copy of Past Games, and ignores another player's games", async () => {
+    const { $, requests } = screen({
+        cached: { player: "8", time: Date.now(), games: GAMES },
+        sessionCopy: { player: "7", time: Date.now() - 60 * 1000, games: [GAMES[1], GAMES[5]] }
+    });
     await flush();
-    assert.equal($(".tuydQmStatus").text(), "Couldn't read your Past Games. Try Rescan later.");
+    assert.equal(requests.length, 0);
+    assert.equal($(".tuydQmSummaryRecord").text(), "0 W – 1 L (0.0%)");
+});
+
+test("the Quickmatch screen says so when war.app's answer can't be read", async () => {
+    const { $ } = screen({ ajax: () => "<html></html>" });
+    await flush();
+    assert.equal($(".tuydQmSummaryRecord").text(), "Couldn't read your games");
+    $(".tuydQmStatsButton").trigger("click");
+    assert.equal($("#tuydQmStats .tuydQmStatus").text(), "Couldn't read your games. Try Rescan later.");
+});
+
+test("your own profile shows your Quickmatch record under war.app's ratings, others' profiles nothing", () => {
+    const profile = (url, folded) => {
+        const lines = "Global: 1309.77<br> Real-time: 1313.54<br>";
+        const { dom, $ } = createDom(`<div class="p-3"><h3>Quickmatch</h3>${folded ? `<div class="exp">${lines}</div>` : lines}<h3>Single-player stats</h3></div>`, url);
+        dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchGames", JSON.stringify({ player: "7", time: Date.now(), games: GAMES }));
+        dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchTemplates", JSON.stringify(TEMPLATES));
+        const ctx = load(["setupQuickmatchProfileRecord", "storedQuickmatchGames", "storedQuickmatchTemplates", "readQuickmatchView", "extractProfileId", ...STATS_FUNCTIONS], {
+            ...domGlobals(dom, $),
+            localStorage: dom.window.localStorage,
+            location: dom.window.location,
+            signedInPlayerId: () => $.Deferred().resolve("7").promise(),
+            QUICKMATCH_GAMES_KEY: "tidyUpYourDashboard.quickmatchGames",
+            QUICKMATCH_TEMPLATES_KEY: "tidyUpYourDashboard.quickmatchTemplates",
+            QUICKMATCH_VIEW_KEY: "tidyUpYourDashboard.quickmatchView"
+        });
+        ctx.setupQuickmatchProfileRecord();
+        return $;
+    };
+    const own = profile("https://war.app/Profile?p=10712&u=Me");
+    assert.equal(own("#tuydQmProfileRecord").text(), "Record: 2 W – 1 L (66.7%) in 5 games");
+    assert.equal(own("#tuydQmProfileRecord").next().next().text(), "Single-player stats");
+    const folded = profile("https://war.app/Profile?p=10712&u=Me", true);
+    assert.equal(folded("#tuydQmProfileRecord").parent().attr("class"), "exp");
+    assert.equal(profile("https://war.app/Profile?p=10812&u=Ann")("#tuydQmProfileRecord").length, 0);
 });
