@@ -11,7 +11,6 @@ These come from war.app's Feature Requests forum. The script adds them on your o
 [*][b]Better Past Game Filtering & Sorting[/b], 3.28.0: https://war.app/Forum/888705-better-past-game-filtering-sorting
 [*][b]Dorex's quality of life updates: Text to speech[/b] (33 votes), 3.31.0, chat rooms in 3.34.0: https://war.app/Forum/815492-dorexs-quality-life-updates-text-speech
 [*][b]Are you sure you want to commit your orders?[/b] (27 votes), 3.30.0, a setting that's off by default: https://war.app/Forum/768036-sure-want-commit-orders
-[*][b]Showing more posts in game chat windows[/b], 3.29.0: https://war.app/Forum/895821-showing-more-posts-game-chat-windows
 [*][b]add more open games filters[/b], 3.28.0: https://war.app/Forum/894214-add-more-open-games-filters
 [*][b]Leaderboards: Include Rank with Rating[/b], 3.29.0: https://war.app/Forum/889390-leaderboards-include-rank-rating
 [*][b]Sort players by level in Player Search results[/b], 3.26.0: https://war.app/Forum/892642-sort-players-level-player-search-results

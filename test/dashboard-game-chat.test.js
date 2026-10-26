@@ -1,6 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { createDom, load, domGlobals } = require("./harness");
+const { createDom, load, domGlobals, functionSources } = require("./harness");
 
 // Mirrors war.app's My Games rows: a game, and an Auto Game still in its lobby (no GameID yet).
 const ROWS = `<table id="MyGamesTable"><tbody>
@@ -67,6 +67,13 @@ test("a chat with older messages in the game names its Load Older Messages butto
     const { dom, $ } = createDom(gamePage({ older: true }), "https://war.app/MultiPlayer/");
     const ctx = load(STATE_FUNCTIONS, domGlobals(dom, $));
     assert.equal(ctx.gameChatFrameState(dom.window.document).public.older, "ujs_LoadOlderMessagesBtn");
+});
+
+// Each press of war.app's button downloads the whole older chat in one request, so in a game the script
+// leaves it to the player; only the dashboard panel's Show all presses it, in its hidden copy of the game.
+test("nothing but the dashboard's game chat looks for war.app's Load Older Messages", () => {
+    const users = [...functionSources].filter(([, code]) => /LoadOlderMessagesBtn|ShowOlderChatBtn/.test(code)).map(([name]) => name);
+    assert.deepEqual(users, ["gameChatFrameState"]);
 });
 
 test("only the newest messages are shown at first, with a way to show all", () => {

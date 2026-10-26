@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.52.0
+// @version 3.52.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -2740,54 +2740,6 @@ function shownUjsElement(element) {
         }
     }
     return !!element;
-}
-
-function olderChatButtons() {
-    return $("[id^='ujs_LoadOlderMessagesBtn'], [id^='ujs_ShowOlderChatBtn']").filter(function () {
-        return /^ujs_(?:LoadOlderMessagesBtn|ShowOlderChatBtn)(?:_\d+)?$/.test(this.id) && shownUjsElement(this);
-    }).get();
-}
-
-// war.app shows a game's chat a page at a time behind "Load Older Messages" / "Older Chat"; this
-// presses the button until the whole chat is there, and stops when a press adds nothing.
-function setupFullGameChat() {
-    var pressed = new WeakMap();
-    var timer = null;
-    var chatOf = function (button) {
-        var chat = $(button).closest("[id^='ujs_Chat'], [id^='ujs_LiveChat']");
-        return chat.length ? chat : $(button).parent();
-    };
-    var scrollToNewest = function (chat) {
-        chat.find("[id^='ujs_Viewport']").each(function () {
-            if (this.scrollHeight > this.clientHeight) {
-                this.scrollTop = this.scrollHeight;
-            }
-        });
-    };
-    var check = function () {
-        timer = null;
-        olderChatButtons().forEach(function (button) {
-            var state = pressed.get(button) || { presses: 0, size: -1, time: 0 };
-            var chat = chatOf(button);
-            var size = chat.text().length;
-            if (state.presses >= 20 || size === state.size || (state.presses && Date.now() - state.time < 1500)) {
-                return;
-            }
-            pressed.set(button, { presses: state.presses + 1, size: size, time: Date.now() });
-            $(button).children("a.ujsBtnInner").first().trigger("click");
-            [1000, 2500, 4500].forEach(function (delay) {
-                setTimeout(function () {
-                    scrollToNewest(chat);
-                }, delay);
-            });
-        });
-    };
-    new MutationObserver(function () {
-        if (!timer) {
-            timer = setTimeout(check, 500);
-        }
-    }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-    check();
 }
 
 // The messages of one chat tab, oldest first; war.app stacks them by `bottom`, the newest at the bottom.
@@ -8293,7 +8245,6 @@ function pageFeatures() {
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
         { name: "Your rank next to your rating on Quickmatch leaderboards", section: "Community", match: pageIsQuickmatch, run: setupLeaderboardRank },
         { name: "Your Quickmatch record and stats", section: "Community", match: pageIsQuickmatch, run: setupQuickmatchStats },
-        { name: "Load the whole chat in games", section: "Games", match: pageIsGame, run: setupFullGameChat },
         { name: "Player pace in game lobbies", section: "Games", match: pageIsGame, run: setupLobbyPace },
         { name: "Private chat list: players still in the game first", section: "Games", match: pageIsGame, run: setupPrivateChatList },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
