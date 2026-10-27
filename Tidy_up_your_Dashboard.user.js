@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.52.4
+// @version 3.53.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.53.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1100,18 +1100,21 @@ function idleVolumeLevel() {
     }
 }
 
-// Idle plays its sounds as HTML audio, often from elements outside the page, so the volume is
-// applied where every element's volume is set: each one keeps the volume Idle asked for, scaled.
-function setupIdleVolume() {
+// war.app plays its sounds as HTML audio, often from elements outside the page, so a volume is applied
+// where every element's volume is set: each one keeps the volume war.app asked for, times factor(element).
+// Returns a function that re-applies it to the sounds played so far, or null when the browser won't allow it.
+function scaleAudioVolume(factor) {
     var native = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
     if (!native || !native.set) {
-        return;
+        return null;
     }
-    var level = idleVolumeLevel();
     var asked = new WeakMap();
     var known = [];
     var apply = function (element) {
-        native.set.call(element, (asked.has(element) ? asked.get(element) : 1) * level);
+        if (!asked.has(element)) {
+            asked.set(element, native.get.call(element));
+        }
+        native.set.call(element, asked.get(element) * factor(element));
     };
     Object.defineProperty(HTMLMediaElement.prototype, "volume", {
         configurable: true,
@@ -1140,6 +1143,19 @@ function setupIdleVolume() {
         }
         return play.apply(this, arguments);
     };
+    return function () {
+        known.forEach(apply);
+    };
+}
+
+function setupIdleVolume() {
+    var level = idleVolumeLevel();
+    var refresh = scaleAudioVolume(function () {
+        return level;
+    });
+    if (!refresh) {
+        return;
+    }
     addCSS(`
         #idleVolume {
             display: inline-flex;
@@ -1168,7 +1184,7 @@ function setupIdleVolume() {
                 localStorage.setItem(IDLE_VOLUME_KEY, String(level));
             } catch (e) {
             }
-            known.forEach(apply);
+            refresh();
         });
         control.find(".idleVolumeValue").text(Math.round(level * 100) + "%");
         if (speaker.length) {
@@ -1179,6 +1195,40 @@ function setupIdleVolume() {
     };
     show();
     $(show);
+}
+
+// war.app's sounds for a new message (GameChat in games, Chat in the chat rooms) and for a turn
+// (TurnAdvance, also played when a Quickmatch or other awaited game starts), by file name.
+function gameSoundKind(url) {
+    var match = /\/Audio\/(GameChat|Chat|TurnAdvance)\.mp3(?:[?#]|$)/i.exec(String(url || ""));
+    if (!match) {
+        return null;
+    }
+    return /TurnAdvance/i.test(match[1]) ? "turn" : "chat";
+}
+
+// A volume setting's stored percentage as a factor from 0 to 1; full volume when unset or unreadable.
+function volumeSettingLevel(value) {
+    var percent = typeof value === "number" ? value : parseFloat(value);
+    return isNaN(percent) ? 1 : Math.max(0, Math.min(100, percent)) / 100;
+}
+
+function setupGameSoundVolume() {
+    var levels = {};
+    var settings = { chat: "chatSoundVolume", turn: "turnSoundVolume" };
+    Promise.all(Object.keys(settings).map(function (kind) {
+        return Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, settings[kind]).then(function (setting) {
+            levels[kind] = volumeSettingLevel(setting && setting.value);
+        });
+    })).then(function () {
+        if (levels.chat === 1 && levels.turn === 1) {
+            return;
+        }
+        scaleAudioVolume(function (element) {
+            var kind = gameSoundKind(element.currentSrc || element.src);
+            return kind ? levels[kind] : 1;
+        });
+    });
 }
 
 var IDLE_NUMBER_SUFFIXES = { k: [1e3, "thousand"], m: [1e6, "million"], b: [1e9, "billion"], t: [1e12, "trillion"], p: [1e15, "quadrillion"], e: [1e18, "quintillion"], z: [1e21, "sextillion"] };
@@ -4430,6 +4480,22 @@ window.userscriptSettings = [
         help: 'While a game or the chat rooms are open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. In the chat rooms, only the tab you are looking at is read, and hidden notices and muted players never are. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
     },
     {
+        id: 'chatSoundVolume',
+        text: 'Chat Sound Volume',
+        volume: true,
+        selected: 100,
+        section: 'Games',
+        help: 'How loud war.app\'s sound for a new chat message plays, in games and in the chat rooms, as a share of war.app\'s own volume. War.app\'s App Settings have one volume for all of its sounds (Sounds) and one for important ones such as the turn sound (Critical Sounds); this turns only the chat sound down on top of those. 0% silences it.'
+    },
+    {
+        id: 'turnSoundVolume',
+        text: 'Turn Sound Volume',
+        volume: true,
+        selected: 100,
+        section: 'Games',
+        help: 'How loud war.app\'s turn sound plays, as a share of war.app\'s Critical Sounds volume (App Settings). War.app plays it when a game advances to the next turn, and when a Quickmatch or another game you were waiting for starts. The clock ticking in the last 30 seconds is not changed. 0% silences it.'
+    },
+    {
         id: 'idleNotifications',
         text: 'Idle: Desktop Notification When Idle Needs You',
         selected: false,
@@ -4597,6 +4663,23 @@ function setupUserscriptMenu() {
         #userscriptMenu.menuSearching .menuSection:not(.menuHeadingMatch) > .menuSectionBody > :not(.settingsListItem) {
             display: none;
         }
+        .volumeSetting {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            float: right;
+            margin: 0 30px 0 0;
+            font-weight: normal;
+        }
+        .volumeSetting input {
+            width: 120px;
+        }
+        .volumeSettingValue {
+            min-width: 3em;
+            text-align: right;
+            color: #aaa;
+            font-size: 13px;
+        }
         .menuSectionBody .settingsListItem:first-child {
             padding-top: 4px;
         }
@@ -4635,6 +4718,8 @@ function setupUserscriptMenu() {
     $("#userscriptMenu").on("change", function () {
         console.log("storing settings");
         storeSettingsVariables();
+    }).on("input", ".volumeSetting input", function () {
+        showVolumeSetting(this);
     });
     $("#AccountDropDown").next(".dropdown-menu").append('<div class="dropdown-divider"></div><a class="dropdown-item " href="#" data-toggle="modal" data-target="#userscriptMenu">Muli\'s Userscript</a>');
     $(".close-userscript").on("click", function () {
@@ -4981,13 +5066,18 @@ window.getSettingInfo = function (id) {
 function checkUserscriptMenuButtons() {
     $.each(userscriptSettings, function (key, set) {
         Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, set.id, function (setting) {
-            if (setting) {
-                $("#" + setting.name).prop("checked", setting.value);
+            var value = setting ? setting.value : set.selected;
+            if (set.volume) {
+                showVolumeSetting($("#" + set.id).val(Math.round(volumeSettingLevel(value) * 100)));
             } else {
-                $("#" + set.id).prop("checked", set.selected);
+                $("#" + set.id).prop("checked", value);
             }
         })
     });
+}
+
+function showVolumeSetting(input) {
+    $(input).next(".volumeSettingValue").text($(input).val() + "%");
 }
 
 // One foldable section per area, holding that area's settings and then its feature switches.
@@ -5003,7 +5093,10 @@ function renderMenuSections(settings, features, disabled, open, helpIcon) {
         (groups[section] = groups[section] || []).push(html);
     };
     settings.forEach(function (setting) {
-        add(setting.section || "Other", '<div class="settingsListItem">' + setting.text + helpIcon(setting) + '<label class="switch"><input id="' + setting.id + '" type="checkbox"><div class="slider round"></div></label></div>');
+        var control = setting.volume ?
+            '<label class="volumeSetting"><input id="' + setting.id + '" type="range" min="0" max="100" step="5" aria-label="' + htmlEscape(setting.text) + '"><span class="volumeSettingValue"></span></label>' :
+            '<label class="switch"><input id="' + setting.id + '" type="checkbox"><div class="slider round"></div></label>';
+        add(setting.section || "Other", '<div class="settingsListItem">' + setting.text + helpIcon(setting) + control + '</div>');
     });
     features.forEach(function (feature) {
         add(feature.section, '<div class="settingsListItem">' + htmlEscape(feature.name) + '<label class="switch"><input class="featureToggle" data-feature="' + htmlEscape(feature.name) +
@@ -5085,10 +5178,9 @@ function storeFeatureToggles() {
 function storeSettingsVariables() {
     storeFeatureToggles();
     $.each(userscriptSettings, function (key, set) {
-        var isEnabled = $("#" + set.id).prop("checked");
         var setting = {
             name: set.id,
-            value: isEnabled
+            value: set.volume ? Number($("#" + set.id).val()) : $("#" + set.id).prop("checked")
         };
         Database.update(Database.Table.Settings, setting, undefined, function () {
         })
@@ -8289,6 +8381,7 @@ function mainFeatures() {
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
+        { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
         { name: "Mute players and highlight mentions in game chat", section: "Games", match: pageIsGame, run: setupGameChatTools },
         { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },

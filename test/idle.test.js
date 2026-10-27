@@ -98,7 +98,7 @@ test("the volume slider scales Idle's sounds and remembers the level, leaving vi
     const native = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
     const nativeVolume = (el) => native.get.call(el);
     dom.window.localStorage.setItem("tidyUpYourDashboard.idleVolume", "0.5");
-    const ctx = load(["idleVolumeLevel", "setupIdleVolume"], {
+    const ctx = load(["idleVolumeLevel", "setupIdleVolume", "scaleAudioVolume"], {
         ...domGlobals(dom, $), HTMLMediaElement, HTMLAudioElement, localStorage: dom.window.localStorage,
         IDLE_VOLUME_KEY: "tidyUpYourDashboard.idleVolume", addCSS: () => {}
     });

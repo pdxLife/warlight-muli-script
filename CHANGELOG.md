@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.53.0
+
+- **Volumes for the chat and turn sounds.** Two sliders in the settings menu under Games, **Chat Sound Volume** and **Turn Sound Volume** (100% at first), set how loud each sound plays, as a share of war.app's own volume. The chat sound is war.app's ding for a new message in a game or a chat room; the turn sound plays when a game advances to the next turn, or a Quickmatch or another game you were waiting for starts. War.app's App Settings have one volume for all its sounds (Sounds) and one for important ones like the turn sound (Critical Sounds); with these you can quiet the chat without quieting the game, or the turn without the clock. 0% silences a sound. Settings menu → Games → "Volume of the chat and turn sounds".
+
 ## 3.52.4
 
 - **A profile's best Seasonal Ladder place says which season.** The Seasonal Ladder row in a player's Ladders table now reads "9th final place (Season LVII)" under Best Rank: the best place a finished season ended with, and that season, so it can be found among war.app's Season rows below. It no longer shows a rating there: custom.wl-stats.com rates seasons on its own scale, about 200 below war.app's (3265 where war.app says 3468), so the figure matched none of war.app's rows. The season running now no longer counts, since it hasn't finished.
