@@ -29,7 +29,7 @@ test("a stored volume percentage becomes a factor, full volume when unset", () =
 const SOUND_FUNCTIONS = ["setupGameSoundVolume", "setupSoundSliders", "soundSliderHtml", "gameChatSoundSpot", "scaleAudioVolume", "gameSoundKind", "volumeSettingLevel",
     "showVolumeSetting", "openGameChatTabRect", "shownUjsElement", "pageIsGame", "pageIsChatRoom"];
 
-function gamePage(stored, { html = "", url = "https://war.app/MultiPlayer?GameID=1" } = {}) {
+function gamePage(stored, { html = "", url = "https://war.app/MultiPlayer?GameID=1", BroadcastChannel } = {}) {
     const { dom, $ } = createDom(html, url);
     const { HTMLMediaElement, HTMLAudioElement } = dom.window;
     const native = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
@@ -46,7 +46,7 @@ function gamePage(stored, { html = "", url = "https://war.app/MultiPlayer?GameID
     };
     const ctx = load(SOUND_FUNCTIONS, {
         ...domGlobals(dom, $), HTMLMediaElement, HTMLAudioElement, Database, location: dom.window.location, addCSS: () => {},
-        setTimeout: () => 0, GAME_SOUND_SETTINGS: { chat: "chatSoundVolume", turn: "turnSoundVolume" }
+        setTimeout: () => 0, GAME_SOUND_SETTINGS: { chat: "chatSoundVolume", turn: "turnSoundVolume" }, BroadcastChannel
     });
     const sound = (file) => {
         const audio = new dom.window.Audio();
@@ -141,6 +141,55 @@ test("the chat rooms' toolbar gets the chat sound slider; other pages get no but
     const chat = dashboard.sound("Chat.mp3");
     chat.volume = 1;
     assert.equal(dashboard.nativeVolume(chat), 0.4, "the volume still applies there");
+    dashboard.restore();
+});
+
+// Tabs of one browser: a message reaches the other channels of the same name, never the sender.
+function channelHub() {
+    const open = [];
+    return class FakeChannel {
+        constructor(name) {
+            this.name = name;
+            open.push(this);
+        }
+        postMessage(data) {
+            open.filter((other) => other !== this && other.name === this.name && other.onmessage)
+                .forEach((other) => other.onmessage({ data: JSON.parse(JSON.stringify(data)) }));
+        }
+    };
+}
+
+test("a volume set in one tab applies at once in the other open tabs, and in their settings menus", async () => {
+    const BroadcastChannel = channelHub();
+    const menu = `<div id="userscriptMenu"><label class="volumeSetting"><input id="chatSoundVolume" type="range"><span class="volumeSettingValue"></span></label>`
+        + `<label class="volumeSetting"><input id="turnSoundVolume" type="range"><span class="volumeSettingValue"></span></label></div>`;
+    const game = gamePage({}, { html: `<div id="SoundContainer"></div>` + menu, BroadcastChannel });
+    const dashboard = gamePage({}, { html: menu, url: "https://war.app/MultiPlayer/", BroadcastChannel });
+    game.ctx.setupGameSoundVolume();
+    dashboard.ctx.setupGameSoundVolume();
+    await flush();
+    const ding = dashboard.sound("GameChat.mp3");
+    ding.volume = 0.8;
+    ding.play();
+
+    game.$("#tuydSoundBtn").trigger("click");
+    game.$("#tuydSoundPanel [data-sound=chat] input").val("25").trigger("input").trigger("change");
+    ding.volume = 0.8;
+    ding.play();
+    assert.ok(Math.abs(dashboard.nativeVolume(ding) - 0.2) < 1e-9, "the other tab's next ding follows");
+    assert.equal(dashboard.$("#chatSoundVolume").val(), "25", "and its menu, so saving it there keeps 25%");
+    assert.equal(dashboard.$("#chatSoundVolume + .volumeSettingValue").text(), "25%");
+    assert.equal(game.updates.length, 1, "saved once");
+    assert.equal(dashboard.updates.length, 0, "not again by the other tab");
+
+    dashboard.$("#turnSoundVolume").val("0").trigger("input").trigger("change");
+    const turn = dashboard.sound("TurnAdvance.mp3");
+    turn.volume = 1;
+    assert.equal(dashboard.nativeVolume(turn), 0, "the menu's slider applies at once in its own tab");
+    game.$("#tuydSoundBtn").trigger("click").trigger("click");
+    assert.equal(game.$("#tuydSoundPanel [data-sound=turn]").text(), "Turn0%", "and in the other tab's sliders");
+    assert.equal(game.$("#turnSoundVolume").val(), "0");
+    game.restore();
     dashboard.restore();
 });
 

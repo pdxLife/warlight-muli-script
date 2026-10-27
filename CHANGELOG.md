@@ -2,7 +2,7 @@
 
 ## 3.54.0
 
-- **Sound sliders in the game and the chat.** In a game or the chat rooms, a 🔔 right of war.app's speaker icon in the top bar opens the Chat and Turn sound sliders; in a game's open chat, a 🔔 slider right of the Chat tab sets the chat sound, and so does one at the end of the chat rooms' bar. They take effect at once, without a reload, and are saved as the settings menu's Chat Sound Volume and Turn Sound Volume.
+- **Sound sliders in the game and the chat.** In a game or the chat rooms, a 🔔 right of war.app's speaker icon in the top bar opens the Chat and Turn sound sliders; in a game's open chat, a 🔔 slider right of the Chat tab sets the chat sound, and so does one at the end of the chat rooms' bar. They take effect at once, without a reload, in every open war.app tab, and are saved as the settings menu's Chat Sound Volume and Turn Sound Volume; the menu's two sliders now take effect at once too, also in the other tabs.
 
 ## 3.53.0
 

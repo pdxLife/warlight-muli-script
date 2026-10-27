@@ -1228,6 +1228,7 @@ function gameChatSoundSpot(tab, viewportHeight) {
 function setupGameSoundVolume() {
     var levels = { chat: 1, turn: 1 };
     var refresh = null;
+    var channel = typeof BroadcastChannel === "function" ? new BroadcastChannel("tidyUpYourDashboard.soundVolume") : null;
     var apply = function () {
         if (!refresh && (levels.chat < 1 || levels.turn < 1)) {
             refresh = scaleAudioVolume(function (element) {
@@ -1246,19 +1247,57 @@ function setupGameSoundVolume() {
             $(this).find(".tuydSoundValue").text(percent + "%");
         });
     };
+    // The settings menu saves every input it holds on any change, so it has to hold the level too.
+    var setLevel = function (kind, percent) {
+        if (!GAME_SOUND_SETTINGS.hasOwnProperty(kind)) {
+            return;
+        }
+        levels[kind] = volumeSettingLevel(percent);
+        apply();
+        show();
+        var input = $("#" + GAME_SOUND_SETTINGS[kind]);
+        if (input.length && Number(input.val()) !== Math.round(levels[kind] * 100)) {
+            showVolumeSetting(input.val(Math.round(levels[kind] * 100)));
+        }
+    };
+    var tell = function (kind) {
+        if (channel) {
+            channel.postMessage({ kind: kind, value: Math.round(levels[kind] * 100) });
+        }
+    };
+    var save = function (kind) {
+        Database.update(Database.Table.Settings, { name: GAME_SOUND_SETTINGS[kind], value: Math.round(levels[kind] * 100) }, undefined);
+        tell(kind);
+    };
+    var menuKind = function (input) {
+        return Object.keys(GAME_SOUND_SETTINGS).filter(function (kind) {
+            return GAME_SOUND_SETTINGS[kind] === input.id;
+        })[0];
+    };
     Promise.all(Object.keys(GAME_SOUND_SETTINGS).map(function (kind) {
         return Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, GAME_SOUND_SETTINGS[kind]).then(function (setting) {
             levels[kind] = volumeSettingLevel(setting && setting.value);
         });
     })).then(function () {
         apply();
+        if (channel) {
+            channel.onmessage = function (event) {
+                setLevel(event.data && event.data.kind, event.data && event.data.value);
+            };
+        }
+        $(document).on("input", "#userscriptMenu .volumeSetting input", function () {
+            setLevel(menuKind(this), this.value);
+        }).on("change", "#userscriptMenu .volumeSetting input", function () {
+            // The menu saves it itself.
+            tell(menuKind(this));
+        });
         if (pageIsGame() || pageIsChatRoom()) {
-            setupSoundSliders(levels, apply, show);
+            setupSoundSliders(setLevel, save, show);
         }
     });
 }
 
-function setupSoundSliders(levels, apply, show) {
+function setupSoundSliders(setLevel, save, show) {
     addCSS(`
         .tuydSoundSlider {
             display: inline-flex;
@@ -1316,16 +1355,9 @@ function setupSoundSliders(levels, apply, show) {
         }
     `);
     $(document).on("input", ".tuydSoundSlider input", function () {
-        var kind = $(this).closest(".tuydSoundSlider").attr("data-sound");
-        levels[kind] = volumeSettingLevel(this.value);
-        apply();
-        show();
+        setLevel($(this).closest(".tuydSoundSlider").attr("data-sound"), this.value);
     }).on("change", ".tuydSoundSlider input", function () {
-        var kind = $(this).closest(".tuydSoundSlider").attr("data-sound");
-        var value = Math.round(levels[kind] * 100);
-        // The settings menu saves every input it holds on any change, so it has to hold this value too.
-        showVolumeSetting($("#" + GAME_SOUND_SETTINGS[kind]).val(value));
-        Database.update(Database.Table.Settings, { name: GAME_SOUND_SETTINGS[kind], value: value }, undefined);
+        save($(this).closest(".tuydSoundSlider").attr("data-sound"));
     }).on("keydown keyup keypress", ".tuydSoundSlider, #tuydSoundPanel", function (event) {
         event.stopPropagation();
     }).on("click", "#tuydSoundBtn", function (event) {
