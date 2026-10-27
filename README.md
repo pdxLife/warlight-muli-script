@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.52.4  
+> **Version:** 3.53.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -48,6 +48,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Read chat aloud** — a faint 🔊 at the left of each message in a game's chat reads it and the messages after it aloud, with your browser's own voice (who wrote it, then the text; links are read as "a link" and smileys as words). Click ■ to stop. With the setting **Read New Chat Messages Aloud** on, new messages from other players are read as they arrive, so you can listen while entering orders. Messages from players on your block list are never read.
 - **Private chat list** — in a game, the Private button's "select the player you'd like to chat privately with" list shows the players still in the game first, A to Z, then a gold line and the players who are out (eliminated, booted, surrendered, removed or declined), dimmed. In big games you no longer scroll past players who left long ago.
 - **Player pace in lobbies** — in a game's lobby, each player gets a line from their profile: multi-day games they're in, average multi-day turn, share of turns over a day, and boot rate. **Flag: avg turn > N h · booted > N %** marks slower or often-booted players with a red ⚠, so the host can remove them with war.app's Add/Remove Players. Real-time lobbies (boot time of an hour or less) show real-time turns instead, with a limit in minutes.
+- **Chat and turn sound volumes** (settings **Chat Sound Volume** and **Turn Sound Volume**, 100% by default) — each sets how loud one of war.app's sounds plays, as a share of war.app's own volume (App Settings → Sounds / Critical Sounds): the sound for a new chat message (in games and the chat rooms), and the turn sound (a game advancing to the next turn, or a Quickmatch starting). 0% silences it; war.app's other sounds are left alone.
 - **Ask before committing** (setting, off by default) — pressing Commit, or Autopilot's Run+Commit, first asks "Commit your orders for this turn?", so a stray click or tap doesn't send unfinished orders.
 
 ### Bookmarks
@@ -177,6 +178,8 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
 | Read New Chat Messages Aloud | Off | Reads new chat messages from other players aloud while a game or the chat rooms are open |
+| Chat Sound Volume | 100% | How loud war.app's new-message sound plays (games and chat rooms), as a share of war.app's own volume; a slider |
+| Turn Sound Volume | 100% | How loud war.app's turn sound plays, as a share of its Critical Sounds volume; a slider |
 | Desktop Notification When a Game Needs You | Off | Show a desktop notification when a game becomes your turn while the dashboard tab is open in the background. Your browser asks for permission when you turn it on. |
 | Load Community Level Records (via maak.ch) | Off | Enables the features that load data from maak.ch, a server run by the original script author. Its responses run as code on war.app, so it is off by default. |
 

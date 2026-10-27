@@ -107,7 +107,7 @@
   </figure>
   <ul>
     <li>Sections by area (Dashboard, Games, Tournaments, Ladders &amp; community, Profile, Clans, Idle, Forum, Maps &amp; levels, Other, Third-party data, Backup) fold open and closed; each shows how many items it holds.</li>
-    <li>Every feature has its own switch, next to the settings for that area. Turn off anything you don't want; nothing else changes.</li>
+    <li>Every feature has its own switch, next to the settings for that area. Turn off anything you don't want; nothing else changes. The sound volumes under Games are sliders.</li>
     <li>The <strong>search box</strong> at the top finds a setting or feature by name.</li>
     <li><strong>Backup → Export / Import</strong> copies your settings, bookmarks, game notes, mutes and hidden threads to another browser or computer. Settings are kept per browser, so use this when you switch.</li>
   </ul>
@@ -221,6 +221,13 @@
   </ul>
   <p>In a real-time lobby (a boot time of an hour or less) the line shows real-time turns instead: "avg turn 3m 20s · 59% over 2 min · booted 3%", with the limit in minutes (3 at first).</p>
   <p>Hover a line for the long version and why it's flagged, click it for the profile. <strong>Flag: avg turn &gt; 24 h · booted &gt; 10 %</strong>, at the right of "Players", marks players with a longer average turn, or a higher boot rate, in red with ⚠ (0 turns either off); as the host, remove them with war.app's <strong>Add/Remove Players</strong>. <span class="setting">Player pace in game lobbies</span> (on; settings → Games).</p>
+  <h3>Volume of the chat and turn sounds</h3>
+  <p>War.app's own <strong>App Settings</strong> (your account menu) have one volume for all of its sounds (<strong>Sounds</strong>) and one for important ones such as the turn sound (<strong>Critical Sounds</strong>). The script adds a volume for each of two sounds, on top of those (settings → Games):</p>
+  <ul>
+    <li><span class="setting">Chat Sound Volume</span> (100%): the sound for a new chat message, in games and in the chat rooms. Turn it down without making attacks and deploys quieter too.</li>
+    <li><span class="setting">Turn Sound Volume</span> (100%): the sound when a game advances to the next turn, also played when a Quickmatch or another game you were waiting for starts. The clock ticking in the last 30 seconds keeps war.app's volume.</li>
+  </ul>
+  <p>Drag a slider and choose <strong>Close &amp; Refresh</strong>; 0% silences that sound. <span class="setting">Volume of the chat and turn sounds</span> (on) turns both off at once, so war.app's volumes apply alone.</p>
   <h3>Ask before committing</h3>
   <p><span class="setting">Ask Before Committing Orders</span> (off; settings → Games): Commit and Autopilot's Run+Commit ask "Commit your orders for this turn?" first, against accidental commits. The question is your browser's own dialog: OK commits, Cancel goes back to your orders.</p>
 
