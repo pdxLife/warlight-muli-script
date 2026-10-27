@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.54.2
+
+- **The sound sliders are only behind the 🔔.** The extra chat sound slider by a game's Chat tab is gone: since 3.54.1 it covered the bottom row of the open chat (the message box, or "This game has been archived…"). So is the one in the chat rooms' bar. In a game or the chat rooms, the 🔔 next to war.app's speaker icon in the top bar opens the Chat and Turn sliders; click it again or anywhere else to close them.
+
 ## 3.54.1
 
 - **The game chat's sound slider stays put.** The 🔔 slider right of a game's Chat tab no longer jumps up with the tab when you open the chat: it stays at the bottom, where the closed chat's tab is, and only moves sideways with the tab when the window is resized.
