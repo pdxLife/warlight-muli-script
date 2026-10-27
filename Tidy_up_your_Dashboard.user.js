@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.52.3
+// @version 3.52.4
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.52.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6757,6 +6757,10 @@ function ladderProfileRows(mtl, seasonal) {
     var link = function (url, text) {
         return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(url)) + '">' + htmlEscape(text) + '</a>';
     };
+    var finalPlace = function (entry) {
+        var season = entry.season && entry.season.name;
+        return htmlEscape(getRankText(entry.rank)) + " final place" + (season ? " (" + htmlEscape(season) + ")" : "");
+    };
     var rows = [];
     if (mtl) {
         rows.push({ first: true, cells: [link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "-", rated(mtl.rank, mtl.rating)] });
@@ -6764,7 +6768,7 @@ function ladderProfileRows(mtl, seasonal) {
     var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
     if (seasons.length) {
         var best = seasons.filter(function (entry) {
-            return entry.rank;
+            return entry.rank && !(entry.season && entry.season.status === "running");
         }).sort(function (a, b) {
             return a.rank - b.rank || b.rating - a.rating;
         })[0];
@@ -6776,7 +6780,7 @@ function ladderProfileRows(mtl, seasonal) {
         })[0];
         rows.push({ first: false, cells: [
             link(seasonal.url, "Seasonal Ladder"),
-            (best ? rated(best.rank, best.rating) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
+            (best ? finalPlace(best) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
             running ? rated(running.rank, running.rating) : "Not in this season"
         ] });
     }

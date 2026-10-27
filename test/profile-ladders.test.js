@@ -41,7 +41,7 @@ test("a profile's Ladders table gets MTL above war.app's ladders and the Seasona
     assert.equal(rows.length, 3);
     assert.equal(cells($, rows[0]), "MTL | 6th (1963) | Unranked (1880)", "MTL first, ratings written as war.app writes them");
     assert.equal(cells($, rows[1]), "1 v 1 | 7th (2080) | Unranked (100)", "then war.app's ladders");
-    assert.equal(cells($, rows[2]), "Seasonal Ladder | 47th (2900) | 146th (2634)", "the Seasonal Ladder last: the best of all seasons, and this season's place");
+    assert.equal(cells($, rows[2]), "Seasonal Ladder | 47th final place (Season 24) | 146th (2634)", "the Seasonal Ladder last: the best place any season finished with, and this season's place");
     assert.equal($(rows[0]).find("a").attr("href"), "https://custom.wl-stats.com/ladders/mtl/players/2921525624");
     ctx.setupLadderProfileRows();
     await flush();
@@ -52,11 +52,13 @@ test("champions are marked, and a player outside this season is told so", () => 
     const { ctx } = profile("", {});
     const rows = ctx.ladderProfileRows(null, { url: "https://x", seasons: [season(30, "finished", 1, 3700, true), season(31, "finished", 1, 3650, true), season(32, "finished", 4, 3400)] });
     assert.equal(rows.length, 1, "no MTL row without MTL figures");
-    assert.equal(rows[0].cells[1], "1st (3700) · champion ×2");
+    assert.equal(rows[0].cells[1], "1st final place (Season 30) · champion ×2");
     assert.equal(rows[0].cells[2], "Not in this season");
     assert.equal(rows[0].first, false);
     assert.equal(ctx.ladderProfileRows({ rank: 12, rating: 1950, best_rank: 3, best_rating: 2001, url: "https://x" }, null)[0].cells[2], "12th (1950)");
     assert.equal(ctx.ladderProfileRows(null, { seasons: [] }).length, 0);
+    assert.equal(ctx.ladderProfileRows(null, { url: "https://x", seasons: [season(71, "running", 3, 2900), season(40, "finished", 56, 3047)] })[0].cells[1], "56th final place (Season 40)", "a running season hasn't finished");
+    assert.equal(ctx.ladderProfileRows(null, { url: "https://x", seasons: [season(71, "running", 3, 2900)] })[0].cells[1], "", "nor counts when it's the only one");
     assert.equal(ctx.ladderProfileRows({ rank: 1, rating: 2297, best_rank: 1, best_rating: 2343, url: "https://x" }, null)[0].cells[1], "1st (2343)");
     assert.equal(ctx.ladderProfileRows({ rank: null, rating: 1500, best_rank: null, best_rating: null, url: "https://x" }, null)[0].cells[1], "-");
 });

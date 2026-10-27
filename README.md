@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.52.3  
+> **Version:** 3.52.4  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -84,7 +84,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Collapsible stat sections** — click any section header to expand/collapse.
 - **AWP World Tour stats** — for a player who has played on the [AWP World Tour](https://awp.wl-stats.com), a box with their place in this year's race and in the 12-month ranking, games and win rate, tournaments, titles and best placement, with a link to their page on awp.wl-stats.com.
 - **Community tournament stats** — for a player [custom.wl-stats.com](https://custom.wl-stats.com) knows, a "Community tournaments" box below the AWP one: games and win rate, tournaments, titles, best placement, tournaments organized, and their record in their three most played formats (e.g. Clan league, Single elimination, Nations Cup), with a link to their page there.
-- **MTL and Seasonal Ladder rows** — in a player's Ladders table, MTL at the top and the Seasonal Ladder at the bottom: best and current rank and rating on the [Multi-Template Ladder](https://custom.wl-stats.com/ladders/mtl) (MTL), and their best final place on the [Seasonal Ladder](https://custom.wl-stats.com/series/seasonal-ladder) over all seasons (with how many they won) and this season's place. From custom.wl-stats.com's ladders API; no maak.ch needed.
+- **MTL and Seasonal Ladder rows** — in a player's Ladders table, MTL at the top and the Seasonal Ladder at the bottom: best and current rank and rating on the [Multi-Template Ladder](https://custom.wl-stats.com/ladders/mtl) (MTL), and their best final place on the [Seasonal Ladder](https://custom.wl-stats.com/series/seasonal-ladder) over all finished seasons, "9th final place (Season LVII)" (with how many they won) and this season's place. From custom.wl-stats.com's ladders API; no maak.ch needed.
 - **Your Quickmatch record** — on your own profile, under war.app's Quickmatch ratings: "Record: 559 W – 117 L (82.7%) in 676 games", from when you last opened Quickmatch.
 - **Community level records** *(opt-in, via maak.ch)* — displays your community level record count.
 - **Private notes** — on another player's profile, shows the private note you keep about them on war.app (the profile's "Private Notes" link). The notes are stored by war.app on your account; the script only displays them.
