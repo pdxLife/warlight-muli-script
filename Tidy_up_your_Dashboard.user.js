@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.54.1
+// @version 3.54.2
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1220,19 +1220,6 @@ function soundSliderHtml(kind, label, title) {
         '<input type="range" min="0" max="100" step="5" aria-label="' + title + '"><span class="tuydSoundValue"></span></label>';
 }
 
-// Right of the game chat's tab where it sits while the chat is closed, at the bottom; it stays there while the
-// chat is open, until the window is resized.
-function gameChatSoundSpot(tab, viewportHeight, previous, resized) {
-    var gap = viewportHeight - tab.bottom;
-    if (gap <= tab.height) {
-        return { left: Math.round(tab.right + 8), bottom: Math.max(0, Math.round(gap)), height: Math.round(tab.height) };
-    }
-    if (previous && !resized) {
-        return previous;
-    }
-    return { left: Math.round(tab.right + 8), bottom: previous ? previous.bottom : 0, height: previous ? previous.height : Math.round(tab.height) };
-}
-
 function setupGameSoundVolume() {
     var levels = { chat: 1, turn: 1 };
     var refresh = null;
@@ -1354,13 +1341,6 @@ function setupSoundSliders(setLevel, save, show) {
             color: #888;
             font-size: 11px;
         }
-        #tuydChatSound {
-            position: fixed;
-            z-index: 50;
-            padding: 0 6px;
-            border-radius: 4px;
-            background: rgba(0, 0, 0, 0.55);
-        }
     `);
     $(document).on("input", ".tuydSoundSlider input", function () {
         setLevel($(this).closest(".tuydSoundSlider").attr("data-sound"), this.value);
@@ -1388,49 +1368,6 @@ function setupSoundSliders(setLevel, save, show) {
     if (speaker.length && !$("#tuydSoundBtn").length) {
         speaker.after('<a href="#" id="tuydSoundBtn" title="Volume of the chat and turn sounds (Muli\'s Userscript)">🔔</a>');
     }
-    var spot = null;
-    var resized = false;
-    var timer = null;
-    var place = function () {
-        timer = null;
-        if (pageIsChatRoom()) {
-            var bar = $("#tuydChatTools");
-            if (bar.length && !bar.children(".tuydSoundSlider").length) {
-                show($(soundSliderHtml("chat", "🔔", "Chat sound volume")).appendTo(bar));
-            }
-            return;
-        }
-        var tab = openGameChatTabRect();
-        var slider = $("#tuydChatSound");
-        if (!tab) {
-            slider.hide();
-            return;
-        }
-        if (!slider.length) {
-            slider = $(soundSliderHtml("chat", "🔔", "Chat sound volume")).attr("id", "tuydChatSound").appendTo("body");
-            show(slider);
-        }
-        var next = gameChatSoundSpot(tab, window.innerHeight, spot, resized);
-        resized = false;
-        if (!spot || next.left !== spot.left || next.bottom !== spot.bottom || next.height !== spot.height) {
-            spot = next;
-            slider.css({ left: next.left, bottom: next.bottom, height: next.height });
-        }
-        if (slider[0].style.display === "none") {
-            slider.show();
-        }
-    };
-    var schedule = function () {
-        if (!timer) {
-            timer = setTimeout(place, 300);
-        }
-    };
-    place();
-    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-    $(window).on("resize", function () {
-        resized = true;
-        schedule();
-    });
 }
 
 var IDLE_NUMBER_SUFFIXES = { k: [1e3, "thousand"], m: [1e6, "million"], b: [1e9, "billion"], t: [1e12, "trillion"], p: [1e15, "quadrillion"], e: [1e18, "quintillion"], z: [1e21, "sextillion"] };
@@ -11786,7 +11723,7 @@ function openGameChatTabRect() {
         return null;
     }
     var rect = tab[0].getBoundingClientRect();
-    return rect.height > 0 ? { left: rect.left, right: rect.right, bottom: rect.bottom, height: rect.height } : null;
+    return rect.height > 0 ? { left: rect.left, bottom: rect.bottom, height: rect.height } : null;
 }
 
 function setupGameNotes() {

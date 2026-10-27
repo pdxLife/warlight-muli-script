@@ -26,7 +26,7 @@ test("a stored volume percentage becomes a factor, full volume when unset", () =
     assert.equal(ctx.volumeSettingLevel(true), 1, "not a number");
 });
 
-const SOUND_FUNCTIONS = ["setupGameSoundVolume", "setupSoundSliders", "soundSliderHtml", "gameChatSoundSpot", "scaleAudioVolume", "gameSoundKind", "volumeSettingLevel",
+const SOUND_FUNCTIONS = ["setupGameSoundVolume", "setupSoundSliders", "soundSliderHtml", "scaleAudioVolume", "gameSoundKind", "volumeSettingLevel",
     "showVolumeSetting", "openGameChatTabRect", "shownUjsElement", "pageIsGame", "pageIsChatRoom"];
 
 function gamePage(stored, { html = "", url = "https://war.app/MultiPlayer?GameID=1", BroadcastChannel } = {}) {
@@ -126,12 +126,16 @@ test("the sound button next to war.app's speaker opens both sliders, which apply
     restore();
 });
 
-test("the chat rooms' toolbar gets the chat sound slider; other pages get no buttons", async () => {
+test("the chat rooms get the sound button too, and no slider until it's clicked; other pages get none", async () => {
     const room = gamePage({ chatSoundVolume: 40 }, { html: `<div id="SoundContainer"></div><div id="tuydChatTools"></div>`, url: "https://war.app/MultiPlayer?ChatRoom=1" });
     room.ctx.setupGameSoundVolume();
     await flush();
-    assert.equal(room.$("#tuydChatTools > .tuydSoundSlider[data-sound=chat]").text(), "🔔40%");
     assert.equal(room.$("#tuydSoundBtn").length, 1);
+    assert.equal(room.$(".tuydSoundSlider").length, 0);
+    room.$("#tuydSoundBtn").trigger("click");
+    assert.equal(room.$("#tuydSoundPanel [data-sound=chat]").text(), "Chat40%");
+    room.$("#tuydSoundBtn").trigger("click");
+    assert.equal(room.$("#tuydSoundPanel, .tuydSoundSlider").length, 0, "the button again closes it");
     room.restore();
 
     const dashboard = gamePage({ chatSoundVolume: 40 }, { html: `<div id="SoundContainer"></div>`, url: "https://war.app/MultiPlayer/" });
@@ -191,19 +195,6 @@ test("a volume set in one tab applies at once in the other open tabs, and in the
     assert.equal(game.$("#turnSoundVolume").val(), "0");
     game.restore();
     dashboard.restore();
-});
-
-test("the game chat's slider sits right of the closed chat's tab and stays there while the chat is open", () => {
-    const ctx = load(["gameChatSoundSpot"]);
-    const spot = (...args) => JSON.parse(JSON.stringify(ctx.gameChatSoundSpot(...args)));
-    const closed = ctx.gameChatSoundSpot({ left: 473, right: 548, bottom: 753.4, height: 17.4 }, 760);
-    assert.deepEqual(JSON.parse(JSON.stringify(closed)), { left: 556, bottom: 7, height: 17 });
-    const open = { left: 473, right: 548, bottom: 420.4, height: 17.4 };
-    assert.equal(ctx.gameChatSoundSpot(open, 760, closed, false), closed, "opening the chat doesn't move it");
-    assert.deepEqual(spot({ left: 473, right: 548, bottom: 753.4, height: 17.4 }, 760, closed, false), { left: 556, bottom: 7, height: 17 }, "nor closing it");
-    assert.deepEqual(spot({ left: 373, right: 448, bottom: 300, height: 17.4 }, 600, closed, true), { left: 456, bottom: 7, height: 17 },
-        "a resize with the chat open moves it sideways with the tab, still at the bottom");
-    assert.deepEqual(spot(open, 760, null, false), { left: 556, bottom: 0, height: 17 }, "a game that opens with the chat open puts it at the bottom");
 });
 
 test("a volume setting shows as a slider in the menu and is saved as a number", async () => {
