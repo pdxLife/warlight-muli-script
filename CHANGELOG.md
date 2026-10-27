@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.52.4
+
+- **A profile's best Seasonal Ladder place says which season.** The Seasonal Ladder row in a player's Ladders table now reads "9th final place (Season LVII)" under Best Rank: the best place a finished season ended with, and that season, so it can be found among war.app's Season rows below. It no longer shows a rating there: custom.wl-stats.com rates seasons on its own scale, about 200 below war.app's (3265 where war.app says 3468), so the figure matched none of war.app's rows. The season running now no longer counts, since it hasn't finished.
+
 ## 3.52.3
 
 - **Quickmatch stats: clear the search.** The Search box in the Stats dialog has a ✕ that clears it, shown while there's a search; Esc in the box clears it too (a second Esc closes the dialog). A search you leave in place is shown in the box when you open Stats again; before, the box came back empty while the list stayed filtered.
