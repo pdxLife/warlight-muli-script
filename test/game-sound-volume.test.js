@@ -26,18 +26,27 @@ test("a stored volume percentage becomes a factor, full volume when unset", () =
     assert.equal(ctx.volumeSettingLevel(true), 1, "not a number");
 });
 
-function gamePage(stored) {
-    const { dom, $ } = createDom("", "https://war.app/MultiPlayer?GameID=1");
+const SOUND_FUNCTIONS = ["setupGameSoundVolume", "setupSoundSliders", "soundSliderHtml", "gameChatSoundSpot", "scaleAudioVolume", "gameSoundKind", "volumeSettingLevel",
+    "showVolumeSetting", "openGameChatTabRect", "shownUjsElement", "pageIsGame", "pageIsChatRoom"];
+
+function gamePage(stored, { html = "", url = "https://war.app/MultiPlayer?GameID=1" } = {}) {
+    const { dom, $ } = createDom(html, url);
     const { HTMLMediaElement, HTMLAudioElement } = dom.window;
     const native = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume");
     const play = HTMLMediaElement.prototype.play;
+    const updates = [];
     const Database = {
         Table: { Settings: "Settings" },
         Row: { Settings: { Name: "name" } },
-        readIndex: (table, row, name) => Promise.resolve(name in stored ? { name, value: stored[name] } : undefined)
+        readIndex: (table, row, name) => Promise.resolve(name in stored ? { name, value: stored[name] } : undefined),
+        update: (table, value) => {
+            updates.push(value);
+            return Promise.resolve();
+        }
     };
-    const ctx = load(["setupGameSoundVolume", "scaleAudioVolume", "gameSoundKind", "volumeSettingLevel"], {
-        ...domGlobals(dom, $), HTMLMediaElement, HTMLAudioElement, Database
+    const ctx = load(SOUND_FUNCTIONS, {
+        ...domGlobals(dom, $), HTMLMediaElement, HTMLAudioElement, Database, location: dom.window.location, addCSS: () => {},
+        setTimeout: () => 0, GAME_SOUND_SETTINGS: { chat: "chatSoundVolume", turn: "turnSoundVolume" }
     });
     const sound = (file) => {
         const audio = new dom.window.Audio();
@@ -48,7 +57,7 @@ function gamePage(stored) {
         Object.defineProperty(HTMLMediaElement.prototype, "volume", native);
         HTMLMediaElement.prototype.play = play;
     };
-    return { ctx, dom, sound, nativeVolume: (el) => native.get.call(el), native, restore };
+    return { ctx, dom, $, sound, updates, nativeVolume: (el) => native.get.call(el), native, restore };
 }
 
 test("the chat and turn sounds play at their own share of the volume war.app sets", async () => {
@@ -88,6 +97,56 @@ test("at full volume for both, nothing is changed", async () => {
         assert.equal(dom.window.HTMLMediaElement.prototype.play, play);
         restore();
     }
+});
+
+test("the sound button next to war.app's speaker opens both sliders, which apply at once and are saved", async () => {
+    const html = `<span><div id="SoundContainer"><a href="#"><img></a></div></span><input id="chatSoundVolume" type="range"><span class="volumeSettingValue"></span>`;
+    const { ctx, $, sound, updates, nativeVolume, restore } = gamePage({ turnSoundVolume: 50 }, { html });
+    const chat = sound("GameChat.mp3");
+    ctx.setupGameSoundVolume();
+    await flush();
+
+    assert.equal($("#SoundContainer + #tuydSoundBtn").length, 1, "right after war.app's speaker icon");
+    $("#tuydSoundBtn").trigger("click");
+    assert.deepEqual($("#tuydSoundPanel .tuydSoundSlider").map((i, el) => $(el).text()).get(), ["Chat100%", "Turn50%"]);
+    chat.volume = 0.8;
+    assert.equal(nativeVolume(chat), 0.8, "chat at 100% keeps war.app's volume");
+    chat.play();
+
+    $("#tuydSoundPanel [data-sound=chat] input").val("30").trigger("input");
+    assert.ok(Math.abs(nativeVolume(chat) - 0.24) < 1e-9, "a sound already played follows the slider");
+    assert.equal($("#tuydSoundPanel [data-sound=chat]").text(), "Chat30%");
+    $("#tuydSoundPanel [data-sound=chat] input").trigger("change");
+    assert.deepEqual(JSON.parse(JSON.stringify(updates)), [{ name: "chatSoundVolume", value: 30 }]);
+    assert.equal($("#chatSoundVolume").val(), "30", "the settings menu holds the new value, so saving the menu keeps it");
+    assert.equal($(".volumeSettingValue").text(), "30%");
+
+    $("body").trigger($.Event("mousedown", { target: $("body")[0] }));
+    assert.equal($("#tuydSoundPanel").length, 0, "a click elsewhere closes it");
+    restore();
+});
+
+test("the chat rooms' toolbar gets the chat sound slider; other pages get no buttons", async () => {
+    const room = gamePage({ chatSoundVolume: 40 }, { html: `<div id="SoundContainer"></div><div id="tuydChatTools"></div>`, url: "https://war.app/MultiPlayer?ChatRoom=1" });
+    room.ctx.setupGameSoundVolume();
+    await flush();
+    assert.equal(room.$("#tuydChatTools > .tuydSoundSlider[data-sound=chat]").text(), "🔔40%");
+    assert.equal(room.$("#tuydSoundBtn").length, 1);
+    room.restore();
+
+    const dashboard = gamePage({ chatSoundVolume: 40 }, { html: `<div id="SoundContainer"></div>`, url: "https://war.app/MultiPlayer/" });
+    dashboard.ctx.setupGameSoundVolume();
+    await flush();
+    assert.equal(dashboard.$(".tuydSoundSlider, #tuydSoundBtn").length, 0);
+    const chat = dashboard.sound("Chat.mp3");
+    chat.volume = 1;
+    assert.equal(dashboard.nativeVolume(chat), 0.4, "the volume still applies there");
+    dashboard.restore();
+});
+
+test("the game chat's slider sits right of the open chat's tab", () => {
+    const ctx = load(["gameChatSoundSpot"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.gameChatSoundSpot({ left: 473, right: 548, bottom: 420.4, height: 17.4 }, 760))), { left: 556, bottom: 340, height: 17 });
 });
 
 test("a volume setting shows as a slider in the menu and is saved as a number", async () => {

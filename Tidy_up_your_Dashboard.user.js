@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.53.0
+// @version 3.54.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.53.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1213,22 +1213,178 @@ function volumeSettingLevel(value) {
     return isNaN(percent) ? 1 : Math.max(0, Math.min(100, percent)) / 100;
 }
 
+var GAME_SOUND_SETTINGS = { chat: "chatSoundVolume", turn: "turnSoundVolume" };
+
+function soundSliderHtml(kind, label, title) {
+    return '<label class="tuydSoundSlider" data-sound="' + kind + '" title="' + title + ' (Muli\'s Userscript)"><span class="tuydSoundLabel">' + label + '</span>' +
+        '<input type="range" min="0" max="100" step="5" aria-label="' + title + '"><span class="tuydSoundValue"></span></label>';
+}
+
+// Right of the open game chat's tab, level with it.
+function gameChatSoundSpot(tab, viewportHeight) {
+    return { left: Math.round(tab.right + 8), bottom: Math.max(0, Math.round(viewportHeight - tab.bottom)), height: Math.round(tab.height) };
+}
+
 function setupGameSoundVolume() {
-    var levels = {};
-    var settings = { chat: "chatSoundVolume", turn: "turnSoundVolume" };
-    Promise.all(Object.keys(settings).map(function (kind) {
-        return Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, settings[kind]).then(function (setting) {
+    var levels = { chat: 1, turn: 1 };
+    var refresh = null;
+    var apply = function () {
+        if (!refresh && (levels.chat < 1 || levels.turn < 1)) {
+            refresh = scaleAudioVolume(function (element) {
+                var kind = gameSoundKind(element.currentSrc || element.src);
+                return kind ? levels[kind] : 1;
+            });
+        }
+        if (refresh) {
+            refresh();
+        }
+    };
+    var show = function (scope) {
+        $(scope || document).find(".tuydSoundSlider").addBack(".tuydSoundSlider").each(function () {
+            var percent = Math.round(levels[$(this).attr("data-sound")] * 100);
+            $(this).find("input").val(percent);
+            $(this).find(".tuydSoundValue").text(percent + "%");
+        });
+    };
+    Promise.all(Object.keys(GAME_SOUND_SETTINGS).map(function (kind) {
+        return Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, GAME_SOUND_SETTINGS[kind]).then(function (setting) {
             levels[kind] = volumeSettingLevel(setting && setting.value);
         });
     })).then(function () {
-        if (levels.chat === 1 && levels.turn === 1) {
+        apply();
+        if (pageIsGame() || pageIsChatRoom()) {
+            setupSoundSliders(levels, apply, show);
+        }
+    });
+}
+
+function setupSoundSliders(levels, apply, show) {
+    addCSS(`
+        .tuydSoundSlider {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0;
+            color: #ddd;
+            font-size: 12px;
+            font-weight: normal;
+            white-space: nowrap;
+            pointer-events: auto;
+        }
+        .tuydSoundSlider input[type=range] {
+            width: 80px;
+            margin: 0;
+            accent-color: #e0c060;
+        }
+        .tuydSoundValue {
+            min-width: 2.8em;
+            color: #aaa;
+            text-align: right;
+        }
+        #tuydSoundBtn {
+            margin-left: 4px;
+            font-size: 12px;
+            text-decoration: none;
+        }
+        #tuydSoundPanel {
+            position: fixed;
+            z-index: 1060;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            background: #1b1b1b;
+            color: #ddd;
+            font-size: 12px;
+            pointer-events: auto;
+        }
+        #tuydSoundPanel .tuydSoundLabel {
+            min-width: 3em;
+        }
+        #tuydSoundPanel .tuydSoundNote {
+            color: #888;
+            font-size: 11px;
+        }
+        #tuydChatSound {
+            position: fixed;
+            z-index: 50;
+            padding: 0 6px;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.55);
+        }
+    `);
+    $(document).on("input", ".tuydSoundSlider input", function () {
+        var kind = $(this).closest(".tuydSoundSlider").attr("data-sound");
+        levels[kind] = volumeSettingLevel(this.value);
+        apply();
+        show();
+    }).on("change", ".tuydSoundSlider input", function () {
+        var kind = $(this).closest(".tuydSoundSlider").attr("data-sound");
+        var value = Math.round(levels[kind] * 100);
+        // The settings menu saves every input it holds on any change, so it has to hold this value too.
+        showVolumeSetting($("#" + GAME_SOUND_SETTINGS[kind]).val(value));
+        Database.update(Database.Table.Settings, { name: GAME_SOUND_SETTINGS[kind], value: value }, undefined);
+    }).on("keydown keyup keypress", ".tuydSoundSlider, #tuydSoundPanel", function (event) {
+        event.stopPropagation();
+    }).on("click", "#tuydSoundBtn", function (event) {
+        event.preventDefault();
+        if ($("#tuydSoundPanel").length) {
+            $("#tuydSoundPanel").remove();
             return;
         }
-        scaleAudioVolume(function (element) {
-            var kind = gameSoundKind(element.currentSrc || element.src);
-            return kind ? levels[kind] : 1;
-        });
+        var rect = this.getBoundingClientRect();
+        var panel = $('<div id="tuydSoundPanel"></div>').append(soundSliderHtml("chat", "Chat", "Chat sound volume"), soundSliderHtml("turn", "Turn", "Turn sound volume"),
+            '<div class="tuydSoundNote">On top of war.app\'s App Settings volumes</div>').css({ top: rect.bottom + 6, right: Math.max(8, window.innerWidth - rect.right) });
+        $("body").append(panel);
+        show(panel);
+    }).on("mousedown", function (event) {
+        if (!$(event.target).closest("#tuydSoundPanel, #tuydSoundBtn").length) {
+            $("#tuydSoundPanel").remove();
+        }
     });
+    var speaker = $("#SoundContainer");
+    if (speaker.length && !$("#tuydSoundBtn").length) {
+        speaker.after('<a href="#" id="tuydSoundBtn" title="Volume of the chat and turn sounds (Muli\'s Userscript)">🔔</a>');
+    }
+    var spot = null;
+    var timer = null;
+    var place = function () {
+        timer = null;
+        if (pageIsChatRoom()) {
+            var bar = $("#tuydChatTools");
+            if (bar.length && !bar.children(".tuydSoundSlider").length) {
+                show($(soundSliderHtml("chat", "🔔", "Chat sound volume")).appendTo(bar));
+            }
+            return;
+        }
+        var tab = openGameChatTabRect();
+        var slider = $("#tuydChatSound");
+        if (!tab) {
+            slider.hide();
+            spot = null;
+            return;
+        }
+        if (!slider.length) {
+            slider = $(soundSliderHtml("chat", "🔔", "Chat sound volume")).attr("id", "tuydChatSound").appendTo("body");
+            show(slider);
+        }
+        var next = gameChatSoundSpot(tab, window.innerHeight);
+        var key = next.left + ":" + next.bottom + ":" + next.height;
+        if (key !== spot) {
+            spot = key;
+            slider.css({ left: next.left, bottom: next.bottom, height: next.height }).show();
+        }
+    };
+    var schedule = function () {
+        if (!timer) {
+            timer = setTimeout(place, 300);
+        }
+    };
+    place();
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    $(window).on("resize", schedule);
 }
 
 var IDLE_NUMBER_SUFFIXES = { k: [1e3, "thousand"], m: [1e6, "million"], b: [1e9, "billion"], t: [1e12, "trillion"], p: [1e15, "quadrillion"], e: [1e18, "quintillion"], z: [1e21, "sextillion"] };
@@ -11584,7 +11740,7 @@ function openGameChatTabRect() {
         return null;
     }
     var rect = tab[0].getBoundingClientRect();
-    return rect.height > 0 ? { left: rect.left, bottom: rect.bottom, height: rect.height } : null;
+    return rect.height > 0 ? { left: rect.left, right: rect.right, bottom: rect.bottom, height: rect.height } : null;
 }
 
 function setupGameNotes() {
