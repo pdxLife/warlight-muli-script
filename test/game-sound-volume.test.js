@@ -193,9 +193,17 @@ test("a volume set in one tab applies at once in the other open tabs, and in the
     dashboard.restore();
 });
 
-test("the game chat's slider sits right of the open chat's tab", () => {
+test("the game chat's slider sits right of the closed chat's tab and stays there while the chat is open", () => {
     const ctx = load(["gameChatSoundSpot"]);
-    assert.deepEqual(JSON.parse(JSON.stringify(ctx.gameChatSoundSpot({ left: 473, right: 548, bottom: 420.4, height: 17.4 }, 760))), { left: 556, bottom: 340, height: 17 });
+    const spot = (...args) => JSON.parse(JSON.stringify(ctx.gameChatSoundSpot(...args)));
+    const closed = ctx.gameChatSoundSpot({ left: 473, right: 548, bottom: 753.4, height: 17.4 }, 760);
+    assert.deepEqual(JSON.parse(JSON.stringify(closed)), { left: 556, bottom: 7, height: 17 });
+    const open = { left: 473, right: 548, bottom: 420.4, height: 17.4 };
+    assert.equal(ctx.gameChatSoundSpot(open, 760, closed, false), closed, "opening the chat doesn't move it");
+    assert.deepEqual(spot({ left: 473, right: 548, bottom: 753.4, height: 17.4 }, 760, closed, false), { left: 556, bottom: 7, height: 17 }, "nor closing it");
+    assert.deepEqual(spot({ left: 373, right: 448, bottom: 300, height: 17.4 }, 600, closed, true), { left: 456, bottom: 7, height: 17 },
+        "a resize with the chat open moves it sideways with the tab, still at the bottom");
+    assert.deepEqual(spot(open, 760, null, false), { left: 556, bottom: 0, height: 17 }, "a game that opens with the chat open puts it at the bottom");
 });
 
 test("a volume setting shows as a slider in the menu and is saved as a number", async () => {

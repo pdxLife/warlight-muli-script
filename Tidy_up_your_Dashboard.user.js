@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.54.0
+// @version 3.54.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -1220,9 +1220,17 @@ function soundSliderHtml(kind, label, title) {
         '<input type="range" min="0" max="100" step="5" aria-label="' + title + '"><span class="tuydSoundValue"></span></label>';
 }
 
-// Right of the open game chat's tab, level with it.
-function gameChatSoundSpot(tab, viewportHeight) {
-    return { left: Math.round(tab.right + 8), bottom: Math.max(0, Math.round(viewportHeight - tab.bottom)), height: Math.round(tab.height) };
+// Right of the game chat's tab where it sits while the chat is closed, at the bottom; it stays there while the
+// chat is open, until the window is resized.
+function gameChatSoundSpot(tab, viewportHeight, previous, resized) {
+    var gap = viewportHeight - tab.bottom;
+    if (gap <= tab.height) {
+        return { left: Math.round(tab.right + 8), bottom: Math.max(0, Math.round(gap)), height: Math.round(tab.height) };
+    }
+    if (previous && !resized) {
+        return previous;
+    }
+    return { left: Math.round(tab.right + 8), bottom: previous ? previous.bottom : 0, height: previous ? previous.height : Math.round(tab.height) };
 }
 
 function setupGameSoundVolume() {
@@ -1381,6 +1389,7 @@ function setupSoundSliders(setLevel, save, show) {
         speaker.after('<a href="#" id="tuydSoundBtn" title="Volume of the chat and turn sounds (Muli\'s Userscript)">🔔</a>');
     }
     var spot = null;
+    var resized = false;
     var timer = null;
     var place = function () {
         timer = null;
@@ -1395,18 +1404,20 @@ function setupSoundSliders(setLevel, save, show) {
         var slider = $("#tuydChatSound");
         if (!tab) {
             slider.hide();
-            spot = null;
             return;
         }
         if (!slider.length) {
             slider = $(soundSliderHtml("chat", "🔔", "Chat sound volume")).attr("id", "tuydChatSound").appendTo("body");
             show(slider);
         }
-        var next = gameChatSoundSpot(tab, window.innerHeight);
-        var key = next.left + ":" + next.bottom + ":" + next.height;
-        if (key !== spot) {
-            spot = key;
-            slider.css({ left: next.left, bottom: next.bottom, height: next.height }).show();
+        var next = gameChatSoundSpot(tab, window.innerHeight, spot, resized);
+        resized = false;
+        if (!spot || next.left !== spot.left || next.bottom !== spot.bottom || next.height !== spot.height) {
+            spot = next;
+            slider.css({ left: next.left, bottom: next.bottom, height: next.height });
+        }
+        if (slider[0].style.display === "none") {
+            slider.show();
         }
     };
     var schedule = function () {
@@ -1416,7 +1427,10 @@ function setupSoundSliders(setLevel, save, show) {
     };
     place();
     new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
-    $(window).on("resize", schedule);
+    $(window).on("resize", function () {
+        resized = true;
+        schedule();
+    });
 }
 
 var IDLE_NUMBER_SUFFIXES = { k: [1e3, "thousand"], m: [1e6, "million"], b: [1e9, "billion"], t: [1e12, "trillion"], p: [1e15, "quadrillion"], e: [1e18, "quintillion"], z: [1e21, "sextillion"] };
