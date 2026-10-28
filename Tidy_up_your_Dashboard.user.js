@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.54.3
+// @version 3.55.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.55.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10553,12 +10553,58 @@ function fetchAllPastGames(fetchPage, pageSize, onProgress) {
                 }
             });
             if (onProgress) {
-                onProgress(Math.min(offset + page.games.length, page.total), page.total);
+                onProgress(Math.min(offset + page.games.length, page.total), page.total, games);
             }
             return page.games.length && offset + page.games.length < page.total ? next(offset + page.games.length) : games;
         });
     };
     return next(0);
+}
+
+// Brings `games`, an earlier read of Past Games (newest first), up to date from Past Games' first pages: new and
+// changed games go in front. It reads on until a page has a finished game it already knew and it has seen every
+// game that was still running. With no known game after `maxPages` it gives null: a full read is needed.
+function updatePastGames(games, fetchPage, pageSize, maxPages) {
+    var known = {};
+    games.forEach(function (game) {
+        known[game.id] = game;
+    });
+    var running = games.filter(function (game) {
+        return game.state !== 4;
+    });
+    var fresh = [];
+    var seen = {};
+    var reachedKnown = false;
+    var next = function (offset, pages) {
+        return fetchPage(offset, pageSize).then(function (page) {
+            if (!page) {
+                throw new Error("war.app's game list couldn't be read");
+            }
+            page.games.forEach(function (game) {
+                if (!seen[game.id]) {
+                    seen[game.id] = true;
+                    fresh.push(game);
+                }
+                if (known[game.id] && known[game.id].state === 4) {
+                    reachedKnown = true;
+                }
+            });
+            var end = !page.games.length || offset + page.games.length >= page.total;
+            var caughtUp = reachedKnown && running.every(function (game) {
+                return seen[game.id];
+            });
+            if (!end && !caughtUp && pages + 1 < maxPages) {
+                return next(offset + page.games.length, pages + 1);
+            }
+            if (!end && !reachedKnown) {
+                return null;
+            }
+            return fresh.concat(games.filter(function (game) {
+                return !seen[game.id];
+            }));
+        });
+    };
+    return next(0, 0);
 }
 
 function fetchPastGamesPage(offset, count) {
@@ -10572,14 +10618,22 @@ function fetchPastGamesPage(offset, count) {
 
 // Every game in your Past Games, newest first: a request per 200 games, about 8 seconds for 5,000. Kept for
 // this tab's session and read again when older than `maxAge`; Past Games and Quickmatch share it.
-function loadPastGames(playerId, maxAge, onProgress) {
+function cachedPastGames(playerId, maxAge) {
     try {
         var cached = JSON.parse(sessionStorage.getItem(PAST_GAMES_KEY));
         if (cached && cached.player === playerId && Array.isArray(cached.games) && Date.now() - cached.time < maxAge) {
-            return Promise.resolve({ time: cached.time, games: cached.games });
+            return { time: cached.time, games: cached.games };
         }
     } catch (e) {
         // An unreadable copy is read again.
+    }
+    return null;
+}
+
+function loadPastGames(playerId, maxAge, onProgress) {
+    var cached = cachedPastGames(playerId, maxAge);
+    if (cached) {
+        return Promise.resolve(cached);
     }
     return fetchAllPastGames(fetchPastGamesPage, 200, onProgress).then(function (games) {
         var time = Date.now();
@@ -10681,6 +10735,7 @@ function quickmatchStats(games, me, templates, countBoots) {
             id: game.id,
             result: result,
             turn: game.turn,
+            date: game.date,
             template: template ? template.name : null,
             opponents: opponents.map(function (player) {
                 return player.name;
@@ -10800,14 +10855,14 @@ function csvCell(value) {
 }
 
 function quickmatchCsv(games, me, templates, origin) {
-    var rows = [["Game ID", "Game", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
+    var rows = [["Game ID", "Game", "Date", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
     games.forEach(function (game) {
         var template = templates[game.id] || null;
         var result = isQuickmatchGameName(game.name) && !(template && template.none) ? quickmatchResult(game, me) : null;
         if (!result) {
             return;
         }
-        rows.push([game.id, game.name, quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
+        rows.push([game.id, game.name, typeof game.date === "number" ? pastGameDate(game) : "", quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
             template ? template.name : "", template && template.id ? template.id : "",
             quickmatchOpponents(game, me).map(function (player) {
                 return player.name;
@@ -10902,6 +10957,81 @@ function quickmatchTableHtml(groups, kind, view) {
     return '<table class="dataTable tuydQmTable"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
 }
 
+// The Last games tab: your newest `count` finished Quickmatch games that match `view.query`, from
+// `quickmatchStats(...).games`, sorted by `view.sort`. A boot loss reads as a loss only when `view.countBoots` is set.
+function quickmatchRecentHtml(games, view, count) {
+    var columns = [
+        { key: "date", label: "Date" },
+        { key: "template", label: "Template" },
+        { key: "opponents", label: "Opponents" },
+        { key: "result", label: "Result" },
+        { key: "turn", label: "Turns" }
+    ];
+    var unread = "Template not read yet";
+    var query = String(view.query || "").trim().toLowerCase();
+    var resultText = function (game) {
+        if (game.result === "booted") {
+            return view.countBoots ? "Lost (booted)" : "Booted";
+        }
+        return { won: "Won", lost: "Lost", vote: "Ended by vote" }[game.result] || "";
+    };
+    var matching = games.map(function (game, index) {
+        return { game: game, index: index };
+    }).filter(function (row) {
+        var game = row.game;
+        return !query || [game.template === null ? unread : game.template, game.opponents.join(", "), resultText(game)].some(function (text) {
+            return text.toLowerCase().indexOf(query) !== -1;
+        });
+    });
+    var rows = matching.slice(0, count);
+    var sort = view.sort || { key: "date", descending: true };
+    var value = function (row) {
+        var game = row.game;
+        if (sort.key === "date") {
+            return -row.index;
+        }
+        if (sort.key === "template") {
+            return game.template === null ? "￿" : game.template.toLowerCase();
+        }
+        if (sort.key === "opponents") {
+            return game.opponents.join(", ").toLowerCase();
+        }
+        if (sort.key === "result") {
+            return { won: 0, lost: 1, booted: view.countBoots ? 1 : 2, vote: 3 }[game.result];
+        }
+        return game.turn > 0 ? game.turn : -1;
+    };
+    rows.sort(function (a, b) {
+        var x = value(a);
+        var y = value(b);
+        var order = x < y ? -1 : x > y ? 1 : 0;
+        return (sort.descending ? -order : order) || a.index - b.index;
+    });
+    var head = columns.map(function (column) {
+        var arrow = sort.key === column.key ? (sort.descending ? " ▾" : " ▴") : "";
+        return '<td data-sort="' + column.key + '">' + htmlEscape(column.label) + arrow + "</td>";
+    }).join("");
+    var body = rows.map(function (row) {
+        var game = row.game;
+        var known = typeof game.date === "number";
+        var date = known ? pastGameDate(game) : "–";
+        var when = known ? new Date(Date.UTC(2000, 0, 1) + game.date).toLocaleString() : "";
+        var lost = game.result === "lost" || (game.result === "booted" && view.countBoots);
+        var tone = game.result === "won" ? "won" : lost ? "lost" : "other";
+        var title = game.result === "booted" && !view.countBoots ? "Left out of your record" : "Open this game";
+        return '<tr class="tuydQmRecentRow"><td' + (when ? ' title="' + htmlEscape(when) + '"' : "") + ">" + htmlEscape(date) + "</td><td>"
+            + (game.template === null ? "<i>" + htmlEscape(unread) + "</i>" : htmlEscape(game.template)) + "</td><td>" + htmlEscape(game.opponents.join(", ")) + "</td>"
+            + '<td class="tuydQmGame tuydQm-' + tone + '"><a href="' + htmlEscape(safeUrl("/MultiPlayer?GameID=" + encodeURIComponent(game.id))) + '" title="' + htmlEscape(title) + '">'
+            + htmlEscape(resultText(game)) + "</a></td><td>" + (game.turn > 0 ? game.turn : "–") + "</td></tr>";
+    }).join("");
+    if (!rows.length) {
+        body = '<tr><td colspan="5">' + (query ? "Nothing matches your search." : "No finished Quickmatch games.") + "</td></tr>";
+    } else if (matching.length > rows.length) {
+        body += '<tr><td colspan="5" class="tuydQmMeta">' + (matching.length - rows.length) + " older game" + (matching.length - rows.length === 1 ? "" : "s") + " in the CSV</td></tr>";
+    }
+    return '<table class="dataTable tuydQmTable tuydQmRecent"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
+}
+
 function readQuickmatchView() {
     var view = {};
     try {
@@ -10911,7 +11041,7 @@ function readQuickmatchView() {
     }
     return {
         countBoots: view.countBoots === true,
-        tab: view.tab === "opponents" ? "opponents" : "templates"
+        tab: view.tab === "opponents" || view.tab === "recent" ? view.tab : "templates"
     };
 }
 
@@ -10947,21 +11077,28 @@ function storedQuickmatchGames(playerId) {
 
 // Your Quickmatch record on the Quickmatch screen: in the Settings dialog's header, next to "Your rating" on
 // each template, and by template and by opponent in a Stats dialog. war.app's viewport has no room to spare,
-// so the record sits in the empty ends of the Settings header. The games come from Past Games and are read
-// again when older than 10 minutes; each game's template is read once from the game in a hidden frame.
+// so the record sits in the empty ends of the Settings header. The games come from Past Games: all of them only
+// when you click Rescan, the newest each time you come to the screen. Each game's template is read once from
+// the game in a hidden frame.
 function setupQuickmatchStats() {
     var me = { id: null, name: null };
     var ready = false;
     var games = null;
     var scannedAt = 0;
-    var triedAt = 0;
+    var checkedAt = 0;
     var scanning = false;
+    var partial = null;
+    var refreshing = false;
+    var refreshTriedAt = 0;
+    var onScene = false;
     var failed = false;
     var templates = storedQuickmatchTemplates();
     var reading = null;
     var stats = null;
     var dialog = null;
     var timer = null;
+    var recentCount = 20;
+    var newestCount = 200;
     var view = readQuickmatchView();
     view.query = "";
     view.sort = null;
@@ -11000,12 +11137,18 @@ function setupQuickmatchStats() {
         #tuydQmStats .tuydQmTable td { padding: 3px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
         #tuydQmStats .tuydQmTable thead td { cursor: pointer; white-space: nowrap; color: #fff; border-top: 0; }
         #tuydQmStats .tuydQmTable td + td { text-align: right; white-space: nowrap; }
+        #tuydQmStats .tuydQmRecent td { white-space: nowrap; }
+        #tuydQmStats .tuydQmRecent td:nth-child(2), #tuydQmStats .tuydQmRecent td:nth-child(3) { text-align: left; white-space: normal; }
+        #tuydQmStats .tuydQmRecent td:nth-child(4) { text-align: left; }
+        #tuydQmStats .tuydQmRecent tbody td.tuydQmMeta { text-align: left; }
+        #tuydQmStats .tuydQmRecentRow:hover { background: rgba(255, 255, 255, 0.06); }
         #tuydQmStats .tuydQmRow { cursor: pointer; }
         #tuydQmStats .tuydQmRow:hover, #tuydQmStats .tuydQmOpen { background: rgba(255, 255, 255, 0.06); }
         #tuydQmStats .tuydQmGames td { text-align: left; font-size: 12px; line-height: 1.7; }
         #tuydQmStats .tuydQmGame { white-space: nowrap; }
         #tuydQmStats .tuydQm-won a { color: #7c7; }
         #tuydQmStats .tuydQm-lost a, #tuydQmStats .tuydQm-booted a { color: #e77; }
+        #tuydQmStats .tuydQm-other a { color: #babbbb; }
         #tuydQmStats .communityLaddersCredit { margin-top: 6px; }
     `);
     var scene = function () {
@@ -11043,9 +11186,6 @@ function setupQuickmatchStats() {
             return result && result !== "playing" && !templates[game.id] && !(reading && reading.tried[game.id]);
         });
     };
-    var stale = function () {
-        return Date.now() - Math.max(scannedAt, triedAt) > 10 * 60 * 1000;
-    };
     var saveView = function () {
         try {
             localStorage.setItem(QUICKMATCH_VIEW_KEY, JSON.stringify({ countBoots: view.countBoots, tab: view.tab }));
@@ -11053,8 +11193,22 @@ function setupQuickmatchStats() {
             // The view is just the default next time.
         }
     };
+    var rescanSeconds = function () {
+        var seconds = Math.max(1, Math.round(partial.total / 600));
+        return seconds + " second" + (seconds === 1 ? "" : "s");
+    };
+    var saveGames = function () {
+        try {
+            localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ player: me.id, time: scannedAt, checked: checkedAt, partial: partial, games: games }));
+        } catch (e) {
+            // Without storage Past Games is read again next time.
+        }
+    };
     var recordTitle = function () {
         var meta = [stats.games.length + " finished Quickmatch game" + (stats.games.length === 1 ? "" : "s")];
+        if (partial) {
+            meta[0] += " in your newest " + partial.read + " of " + partial.total + " games" + (scanning ? ", reading the rest" : "");
+        }
         if (stats.playing) {
             meta.push(stats.playing + " in progress");
         }
@@ -11083,9 +11237,9 @@ function setupQuickmatchStats() {
         setPlace(summary, { left: box.left - origin.left + 16, top: head.top + head.height / 2 - origin.top - 13, width: box.width - 32 });
         var record = summary.find(".tuydQmSummaryRecord");
         if (stats) {
-            setText(record, quickmatchRecordText(stats), recordTitle() + " (Muli's Userscript)");
+            setText(record, quickmatchRecordText(stats) + (partial && scanning ? " …" : ""), recordTitle() + " (Muli's Userscript)");
         } else {
-            setText(record, scanning ? "Reading your games…" : failed ? "Couldn't read your games" : "", "");
+            setText(record, scanning || refreshing ? "Reading your games…" : failed ? "Couldn't read your games" : "", "");
         }
     };
     var placeTemplateRecords = function () {
@@ -11138,7 +11292,11 @@ function setupQuickmatchStats() {
         dialog.find("[name=countBoots]").prop("checked", view.countBoots);
         dialog.find(".tuydQmRescan").prop("disabled", scanning);
         dialog.find(".tuydQmCopy, .tuydQmCsv").prop("disabled", !stats);
-        dialog.find(".tuydQmStatus").text(scanning ? "Reading your games…" : failed ? "Couldn't read your games. Try Rescan later." : scannedAt ? "Read " + new Date(scannedAt).toLocaleString() : "");
+        dialog.find(".tuydQmStatus").text(scanning ? (partial ? "Reading your games: " + partial.read + " of " + partial.total + "…" : "Reading your games…")
+            : failed ? (partial ? "Couldn't read all your games. Try Rescan later." : "Couldn't read your games. Try Rescan later.")
+            : !checkedAt ? (refreshing ? "Reading your newest games…" : "")
+            : partial ? "Read " + new Date(checkedAt).toLocaleString() + ". Rescan reads all " + partial.total + " of your games (about " + rescanSeconds() + ")."
+            : "Read " + new Date(checkedAt).toLocaleString());
         var line = dialog.find(".tuydQmRecordLine").empty();
         if (!stats) {
             return;
@@ -11146,8 +11304,11 @@ function setupQuickmatchStats() {
         line.append($("<b>").text(quickmatchRecordText(stats)), $('<span class="tuydQmMeta">').text(" · " + recordTitle()));
         dialog.find("[data-tab=templates]").text("Templates (" + stats.templates.length + ")").toggleClass("tuydQmActive", view.tab === "templates");
         dialog.find("[data-tab=opponents]").text("Opponents (" + stats.opponents.length + ")").toggleClass("tuydQmActive", view.tab === "opponents");
+        dialog.find("[data-tab=recent]").text(stats.games.length === 1 ? "Last game" : stats.games.length ? "Last " + Math.min(recentCount, stats.games.length) + " games" : "Last games").toggleClass("tuydQmActive", view.tab === "recent");
         renderTemplateStatus();
-        dialog.find(".tuydQmTableHolder").html(quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
+        dialog.find(".tuydQmTableHolder").html(view.tab === "recent"
+            ? quickmatchRecentHtml(stats.games, { query: view.query, sort: view.sort, countBoots: view.countBoots }, recentCount)
+            : quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
     };
     var refresh = function () {
         stats = games && ready ? quickmatchStats(games, me, templates, view.countBoots) : null;
@@ -11199,39 +11360,104 @@ function setupQuickmatchStats() {
             readNext();
         }, 300);
     };
+    var readFewUnread = function () {
+        var unread = unreadGames().length;
+        if (!reading && unread && unread <= 10) {
+            startReading();
+        }
+    };
+    var quickmatchOnly = function (list) {
+        return list.filter(function (game) {
+            return isQuickmatchGameName(game.name);
+        });
+    };
+    // Each time you come to the Quickmatch screen, the newest games are read, so a game just played is counted. They're
+    // added to the last full read (Rescan), if there is one and it reaches them; otherwise the stats cover only your
+    // newest `newestCount` games until you Rescan.
+    var refreshLatest = function () {
+        if (scanning || refreshing || Date.now() - Math.max(checkedAt, refreshTriedAt) < 60 * 1000) {
+            return;
+        }
+        var full = games && !partial;
+        var cached = !full && cachedPastGames(me.id, 10 * 60 * 1000);
+        if (cached) {
+            games = quickmatchOnly(cached.games);
+            partial = null;
+            scannedAt = checkedAt = cached.time;
+            saveGames();
+            refresh();
+            return;
+        }
+        var base = games;
+        refreshing = true;
+        refreshTriedAt = Date.now();
+        refresh();
+        (full ? updatePastGames(base, fetchPastGamesPage, 50, 4) : Promise.resolve(null)).then(function (merged) {
+            return merged ? { games: merged } : fetchPastGamesPage(0, newestCount).then(function (page) {
+                if (!page) {
+                    throw new Error("war.app's game list couldn't be read");
+                }
+                return { games: page.games, partial: page.games.length < page.total ? { read: page.games.length, total: page.total } : null, all: page.games.length >= page.total };
+            });
+        }).then(function (read) {
+            refreshing = false;
+            if (scanning || games !== base) {
+                return;
+            }
+            games = quickmatchOnly(read.games);
+            partial = read.partial || null;
+            checkedAt = Date.now();
+            if (read.partial) {
+                scannedAt = 0;
+            } else if (read.all) {
+                scannedAt = checkedAt;
+            }
+            failed = false;
+            saveGames();
+            refresh();
+            readFewUnread();
+        }, function (error) {
+            refreshing = false;
+            failed = !games;
+            log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
+            refresh();
+        });
+    };
     var startReading = function () {
         reading = { done: 0, total: unreadGames().length, tried: {}, timer: null };
         refresh();
         readNext();
     };
-    var scan = function (maxAge) {
+    var scan = function () {
         if (scanning) {
             return;
         }
         scanning = true;
         failed = false;
-        triedAt = Date.now();
         refresh();
-        loadPastGames(me.id, maxAge).then(function (loaded) {
-            games = loaded.games.filter(function (game) {
-                return isQuickmatchGameName(game.name);
-            });
-            scannedAt = loaded.time;
-            try {
-                localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ player: me.id, time: scannedAt, games: games }));
-            } catch (e) {
-                // Without storage Past Games is read again next time.
+        var first = !games || partial;
+        loadPastGames(me.id, 0, first ? function (read, total, soFar) {
+            if (!partial || read >= partial.read) {
+                games = quickmatchOnly(soFar);
+                partial = { read: read, total: total };
             }
+            refresh();
+        } : null).then(function (loaded) {
+            games = quickmatchOnly(loaded.games);
+            scannedAt = loaded.time;
+            checkedAt = loaded.time;
+            partial = null;
+            saveGames();
             scanning = false;
             refresh();
-            var unread = unreadGames().length;
-            if (!reading && unread && unread <= 10) {
-                startReading();
-            }
+            readFewUnread();
         }, function (error) {
             log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
             scanning = false;
             failed = true;
+            if (partial) {
+                saveGames();
+            }
             refresh();
         });
     };
@@ -11267,14 +11493,14 @@ function setupQuickmatchStats() {
             <div class="tuydQmRecordLine"></div>
             <div class="tuydQmTools">
                 <label title="A game you were booted from counts as a loss"><input type="checkbox" name="countBoots">Count boot losses</label>
-                <button type="button" class="tuydQmButton tuydQmRescan" title="Read your Past Games again">Rescan</button>
+                <button type="button" class="tuydQmButton tuydQmRescan" title="Read all your Past Games: about 8 seconds for 5,000 games">Rescan</button>
                 <button type="button" class="tuydQmButton tuydQmCopy" title="Copy your record and top templates and opponents as text">Copy</button>
                 <button type="button" class="tuydQmButton tuydQmCsv" title="Download every Quickmatch game as a spreadsheet (CSV)">CSV</button>
                 <span class="tuydQmStatus"></span>
             </div>
             <div class="tuydQmTemplateStatus"></div>
             <div class="tuydQmTabs">
-                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><span class="tuydQmSearch"><input type="search" placeholder="Search"><a href="#" class="tuydQmSearchClear" title="Clear the search" aria-label="Clear the search" hidden>✕</a></span>
+                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><a href="#" data-tab="recent">Last games</a><span class="tuydQmSearch"><input type="search" placeholder="Search"><a href="#" class="tuydQmSearchClear" title="Clear the search" aria-label="Clear the search" hidden>✕</a></span>
             </div>
             <div class="tuydQmTableHolder"></div>
             <div class="communityLaddersCredit">From your Past Games, by Muli's Userscript</div>
@@ -11285,7 +11511,7 @@ function setupQuickmatchStats() {
             event.preventDefault();
             closeDialog();
         }).on("click", ".tuydQmRescan", function () {
-            scan(0);
+            scan();
         }).on("change", "[name=countBoots]", function () {
             view.countBoots = this.checked;
             saveView();
@@ -11306,8 +11532,9 @@ function setupQuickmatchStats() {
             dialog.find("input[type=search]").trigger("focus");
         }).on("click", ".tuydQmTable thead td", function () {
             var key = $(this).attr("data-sort");
-            var current = view.sort || { key: "games", descending: true };
-            view.sort = { key: key, descending: current.key === key ? !current.descending : key !== "name" };
+            var current = view.sort || (view.tab === "recent" ? { key: "date", descending: true } : { key: "games", descending: true });
+            var textFirst = ["name", "template", "opponents", "result"].indexOf(key) !== -1;
+            view.sort = { key: key, descending: current.key === key ? !current.descending : !textFirst };
             refresh();
         }).on("click", ".tuydQmRow", function (event) {
             if ($(event.target).closest("a").length) {
@@ -11347,14 +11574,16 @@ function setupQuickmatchStats() {
         if (!ready) {
             return;
         }
-        if (dialog && !scene()) {
+        var here = !!scene();
+        if (dialog && !here) {
             closeDialog();
         }
         placeSummary();
         placeTemplateRecords();
-        if (stale() && !scanning) {
-            scan(10 * 60 * 1000);
+        if (here && !onScene) {
+            refreshLatest();
         }
+        onScene = here;
     };
     $(document).on("click", ".tuydQmStatsButton", function (event) {
         event.preventDefault();
@@ -11389,6 +11618,8 @@ function setupQuickmatchStats() {
         if (stored) {
             games = stored.games;
             scannedAt = stored.time || 0;
+            checkedAt = Math.max(scannedAt, stored.checked || 0);
+            partial = stored.partial || null;
         }
         ready = true;
         refresh();
@@ -11410,7 +11641,7 @@ function setupQuickmatchProfileRecord() {
         var heading = $("h3").filter(function () {
             return $(this).text().trim() === "Quickmatch";
         }).first();
-        if (!stored || !heading.length || $("#tuydQmProfileRecord").length) {
+        if (!stored || stored.partial || !heading.length || $("#tuydQmProfileRecord").length) {
             return;
         }
         var stats = quickmatchStats(stored.games, { id: id }, storedQuickmatchTemplates(), readQuickmatchView().countBoots);
@@ -11418,7 +11649,7 @@ function setupQuickmatchProfileRecord() {
             return;
         }
         var line = $('<span id="tuydQmProfileRecord"></span>').text("Record: " + quickmatchRecordText(stats) + " in " + stats.games.length + " games")
-            .attr("title", "From your Past Games on " + new Date(stored.time).toLocaleString() + ", when you last opened Quickmatch (Muli's Userscript)")
+            .attr("title", "From your Past Games on " + new Date(Math.max(stored.time, stored.checked || 0)).toLocaleString() + ", when you last opened Quickmatch (Muli's Userscript)")
             .add("<br>");
         var folded = heading.next("div.exp");
         var next = heading.nextAll("h3").first();

@@ -258,6 +258,17 @@ test("the Quickmatch stats table escapes game, player and template names", () =>
     assert.ok(container.textContent.includes(PAYLOAD));
 });
 
+test("the Quickmatch Last games tab escapes game IDs, player and template names", () => {
+    const ctx = load(["quickmatchRecentHtml", "pastGameDate", "safeUrl", "htmlEscape"]);
+    const games = [{ id: PAYLOAD, result: "won", turn: 3, date: 0, template: PAYLOAD, opponents: [PAYLOAD, PAYLOAD] }, { id: "javascript:alert(1)", result: "booted", turn: 0, date: 0, template: null, opponents: [] }];
+    const container = render(ctx.quickmatchRecentHtml(games, { query: "" }, 20));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    for (const link of container.querySelectorAll("a")) {
+        assert.match(link.getAttribute("href"), /^\/MultiPlayer\?GameID=/);
+    }
+});
+
 test("the Past Games list escapes game, player and map names", () => {
     const ctx = load(["pastGamesListHtml", "pastGamePlayer", "pastGameResult", "pastGameStatusText", "pastGameDate", "htmlEscape"]);
     const players = [{ id: 1, name: "Me", state: 4, team: -1 }, { id: 2, name: PAYLOAD, state: 7, team: -1 }, { id: 3, name: PAYLOAD, state: 4, team: -1 }];
