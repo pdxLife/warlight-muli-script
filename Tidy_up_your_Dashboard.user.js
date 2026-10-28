@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.54.2
+// @version 3.54.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6291,6 +6291,11 @@ function pageIsGame() {
     return location.href.match(/^https?:\/\/[^\/]+\/MultiPlayer\?GameID=[0-9]+/i);
 }
 
+// War.app's client-drawn pages (Quickmatch, tournaments, ladders, chat rooms) can open a game without a page load.
+function pageCanOpenGame() {
+    return pageIsGame() || pageIsQuickmatch() || (!pageIsIdle() && document.getElementById("UjsCanvasHolder") !== null);
+}
+
 function pageIsExamineMap() {
     return location.href.match(/^https?:\/\/[^\/]+\/SinglePlayer\?PreviewMap.*/i);
 }
@@ -8518,7 +8523,7 @@ function mainFeatures() {
         { name: "Mark Open Games you joined", section: "Dashboard", match: function () { return pageIsDashboard() || pageIsOpenGamesPage(); }, run: setupJoinedOpenGames },
         { name: "Refresh Open Games every few minutes", section: "Dashboard", match: pageIsDashboard, run: setupOpenGamesAutoRefresh },
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
-        { name: "Notes in games", section: "Games", match: pageIsGame, run: setupGameNotes },
+        { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
@@ -11881,6 +11886,9 @@ function setupGameNotes() {
     // In the title bar the button is never in the chat's or war.app's way; without room there it sits by
     // the Game button, or left of the Chat tab while the chat is open.
     var place = function () {
+        if (!gameId) {
+            return;
+        }
         var outsider = gameLobbyNotJoined();
         button.toggleClass("tuydNotesOutsider", outsider);
         if (outsider && $("#tuydGameNotes").length) {
@@ -12126,7 +12134,7 @@ function setupGameNotes() {
             }
         });
     };
-    $("body").append(isolate(button, false));
+    $("body").append(isolate(button.hide(), false));
     button.on("click", function (event) {
         event.preventDefault();
         this.blur();
