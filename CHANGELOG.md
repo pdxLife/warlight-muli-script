@@ -3,6 +3,7 @@
 ## 3.55.0
 
 - **Quickmatch stats: your last 20 games.** A third tab in the Stats dialog, after Templates and Opponents, lists your 20 newest finished Quickmatch games, newest first: the date, template, opponents, your result and turns. Click the result to open the game. Boots follow **Count boot losses**: "Booted" in grey while they're left out of your record, "Lost (booted)" in red when they count. Click a heading to sort; Search looks through all your games, so searching for an opponent shows your last 20 games against them. The CSV now has a Date column too.
+- **Quickmatch stats: a game just played counts at once.** Each time you come to the Quickmatch screen, after a game or on a reload, the script reads only your newest games (one request for 50) and adds what's new, so there's no need to click Rescan. Before, new games waited for the full read every 10 minutes, which still happens. The first time, while the full read of your Past Games is running, the record already shows the games read so far, with "…" after it (hover it: "in your newest 200 of 4,796 games"); if the full read fails partway, those stats stay.
 
 ## 3.54.3
 

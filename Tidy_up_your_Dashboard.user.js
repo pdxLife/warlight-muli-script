@@ -10553,12 +10553,58 @@ function fetchAllPastGames(fetchPage, pageSize, onProgress) {
                 }
             });
             if (onProgress) {
-                onProgress(Math.min(offset + page.games.length, page.total), page.total);
+                onProgress(Math.min(offset + page.games.length, page.total), page.total, games);
             }
             return page.games.length && offset + page.games.length < page.total ? next(offset + page.games.length) : games;
         });
     };
     return next(0);
+}
+
+// Brings `games`, an earlier read of Past Games (newest first), up to date from Past Games' first pages: new and
+// changed games go in front. It reads on until a page has a finished game it already knew and it has seen every
+// game that was still running. With no known game after `maxPages` it gives null: a full read is needed.
+function updatePastGames(games, fetchPage, pageSize, maxPages) {
+    var known = {};
+    games.forEach(function (game) {
+        known[game.id] = game;
+    });
+    var running = games.filter(function (game) {
+        return game.state !== 4;
+    });
+    var fresh = [];
+    var seen = {};
+    var reachedKnown = false;
+    var next = function (offset, pages) {
+        return fetchPage(offset, pageSize).then(function (page) {
+            if (!page) {
+                throw new Error("war.app's game list couldn't be read");
+            }
+            page.games.forEach(function (game) {
+                if (!seen[game.id]) {
+                    seen[game.id] = true;
+                    fresh.push(game);
+                }
+                if (known[game.id] && known[game.id].state === 4) {
+                    reachedKnown = true;
+                }
+            });
+            var end = !page.games.length || offset + page.games.length >= page.total;
+            var caughtUp = reachedKnown && running.every(function (game) {
+                return seen[game.id];
+            });
+            if (!end && !caughtUp && pages + 1 < maxPages) {
+                return next(offset + page.games.length, pages + 1);
+            }
+            if (!end && !reachedKnown) {
+                return null;
+            }
+            return fresh.concat(games.filter(function (game) {
+                return !seen[game.id];
+            }));
+        });
+    };
+    return next(0, 0);
 }
 
 function fetchPastGamesPage(offset, count) {
@@ -11030,8 +11076,13 @@ function setupQuickmatchStats() {
     var ready = false;
     var games = null;
     var scannedAt = 0;
+    var checkedAt = 0;
     var triedAt = 0;
     var scanning = false;
+    var partial = null;
+    var refreshing = false;
+    var refreshTriedAt = 0;
+    var onScene = false;
     var failed = false;
     var templates = storedQuickmatchTemplates();
     var reading = null;
@@ -11136,8 +11187,18 @@ function setupQuickmatchStats() {
             // The view is just the default next time.
         }
     };
+    var saveGames = function () {
+        try {
+            localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ player: me.id, time: scannedAt, checked: checkedAt, games: games }));
+        } catch (e) {
+            // Without storage Past Games is read again next time.
+        }
+    };
     var recordTitle = function () {
         var meta = [stats.games.length + " finished Quickmatch game" + (stats.games.length === 1 ? "" : "s")];
+        if (partial) {
+            meta[0] += " in your newest " + partial.read + " of " + partial.total + " games" + (scanning ? ", reading the rest" : "");
+        }
         if (stats.playing) {
             meta.push(stats.playing + " in progress");
         }
@@ -11166,7 +11227,7 @@ function setupQuickmatchStats() {
         setPlace(summary, { left: box.left - origin.left + 16, top: head.top + head.height / 2 - origin.top - 13, width: box.width - 32 });
         var record = summary.find(".tuydQmSummaryRecord");
         if (stats) {
-            setText(record, quickmatchRecordText(stats), recordTitle() + " (Muli's Userscript)");
+            setText(record, quickmatchRecordText(stats) + (partial ? " …" : ""), recordTitle() + " (Muli's Userscript)");
         } else {
             setText(record, scanning ? "Reading your games…" : failed ? "Couldn't read your games" : "", "");
         }
@@ -11221,7 +11282,9 @@ function setupQuickmatchStats() {
         dialog.find("[name=countBoots]").prop("checked", view.countBoots);
         dialog.find(".tuydQmRescan").prop("disabled", scanning);
         dialog.find(".tuydQmCopy, .tuydQmCsv").prop("disabled", !stats);
-        dialog.find(".tuydQmStatus").text(scanning ? "Reading your games…" : failed ? "Couldn't read your games. Try Rescan later." : scannedAt ? "Read " + new Date(scannedAt).toLocaleString() : "");
+        dialog.find(".tuydQmStatus").text(scanning ? (partial ? "Reading your games: " + partial.read + " of " + partial.total + "…" : "Reading your games…")
+            : failed ? (partial ? "Couldn't read all your games. Try Rescan later." : "Couldn't read your games. Try Rescan later.")
+            : checkedAt ? "Read " + new Date(checkedAt).toLocaleString() : "");
         var line = dialog.find(".tuydQmRecordLine").empty();
         if (!stats) {
             return;
@@ -11229,7 +11292,7 @@ function setupQuickmatchStats() {
         line.append($("<b>").text(quickmatchRecordText(stats)), $('<span class="tuydQmMeta">').text(" · " + recordTitle()));
         dialog.find("[data-tab=templates]").text("Templates (" + stats.templates.length + ")").toggleClass("tuydQmActive", view.tab === "templates");
         dialog.find("[data-tab=opponents]").text("Opponents (" + stats.opponents.length + ")").toggleClass("tuydQmActive", view.tab === "opponents");
-        dialog.find("[data-tab=recent]").text("Last " + Math.min(recentCount, stats.games.length) + " games").toggleClass("tuydQmActive", view.tab === "recent");
+        dialog.find("[data-tab=recent]").text(stats.games.length === 1 ? "Last game" : stats.games.length ? "Last " + Math.min(recentCount, stats.games.length) + " games" : "Last games").toggleClass("tuydQmActive", view.tab === "recent");
         renderTemplateStatus();
         dialog.find(".tuydQmTableHolder").html(view.tab === "recent"
             ? quickmatchRecentHtml(stats.games, { query: view.query, sort: view.sort, countBoots: view.countBoots }, recentCount)
@@ -11285,6 +11348,41 @@ function setupQuickmatchStats() {
             readNext();
         }, 300);
     };
+    var readFewUnread = function () {
+        var unread = unreadGames().length;
+        if (!reading && unread && unread <= 10) {
+            startReading();
+        }
+    };
+    // Each time you come to the Quickmatch screen, the newest games are read, so a game just played is counted.
+    var refreshLatest = function () {
+        if (!games || partial || scanning || refreshing || Date.now() - Math.max(checkedAt, refreshTriedAt) < 60 * 1000) {
+            return;
+        }
+        var base = games;
+        refreshing = true;
+        refreshTriedAt = Date.now();
+        updatePastGames(base, fetchPastGamesPage, 50, 4).then(function (merged) {
+            refreshing = false;
+            if (scanning || games !== base) {
+                return;
+            }
+            if (!merged) {
+                scan(0);
+                return;
+            }
+            games = merged.filter(function (game) {
+                return isQuickmatchGameName(game.name);
+            });
+            checkedAt = Date.now();
+            saveGames();
+            refresh();
+            readFewUnread();
+        }, function (error) {
+            refreshing = false;
+            log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
+        });
+    };
     var startReading = function () {
         reading = { done: 0, total: unreadGames().length, tried: {}, timer: null };
         refresh();
@@ -11298,22 +11396,24 @@ function setupQuickmatchStats() {
         failed = false;
         triedAt = Date.now();
         refresh();
-        loadPastGames(me.id, maxAge).then(function (loaded) {
+        var first = !games || partial;
+        loadPastGames(me.id, maxAge, first ? function (read, total, soFar) {
+            games = soFar.filter(function (game) {
+                return isQuickmatchGameName(game.name);
+            });
+            partial = { read: read, total: total };
+            refresh();
+        } : null).then(function (loaded) {
             games = loaded.games.filter(function (game) {
                 return isQuickmatchGameName(game.name);
             });
             scannedAt = loaded.time;
-            try {
-                localStorage.setItem(QUICKMATCH_GAMES_KEY, JSON.stringify({ player: me.id, time: scannedAt, games: games }));
-            } catch (e) {
-                // Without storage Past Games is read again next time.
-            }
+            checkedAt = loaded.time;
+            partial = null;
+            saveGames();
             scanning = false;
             refresh();
-            var unread = unreadGames().length;
-            if (!reading && unread && unread <= 10) {
-                startReading();
-            }
+            readFewUnread();
         }, function (error) {
             log("Quickmatch stats: " + (error && error.message || error && error.statusText || error));
             scanning = false;
@@ -11434,14 +11534,18 @@ function setupQuickmatchStats() {
         if (!ready) {
             return;
         }
-        if (dialog && !scene()) {
+        var here = !!scene();
+        if (dialog && !here) {
             closeDialog();
         }
         placeSummary();
         placeTemplateRecords();
         if (stale() && !scanning) {
             scan(10 * 60 * 1000);
+        } else if (here && !onScene) {
+            refreshLatest();
         }
+        onScene = here;
     };
     $(document).on("click", ".tuydQmStatsButton", function (event) {
         event.preventDefault();
@@ -11476,6 +11580,7 @@ function setupQuickmatchStats() {
         if (stored) {
             games = stored.games;
             scannedAt = stored.time || 0;
+            checkedAt = Math.max(scannedAt, stored.checked || 0);
         }
         ready = true;
         refresh();
@@ -11505,7 +11610,7 @@ function setupQuickmatchProfileRecord() {
             return;
         }
         var line = $('<span id="tuydQmProfileRecord"></span>').text("Record: " + quickmatchRecordText(stats) + " in " + stats.games.length + " games")
-            .attr("title", "From your Past Games on " + new Date(stored.time).toLocaleString() + ", when you last opened Quickmatch (Muli's Userscript)")
+            .attr("title", "From your Past Games on " + new Date(Math.max(stored.time, stored.checked || 0)).toLocaleString() + ", when you last opened Quickmatch (Muli's Userscript)")
             .add("<br>");
         var folded = heading.next("div.exp");
         var next = heading.nextAll("h3").first();
