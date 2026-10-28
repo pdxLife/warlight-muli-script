@@ -312,7 +312,7 @@ function screen({ cached, ajax, sessionCopy } = {}) {
             return $.Deferred().resolve(ajax(options)).promise();
         };
     }
-    const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "quickmatchRecentHtml", "pastGameDate", "safeUrl", "loadPastGames", "updatePastGames",
+    const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "quickmatchRecentHtml", "pastGameDate", "safeUrl", "loadPastGames", "cachedPastGames", "updatePastGames",
         "fetchPastGamesPage", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", "gamePlayerId", "ujsElement", "shownUjsElement", "warappArt",
         "addCommunityLaddersStyles", ...STATS_FUNCTIONS], {
         ...domGlobals(dom, $),
@@ -431,11 +431,16 @@ test("the Stats search has a clear button, Esc clears it before closing, and it'
     assert.equal($("#tuydQmStats .tuydQmRow").length, 1);
 });
 
-test("without a recent scan the Quickmatch screen reads Past Games and keeps its Quickmatch games", async () => {
+test("Past Games is read in full only on Rescan, and its Quickmatch games are kept", async () => {
     const hex = page(2, [GAMES[0], GAMES[5]].map((g) => ({ ...g })));
     const { $, storage, requests, sessionStorage } = screen({ cached: { player: "7", time: Date.now() - 11 * 60 * 1000, games: GAMES }, ajax: () => hex });
     await flush();
-    assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => [r.url, r.type, r.data]))), [["/MultiPlayer/PastGames", "POST", { Offset: 0, Sort: 3, PerPage: 200 }]]);
+    assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => [r.url, r.type, r.data]))), [["/MultiPlayer/PastGames", "POST", { Offset: 0, Sort: 3, PerPage: 50 }]], "an old full read is only brought up to date");
+    assert.equal($(".tuydQmSummaryRecord").text(), "2 W – 1 L (66.7%)");
+    $(".tuydQmStatsButton").trigger("click");
+    $("#tuydQmStats .tuydQmRescan").trigger("click");
+    await flush();
+    assert.deepEqual(JSON.parse(JSON.stringify(requests.slice(1).map((r) => r.data))), [{ Offset: 0, Sort: 3, PerPage: 200 }]);
     assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 0 L (100.0%)");
     assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).games.map((g) => g.id), [1]);
     assert.equal(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).player, "7", "kept under the ID war.app's game data uses, not the profile link's");
@@ -465,17 +470,50 @@ test("coming to the Quickmatch screen reads only the newest games, and counts a 
     assert.equal(requests.length, 1, "not read again within a minute");
 });
 
-test("before the first full read, the stats cover the games read so far", async () => {
-    const first = page(2, [GAMES[0]]);
-    const { $, storage, requests } = screen({ ajax: (options) => options.data.Offset === 0 ? first : "<html></html>" });
+test("with no full read, the stats cover your newest games until you Rescan", async () => {
+    const pages = { 0: page(2, [GAMES[0]]), 1: page(2, [GAMES[1]]) };
+    const { $, storage, requests } = screen({ ajax: (options) => pages[options.data.Offset] });
     await flush();
-    assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => r.data.Offset))), [0, 1]);
-    assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 0 L (100.0%) …");
-    assert.match($(".tuydQmSummaryRecord").attr("title"), /^1 finished Quickmatch game in your newest 1 of 2 games/);
+    assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => r.data))), [{ Offset: 0, Sort: 3, PerPage: 200 }], "one request, not a full read");
+    assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 0 L (100.0%)");
+    assert.equal($(".tuydQmSummaryRecord").attr("title"), "1 finished Quickmatch game in your newest 1 of 2 games (Muli's Userscript)");
+    const stored = JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames"));
+    assert.deepEqual([stored.time, stored.partial, stored.games.map((g) => g.id)], [0, { read: 1, total: 2 }, [1]]);
     $(".tuydQmStatsButton").trigger("click");
-    assert.equal($("#tuydQmStats .tuydQmStatus").text(), "Couldn't read all your games. Try Rescan later.");
+    assert.match($("#tuydQmStats .tuydQmStatus").text(), /^Read .+\. Rescan reads all 2 of your games \(about 1 second\)\.$/);
     assert.equal($("#tuydQmStats [data-tab=recent]").text(), "Last game");
-    assert.equal(storage.getItem("tidyUpYourDashboard.quickmatchGames"), null, "only a full read is kept");
+    $("#tuydQmStats .tuydQmRescan").trigger("click");
+    await flush();
+    assert.deepEqual(JSON.parse(JSON.stringify(requests.slice(1).map((r) => [r.data.Offset, r.data.PerPage]))), [[0, 200], [1, 200]]);
+    assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 1 L (50.0%)");
+    assert.match($("#tuydQmStats .tuydQmStatus").text(), /^Read [^.]+$/);
+    const full = JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames"));
+    assert.equal(full.partial, null);
+    assert.ok(full.time > 0);
+});
+
+test("a Rescan that fails partway keeps the games it read", async () => {
+    const pages = { 0: page(3, [GAMES[0], GAMES[1]]) };
+    const { $, storage } = screen({ ajax: (options) => pages[options.data.Offset] || "<html></html>" });
+    await flush();
+    $(".tuydQmStatsButton").trigger("click");
+    $("#tuydQmStats .tuydQmRescan").trigger("click");
+    await flush();
+    assert.equal($(".tuydQmSummaryRecord").text(), "1 W – 1 L (50.0%)");
+    assert.equal($("#tuydQmStats .tuydQmStatus").text(), "Couldn't read all your games. Try Rescan later.");
+    assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).partial, { read: 2, total: 3 });
+});
+
+test("with too many games since the last full read, the stats go back to your newest games", async () => {
+    const others = Array.from({ length: 300 }, (_, i) => ({ id: 1000 + i, name: "Game " + i, players: [p(7, "Me", 4), p(8, "Ann", 7)] }));
+    const { $, storage, requests } = screen({
+        cached: { player: "7", time: Date.now() - 3 * 60 * 1000, games: GAMES },
+        ajax: (options) => page(5000, others.slice(options.data.Offset, options.data.Offset + options.data.PerPage))
+    });
+    await flush();
+    assert.deepEqual(JSON.parse(JSON.stringify(requests.map((r) => [r.data.Offset, r.data.PerPage]))), [[0, 50], [50, 50], [100, 50], [150, 50], [0, 200]]);
+    assert.equal($(".tuydQmSummaryRecord").attr("title"), "0 finished Quickmatch games in your newest 200 of 5000 games (Muli's Userscript)");
+    assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchGames")).partial, { read: 200, total: 5000 });
 });
 
 test("the Quickmatch screen uses this session's copy of Past Games, and ignores another player's games", async () => {
@@ -497,10 +535,10 @@ test("the Quickmatch screen says so when war.app's answer can't be read", async 
 });
 
 test("your own profile shows your Quickmatch record under war.app's ratings, others' profiles nothing", () => {
-    const profile = (url, folded) => {
+    const profile = (url, folded, partial = null) => {
         const lines = "Global: 1309.77<br> Real-time: 1313.54<br>";
         const { dom, $ } = createDom(`<div class="p-3"><h3>Quickmatch</h3>${folded ? `<div class="exp">${lines}</div>` : lines}<h3>Single-player stats</h3></div>`, url);
-        dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchGames", JSON.stringify({ player: "7", time: Date.now(), games: GAMES }));
+        dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchGames", JSON.stringify({ player: "7", time: Date.now(), partial, games: GAMES }));
         dom.window.localStorage.setItem("tidyUpYourDashboard.quickmatchTemplates", JSON.stringify(TEMPLATES));
         const ctx = load(["setupQuickmatchProfileRecord", "storedQuickmatchGames", "storedQuickmatchTemplates", "readQuickmatchView", "extractPlayerId", "gamePlayerId", ...STATS_FUNCTIONS], {
             ...domGlobals(dom, $),
@@ -520,4 +558,5 @@ test("your own profile shows your Quickmatch record under war.app's ratings, oth
     const folded = profile("https://war.app/Profile?p=10712&u=Me", true);
     assert.equal(folded("#tuydQmProfileRecord").parent().attr("class"), "exp");
     assert.equal(profile("https://war.app/Profile?p=10812&u=Ann")("#tuydQmProfileRecord").length, 0);
+    assert.equal(profile("https://war.app/Profile?p=10712&u=Me", false, { read: 200, total: 4796 })("#tuydQmProfileRecord").length, 0, "not from your newest games alone");
 });

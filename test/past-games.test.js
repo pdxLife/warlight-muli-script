@@ -179,7 +179,7 @@ test("says so when the games can't be read, and tries again on request", async (
 test("loadPastGames keeps every game for the session and reads again when it's too old or another player's", async () => {
     const { dom } = createDom("");
     const pages = [];
-    const ctx = load(["loadPastGames"], {
+    const ctx = load(["loadPastGames", "cachedPastGames"], {
         Promise,
         sessionStorage: dom.window.sessionStorage,
         PAST_GAMES_KEY: "tidyUpYourDashboard.pastGames",
