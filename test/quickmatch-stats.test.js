@@ -99,15 +99,17 @@ test("fetchAllPastGames reads page after page until the total, keeping each game
 
 const STATS_FUNCTIONS = ["isQuickmatchGameName", "pastGamePlayer", "pastGameResult", "quickmatchResult", "quickmatchOpponents", "quickmatchStats", "quickmatchResultText", "quickmatchRateText", "quickmatchRecordText"];
 
+const DAY = 86400000;
+const DAY1 = 846335988177;
 const GAMES = [
-    { id: 1, name: "QM: Me vs Ann", state: 4, turn: 8, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
-    { id: 2, name: "QM: Bo vs Me", state: 4, turn: 12, players: [p(9, "Bo", 4), p(7, "Me", 7)] },
-    { id: 3, name: "QM: Me vs Ann", state: 4, turn: 2, players: [p(7, "Me", 8), p(8, "Ann", 4)] },
-    { id: 4, name: "QM: Me vs Bo", state: 3, turn: 4, players: [p(7, "Me", 2), p(9, "Bo", 2)] },
-    { id: 5, name: "QM: 2v2", state: 4, turn: 0, players: [p(7, "Me", 4, 1), p(8, "Ann", 7, 0), p(10, "Cy", 4, 1), p(11, "Di", 7, 0)] },
-    { id: 6, name: "Seasonal: Me vs Ann", state: 4, turn: 6, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
-    { id: 7, name: "QM: Me vs Ann", state: 4, turn: 6, players: [p(7, "Me", 9), p(8, "Ann", 9)] },
-    { id: 8, name: "QM: my own game", state: 4, turn: 6, players: [p(7, "Me", 4), p(8, "Ann", 7)] }
+    { id: 1, name: "QM: Me vs Ann", state: 4, turn: 8, date: DAY1 - 0 * DAY, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
+    { id: 2, name: "QM: Bo vs Me", state: 4, turn: 12, date: DAY1 - 1 * DAY, players: [p(9, "Bo", 4), p(7, "Me", 7)] },
+    { id: 3, name: "QM: Me vs Ann", state: 4, turn: 2, date: DAY1 - 2 * DAY, players: [p(7, "Me", 8), p(8, "Ann", 4)] },
+    { id: 4, name: "QM: Me vs Bo", state: 3, turn: 4, date: DAY1 - 3 * DAY, players: [p(7, "Me", 2), p(9, "Bo", 2)] },
+    { id: 5, name: "QM: 2v2", state: 4, turn: 0, date: DAY1 - 4 * DAY, players: [p(7, "Me", 4, 1), p(8, "Ann", 7, 0), p(10, "Cy", 4, 1), p(11, "Di", 7, 0)] },
+    { id: 6, name: "Seasonal: Me vs Ann", state: 4, turn: 6, date: DAY1 - 5 * DAY, players: [p(7, "Me", 4), p(8, "Ann", 7)] },
+    { id: 7, name: "QM: Me vs Ann", state: 4, turn: 6, date: DAY1 - 6 * DAY, players: [p(7, "Me", 9), p(8, "Ann", 9)] },
+    { id: 8, name: "QM: my own game", state: 4, turn: 6, date: DAY1 - 7 * DAY, players: [p(7, "Me", 4), p(8, "Ann", 7)] }
 ];
 const TEMPLATES = { 1: { name: "Strategic 1v1", id: 1070738 }, 2: { name: "Strategic 1v1", id: 1070738 }, 3: { name: "Guiroma", id: 1070739 }, 8: { none: true } };
 
@@ -165,17 +167,19 @@ test("gameTemplateFromData waits for the game and tells a game that isn't a Quic
 });
 
 test("the CSV lists every Quickmatch game, quoting where needed and keeping spreadsheet formulas inert", () => {
-    const ctx = load(["csvCell", "quickmatchCsv", ...STATS_FUNCTIONS]);
+    const ctx = load(["csvCell", "quickmatchCsv", "pastGameDate", ...STATS_FUNCTIONS]);
     assert.equal(ctx.csvCell('He said "hi", then left'), '"He said ""hi"", then left"');
     assert.equal(ctx.csvCell("=HYPERLINK(\"x\")"), "\"'=HYPERLINK(\"\"x\"\")\"");
     assert.equal(ctx.csvCell("-1"), "'-1");
     assert.equal(ctx.csvCell(null), "");
     const lines = ctx.quickmatchCsv(GAMES, { id: "7" }, TEMPLATES, "https://war.app").trim().split("\r\n");
-    assert.equal(lines[0], "Game ID,Game,Result,Turns,Template,Template ID,Opponents,Link");
-    assert.deepEqual(lines.slice(1).map((line) => line.split(",").slice(0, 3).join(",")), [
-        "1,QM: Me vs Ann,Won", "2,QM: Bo vs Me,Lost", "3,QM: Me vs Ann,Booted", "4,QM: Me vs Bo,In progress", "5,QM: 2v2,Won", "7,QM: Me vs Ann,Ended by vote"
+    assert.equal(lines[0], "Game ID,Game,Date,Result,Turns,Template,Template ID,Opponents,Link");
+    assert.deepEqual(lines.slice(1).map((line) => line.split(",").slice(0, 4).join(",")), [
+        "1,QM: Me vs Ann,2026-10-26,Won", "2,QM: Bo vs Me,2026-10-25,Lost", "3,QM: Me vs Ann,2026-10-24,Booted", "4,QM: Me vs Bo,2026-10-23,In progress",
+        "5,QM: 2v2,2026-10-22,Won", "7,QM: Me vs Ann,2026-10-20,Ended by vote"
     ]);
-    assert.equal(lines[1], "1,QM: Me vs Ann,Won,8,Strategic 1v1,1070738,Ann,https://war.app/MultiPlayer?GameID=1");
+    assert.equal(lines[1], "1,QM: Me vs Ann,2026-10-26,Won,8,Strategic 1v1,1070738,Ann,https://war.app/MultiPlayer?GameID=1");
+    assert.equal(ctx.quickmatchCsv([{ ...GAMES[0], date: undefined }], { id: "7" }, TEMPLATES, "https://war.app").split("\r\n")[1].split(",")[2], "", "a game without a date has an empty Date");
     assert.match(lines[5], /,Ann; Di,/);
 });
 
@@ -211,6 +215,48 @@ test("the table sorts, filters, limits and lists the games of the open row", () 
     assert.match(table("templates", { query: "nothing" }).$("tbody").text(), /Nothing matches/);
 });
 
+function recent(view, count = 20) {
+    const ctx = load(["quickmatchRecentHtml", "pastGameDate", "htmlEscape", "safeUrl", ...STATS_FUNCTIONS]);
+    const s = ctx.quickmatchStats(GAMES, { id: "7" }, TEMPLATES, !!view.countBoots);
+    const { $ } = createDom(ctx.quickmatchRecentHtml(s.games, view, count));
+    return { $, rows: () => Array.from($("tr.tuydQmRecentRow").map(function () { return $(this).find("td").map(function () { return $(this).text(); }).get().join("|"); }).get()) };
+}
+
+test("the Last games tab lists your newest finished games with their date, template, opponents, result and turns", () => {
+    const { $, rows } = recent({});
+    assert.deepEqual(rows(), [
+        "2026-10-26|Strategic 1v1|Ann|Won|8",
+        "2026-10-25|Strategic 1v1|Bo|Lost|12",
+        "2026-10-24|Guiroma|Ann|Booted|2",
+        "2026-10-22|Template not read yet|Ann, Di|Won|–",
+        "2026-10-20|Template not read yet|Ann|Ended by vote|6"
+    ]);
+    assert.deepEqual(Array.from($("thead td").map(function () { return $(this).text(); }).get()), ["Date ▾", "Template", "Opponents", "Result", "Turns"]);
+    assert.equal($("tr.tuydQmRecentRow a").first().attr("href"), "/MultiPlayer?GameID=1");
+    assert.deepEqual(Array.from($("tr.tuydQmRecentRow td.tuydQmGame").map(function () { return this.className.split(" ")[1]; }).get()),
+        ["tuydQm-won", "tuydQm-lost", "tuydQm-other", "tuydQm-won", "tuydQm-other"], "a boot left out of the record isn't red");
+    assert.equal($("tr.tuydQmRecentRow").eq(2).find("a").attr("title"), "Left out of your record");
+});
+
+test("the Last games tab marks boot losses as losses when they're counted", () => {
+    const { $, rows } = recent({ countBoots: true });
+    assert.equal(rows()[2], "2026-10-24|Guiroma|Ann|Lost (booted)|2");
+    assert.ok($("tr.tuydQmRecentRow").eq(2).find("td.tuydQmGame").hasClass("tuydQm-lost"));
+});
+
+test("the Last games tab keeps the newest games, searches all of them, and sorts what it shows", () => {
+    const limited = recent({}, 2);
+    assert.deepEqual(limited.rows().map((r) => r.split("|")[0]), ["2026-10-26", "2026-10-25"]);
+    assert.equal(limited.$("tbody tr").last().text(), "3 older games in the CSV");
+    assert.deepEqual(recent({ query: "di" }).rows().map((r) => r.split("|")[2]), ["Ann, Di"]);
+    assert.deepEqual(recent({ query: "guiroma" }).rows().map((r) => r.split("|")[0]), ["2026-10-24"]);
+    assert.deepEqual(recent({ query: "not read" }, 1).rows().map((r) => r.split("|")[0]), ["2026-10-22"], "the newest of the matching games");
+    assert.deepEqual(recent({ sort: { key: "turn", descending: true } }).rows().map((r) => r.split("|")[4]), ["12", "8", "6", "2", "–"]);
+    assert.deepEqual(recent({ sort: { key: "result", descending: false } }).rows().map((r) => r.split("|")[3]), ["Won", "Won", "Lost", "Booted", "Ended by vote"]);
+    assert.deepEqual(recent({ sort: { key: "date", descending: false } }).rows().map((r) => r.split("|")[0]), ["2026-10-20", "2026-10-22", "2026-10-24", "2026-10-25", "2026-10-26"]);
+    assert.match(recent({ query: "nobody" }).$("tbody").text(), /Nothing matches/);
+});
+
 // Mirrors war.app's Quickmatch screen: the main scene's Settings dialog and the Templates scene's rows.
 const TEMPLATE_ROW = (n, name, rating) => {
     const suffix = n > 1 ? "_" + n : "";
@@ -242,7 +288,7 @@ function screen({ cached, ajax, sessionCopy } = {}) {
             return $.Deferred().resolve(ajax(options)).promise();
         };
     }
-    const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "loadPastGames",
+    const ctx = load(["setupQuickmatchStats", "storedQuickmatchGames", "readQuickmatchView", "storedQuickmatchTemplates", "quickmatchTableHtml", "quickmatchRecentHtml", "pastGameDate", "safeUrl", "loadPastGames",
         "fetchPastGamesPage", "fetchAllPastGames", "parsePastGamesData", "gameTemplateFromData", "htmlEscape", "gamePlayerId", "ujsElement", "shownUjsElement", "warappArt",
         "addCommunityLaddersStyles", ...STATS_FUNCTIONS], {
         ...domGlobals(dom, $),
@@ -306,6 +352,28 @@ test("the Stats dialog lists templates and opponents, counts boot losses when as
     $(".tuydQmStatsButton").trigger("click");
     await showTemplates();
     assert.equal($("#tuydQmStats").length, 0);
+});
+
+test("the Stats dialog's Last games tab lists your last games, sorts by heading and is remembered", () => {
+    const { $, storage } = screen({ cached: { player: "7", time: Date.now(), games: GAMES } });
+    $(".tuydQmStatsButton").trigger("click");
+    const tab = () => $("#tuydQmStats [data-tab=recent]");
+    assert.equal(tab().text(), "Last 5 games");
+    assert.equal(tab().prev().attr("data-tab"), "opponents", "after Opponents");
+    tab().trigger("click");
+    assert.ok(tab().hasClass("tuydQmActive"));
+    assert.equal($("#tuydQmStats tr.tuydQmRecentRow").length, 5);
+    assert.equal($("#tuydQmStats tr.tuydQmRecentRow td").first().text(), "2026-10-26");
+    $("#tuydQmStats .tuydQmTable thead td[data-sort=date]").trigger("click");
+    assert.equal($("#tuydQmStats tr.tuydQmRecentRow td").first().text(), "2026-10-20", "a second click on Date puts the oldest first");
+    $("#tuydQmStats .tuydQmTable thead td[data-sort=template]").trigger("click");
+    assert.equal($("#tuydQmStats tr.tuydQmRecentRow td").eq(1).text(), "Guiroma", "text columns sort A to Z first");
+    $("#tuydQmStats [name=countBoots]").prop("checked", true).trigger("change");
+    assert.equal($("#tuydQmStats .tuydQmTable").text().includes("Lost (booted)"), true);
+    assert.equal(JSON.parse(storage.getItem("tidyUpYourDashboard.quickmatchView")).tab, "recent");
+    $("#tuydQmStats .tuydQmClose").trigger("click");
+    $(".tuydQmStatsButton").trigger("click");
+    assert.ok(tab().hasClass("tuydQmActive"), "opens on the tab it was left on");
 });
 
 test("the Stats search has a clear button, Esc clears it before closing, and it's kept when the dialog opens again", () => {

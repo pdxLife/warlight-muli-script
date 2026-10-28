@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.55.0
+
+- **Quickmatch stats: your last 20 games.** A third tab in the Stats dialog, after Templates and Opponents, lists your 20 newest finished Quickmatch games, newest first: the date, template, opponents, your result and turns. Click the result to open the game. Boots follow **Count boot losses**: "Booted" in grey while they're left out of your record, "Lost (booted)" in red when they count. Click a heading to sort; Search looks through all your games, so searching for an opponent shows your last 20 games against them. The CSV now has a Date column too.
+
 ## 3.54.3
 
 - **Notes in games war.app opens in place.** A game war.app opens without a page load, such as a Quickmatch game it starts from the Quickmatch page, now has its Notes button too. Before, the button only appeared after reloading the game.

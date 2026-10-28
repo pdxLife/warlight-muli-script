@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.54.3
+// @version 3.55.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.54.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.55.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10681,6 +10681,7 @@ function quickmatchStats(games, me, templates, countBoots) {
             id: game.id,
             result: result,
             turn: game.turn,
+            date: game.date,
             template: template ? template.name : null,
             opponents: opponents.map(function (player) {
                 return player.name;
@@ -10800,14 +10801,14 @@ function csvCell(value) {
 }
 
 function quickmatchCsv(games, me, templates, origin) {
-    var rows = [["Game ID", "Game", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
+    var rows = [["Game ID", "Game", "Date", "Result", "Turns", "Template", "Template ID", "Opponents", "Link"]];
     games.forEach(function (game) {
         var template = templates[game.id] || null;
         var result = isQuickmatchGameName(game.name) && !(template && template.none) ? quickmatchResult(game, me) : null;
         if (!result) {
             return;
         }
-        rows.push([game.id, game.name, quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
+        rows.push([game.id, game.name, typeof game.date === "number" ? pastGameDate(game) : "", quickmatchResultText(result, 0), game.turn > 0 ? game.turn : "",
             template ? template.name : "", template && template.id ? template.id : "",
             quickmatchOpponents(game, me).map(function (player) {
                 return player.name;
@@ -10902,6 +10903,81 @@ function quickmatchTableHtml(groups, kind, view) {
     return '<table class="dataTable tuydQmTable"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
 }
 
+// The Last games tab: your newest `count` finished Quickmatch games that match `view.query`, from
+// `quickmatchStats(...).games`, sorted by `view.sort`. A boot loss reads as a loss only when `view.countBoots` is set.
+function quickmatchRecentHtml(games, view, count) {
+    var columns = [
+        { key: "date", label: "Date" },
+        { key: "template", label: "Template" },
+        { key: "opponents", label: "Opponents" },
+        { key: "result", label: "Result" },
+        { key: "turn", label: "Turns" }
+    ];
+    var unread = "Template not read yet";
+    var query = String(view.query || "").trim().toLowerCase();
+    var resultText = function (game) {
+        if (game.result === "booted") {
+            return view.countBoots ? "Lost (booted)" : "Booted";
+        }
+        return { won: "Won", lost: "Lost", vote: "Ended by vote" }[game.result] || "";
+    };
+    var matching = games.map(function (game, index) {
+        return { game: game, index: index };
+    }).filter(function (row) {
+        var game = row.game;
+        return !query || [game.template === null ? unread : game.template, game.opponents.join(", "), resultText(game)].some(function (text) {
+            return text.toLowerCase().indexOf(query) !== -1;
+        });
+    });
+    var rows = matching.slice(0, count);
+    var sort = view.sort || { key: "date", descending: true };
+    var value = function (row) {
+        var game = row.game;
+        if (sort.key === "date") {
+            return -row.index;
+        }
+        if (sort.key === "template") {
+            return game.template === null ? "￿" : game.template.toLowerCase();
+        }
+        if (sort.key === "opponents") {
+            return game.opponents.join(", ").toLowerCase();
+        }
+        if (sort.key === "result") {
+            return { won: 0, lost: 1, booted: view.countBoots ? 1 : 2, vote: 3 }[game.result];
+        }
+        return game.turn > 0 ? game.turn : -1;
+    };
+    rows.sort(function (a, b) {
+        var x = value(a);
+        var y = value(b);
+        var order = x < y ? -1 : x > y ? 1 : 0;
+        return (sort.descending ? -order : order) || a.index - b.index;
+    });
+    var head = columns.map(function (column) {
+        var arrow = sort.key === column.key ? (sort.descending ? " ▾" : " ▴") : "";
+        return '<td data-sort="' + column.key + '">' + htmlEscape(column.label) + arrow + "</td>";
+    }).join("");
+    var body = rows.map(function (row) {
+        var game = row.game;
+        var known = typeof game.date === "number";
+        var date = known ? pastGameDate(game) : "–";
+        var when = known ? new Date(Date.UTC(2000, 0, 1) + game.date).toLocaleString() : "";
+        var lost = game.result === "lost" || (game.result === "booted" && view.countBoots);
+        var tone = game.result === "won" ? "won" : lost ? "lost" : "other";
+        var title = game.result === "booted" && !view.countBoots ? "Left out of your record" : "Open this game";
+        return '<tr class="tuydQmRecentRow"><td' + (when ? ' title="' + htmlEscape(when) + '"' : "") + ">" + htmlEscape(date) + "</td><td>"
+            + (game.template === null ? "<i>" + htmlEscape(unread) + "</i>" : htmlEscape(game.template)) + "</td><td>" + htmlEscape(game.opponents.join(", ")) + "</td>"
+            + '<td class="tuydQmGame tuydQm-' + tone + '"><a href="' + htmlEscape(safeUrl("/MultiPlayer?GameID=" + encodeURIComponent(game.id))) + '" title="' + htmlEscape(title) + '">'
+            + htmlEscape(resultText(game)) + "</a></td><td>" + (game.turn > 0 ? game.turn : "–") + "</td></tr>";
+    }).join("");
+    if (!rows.length) {
+        body = '<tr><td colspan="5">' + (query ? "Nothing matches your search." : "No finished Quickmatch games.") + "</td></tr>";
+    } else if (matching.length > rows.length) {
+        body += '<tr><td colspan="5" class="tuydQmMeta">' + (matching.length - rows.length) + " older game" + (matching.length - rows.length === 1 ? "" : "s") + " in the CSV</td></tr>";
+    }
+    return '<table class="dataTable tuydQmTable tuydQmRecent"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
+}
+
 function readQuickmatchView() {
     var view = {};
     try {
@@ -10911,7 +10987,7 @@ function readQuickmatchView() {
     }
     return {
         countBoots: view.countBoots === true,
-        tab: view.tab === "opponents" ? "opponents" : "templates"
+        tab: view.tab === "opponents" || view.tab === "recent" ? view.tab : "templates"
     };
 }
 
@@ -10962,6 +11038,7 @@ function setupQuickmatchStats() {
     var stats = null;
     var dialog = null;
     var timer = null;
+    var recentCount = 20;
     var view = readQuickmatchView();
     view.query = "";
     view.sort = null;
@@ -11000,12 +11077,18 @@ function setupQuickmatchStats() {
         #tuydQmStats .tuydQmTable td { padding: 3px 6px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
         #tuydQmStats .tuydQmTable thead td { cursor: pointer; white-space: nowrap; color: #fff; border-top: 0; }
         #tuydQmStats .tuydQmTable td + td { text-align: right; white-space: nowrap; }
+        #tuydQmStats .tuydQmRecent td { white-space: nowrap; }
+        #tuydQmStats .tuydQmRecent td:nth-child(2), #tuydQmStats .tuydQmRecent td:nth-child(3) { text-align: left; white-space: normal; }
+        #tuydQmStats .tuydQmRecent td:nth-child(4) { text-align: left; }
+        #tuydQmStats .tuydQmRecent tbody td.tuydQmMeta { text-align: left; }
+        #tuydQmStats .tuydQmRecentRow:hover { background: rgba(255, 255, 255, 0.06); }
         #tuydQmStats .tuydQmRow { cursor: pointer; }
         #tuydQmStats .tuydQmRow:hover, #tuydQmStats .tuydQmOpen { background: rgba(255, 255, 255, 0.06); }
         #tuydQmStats .tuydQmGames td { text-align: left; font-size: 12px; line-height: 1.7; }
         #tuydQmStats .tuydQmGame { white-space: nowrap; }
         #tuydQmStats .tuydQm-won a { color: #7c7; }
         #tuydQmStats .tuydQm-lost a, #tuydQmStats .tuydQm-booted a { color: #e77; }
+        #tuydQmStats .tuydQm-other a { color: #babbbb; }
         #tuydQmStats .communityLaddersCredit { margin-top: 6px; }
     `);
     var scene = function () {
@@ -11146,8 +11229,11 @@ function setupQuickmatchStats() {
         line.append($("<b>").text(quickmatchRecordText(stats)), $('<span class="tuydQmMeta">').text(" · " + recordTitle()));
         dialog.find("[data-tab=templates]").text("Templates (" + stats.templates.length + ")").toggleClass("tuydQmActive", view.tab === "templates");
         dialog.find("[data-tab=opponents]").text("Opponents (" + stats.opponents.length + ")").toggleClass("tuydQmActive", view.tab === "opponents");
+        dialog.find("[data-tab=recent]").text("Last " + Math.min(recentCount, stats.games.length) + " games").toggleClass("tuydQmActive", view.tab === "recent");
         renderTemplateStatus();
-        dialog.find(".tuydQmTableHolder").html(quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
+        dialog.find(".tuydQmTableHolder").html(view.tab === "recent"
+            ? quickmatchRecentHtml(stats.games, { query: view.query, sort: view.sort, countBoots: view.countBoots }, recentCount)
+            : quickmatchTableHtml(stats[view.tab], view.tab, { query: view.query, sort: view.sort, limit: view.limit, open: view.openRow }));
     };
     var refresh = function () {
         stats = games && ready ? quickmatchStats(games, me, templates, view.countBoots) : null;
@@ -11274,7 +11360,7 @@ function setupQuickmatchStats() {
             </div>
             <div class="tuydQmTemplateStatus"></div>
             <div class="tuydQmTabs">
-                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><span class="tuydQmSearch"><input type="search" placeholder="Search"><a href="#" class="tuydQmSearchClear" title="Clear the search" aria-label="Clear the search" hidden>✕</a></span>
+                <a href="#" data-tab="templates">Templates</a><a href="#" data-tab="opponents">Opponents</a><a href="#" data-tab="recent">Last games</a><span class="tuydQmSearch"><input type="search" placeholder="Search"><a href="#" class="tuydQmSearchClear" title="Clear the search" aria-label="Clear the search" hidden>✕</a></span>
             </div>
             <div class="tuydQmTableHolder"></div>
             <div class="communityLaddersCredit">From your Past Games, by Muli's Userscript</div>
@@ -11306,8 +11392,9 @@ function setupQuickmatchStats() {
             dialog.find("input[type=search]").trigger("focus");
         }).on("click", ".tuydQmTable thead td", function () {
             var key = $(this).attr("data-sort");
-            var current = view.sort || { key: "games", descending: true };
-            view.sort = { key: key, descending: current.key === key ? !current.descending : key !== "name" };
+            var current = view.sort || (view.tab === "recent" ? { key: "date", descending: true } : { key: "games", descending: true });
+            var textFirst = ["name", "template", "opponents", "result"].indexOf(key) !== -1;
+            view.sort = { key: key, descending: current.key === key ? !current.descending : !textFirst };
             refresh();
         }).on("click", ".tuydQmRow", function (event) {
             if ($(event.target).closest("a").length) {
