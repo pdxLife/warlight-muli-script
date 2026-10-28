@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.54.3
+
+- **Notes in games war.app opens in place.** A game war.app opens without a page load, such as a Quickmatch game it starts from the Quickmatch page, now has its Notes button too. Before, the button only appeared after reloading the game.
+
 ## 3.54.2
 
 - **The sound sliders are only behind the 🔔.** The extra chat sound slider by a game's Chat tab is gone: since 3.54.1 it covered the bottom row of the open chat (the message box, or "This game has been archived…"). So is the one in the chat rooms' bar. In a game or the chat rooms, the 🔔 next to war.app's speaker icon in the top bar opens the Chat and Turn sliders; click it again or anywhere else to close them.

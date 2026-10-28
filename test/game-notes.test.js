@@ -197,6 +197,32 @@ test("the Notes button starts hidden on a game page", () => {
     assert.ok($("#tuydGameNotesBtn").hasClass("tuydNotesWaiting"));
 });
 
+test("Notes are set up on war.app's client-drawn pages, which can open a game without a page load", () => {
+    const at = (url, html = "") => {
+        const { dom, $ } = createDom(html, url);
+        return load(["pageIsGame", "pageIsQuickmatch", "pageIsIdle", "pageCanOpenGame"], { ...domGlobals(dom, $), location: dom.window.location }).pageCanOpenGame();
+    };
+    const holder = '<div id="UjsCanvasHolder"></div>';
+    assert.ok(at("https://war.app/MultiPlayer?GameID=45571006"));
+    assert.ok(at("https://war.app/MultiPlayer?Quickmatch=1", holder));
+    assert.ok(at("https://war.app/MultiPlayer/Tournament?ID=5", holder));
+    assert.ok(!at("https://war.app/MultiPlayer/"), "the dashboard opens games with a page load");
+    assert.ok(!at("https://war.app/Idle/Play", holder), "Idle never opens a game");
+});
+
+test("a game opened from Quickmatch without a page load gets its Notes button and notes", () => {
+    const { $, dom, runIntervals } = setup({ text: "Old plan", firstMove: "", players: {} }, "https://war.app/MultiPlayer?Quickmatch=1", { html: "" });
+    assert.equal($("#tuydGameNotesBtn").css("display"), "none");
+    dom.window.history.pushState(null, "", "/MultiPlayer?GameID=123");
+    $("body").append(GAME_PAGE);
+    runIntervals();
+    assert.notEqual($("#tuydGameNotesBtn").css("display"), "none");
+    assert.ok($("#tuydGameNotesBtn").hasClass("tuydHasNotes"));
+    dom.window.history.pushState(null, "", "/MultiPlayer?Quickmatch=1");
+    runIntervals();
+    assert.equal($("#tuydGameNotesBtn").css("display"), "none", "back on Quickmatch, no button");
+});
+
 test("in a lobby war.app still offers you to join, there's no Notes button", async () => {
     const join = `<div id="ujs_JoinBtn"><a id="ujs_JoinBtn_btn" class="ujsBtnInner"></a><div id="ujs_Text_9"><div id="ujs_Text_9_tmp" class="ujsTextInner">Join Game</div></div></div>`;
     const { $, runTimers } = setup(null, undefined, { html: GAME_PAGE + join, title: "Lobby - Modern Warfare Remastered II* - War.app" });
