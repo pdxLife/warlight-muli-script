@@ -291,3 +291,32 @@ test("the Past Tournaments search list escapes tournament, creator and clan name
         assert.match(link.getAttribute("href"), /^\/MultiPlayer\/Tournament\?ID=/);
     }
 });
+
+test("the Clan War progress box escapes clan, player, template and reward names", () => {
+    const ctx = load(["renderClanWarProgress", "clanWarResultText", "clanWarDuration", "getRankText", "htmlEscape"]);
+    const progress = {
+        season: PAYLOAD, finished: null, clan: 33, clanName: PAYLOAD, place: 3, clans: 4, points: 14.8, pointsToday: 1.6,
+        bracket: { places: PAYLOAD, texts: [PAYLOAD], belowPlace: 4, lead: 5 },
+        better: { places: PAYLOAD, texts: [PAYLOAD], place: 1, gap: 20 },
+        wins: { total: 3, today: 1, next: { wins: 5, text: PAYLOAD }, count: 2 },
+        today: [{ id: 1, name: PAYLOAD, result: "won" }],
+        you: { result: "lost", template: PAYLOAD, opponents: [PAYLOAD] },
+        territories: { held: 2, byTonight: 0, nextAt: 15, toGo: 0.2 },
+        seasonEnd: { left: 9, total: 17, pace: 1, days: 3, daysLeft: 9, ends: 0 },
+        timeslot: { open: false, next: PAYLOAD }
+    };
+    const container = render(ctx.renderClanWarProgress(progress, 0));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    const waiting = render(ctx.renderClanWarProgress({ ...progress, you: { result: null } }, 0));
+    assertInert(waiting);
+});
+
+test("the Clan War records box escapes template and clan names", () => {
+    const ctx = load(["renderClanWarRecords", "clanWarRecordText", "htmlEscape"]);
+    const records = { templates: [{ name: PAYLOAD, won: 1, lost: 0 }], opponents: [{ name: PAYLOAD, won: 0, lost: 1 }] };
+    const container = render(ctx.renderClanWarRecords(records, PAYLOAD));
+    assertInert(container);
+    assert.equal(container.querySelectorAll(".tuydCwRecordRow").length, 2);
+    assert.ok(container.textContent.includes(PAYLOAD));
+});

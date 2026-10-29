@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.60.0
+
+- **Your clan's progress in Clan Wars.** The Clan War page gets a "Your clan in Season N" box below About Clan Wars: your clan's place and points, the rank rewards it's on course for and how far ahead it is of the next clan down, how many points short it is of the next better rewards, its wins this season and the next win reward, its territories and the points to the next one, and whether you've played today or how long until the next timeslot. War.app lists the rewards but never says how close your clan is to them.
+- **When the Clan War season should end.** The same box counts the territories still left on the map and, from how many were taken in the last three days, says about when the season ends.
+- **Who played today.** The box lists your clanmates who played a Clan War game today and how it went. On a clan's Clan War players list, each player gets their win rate this season and today's result.
+- **Your record in Clan War timeslots.** In a timeslot, each template shows your record and your clan's on it this season, to help pick one.
+- **Clan War records.** A clan's Clan War page gets a "Season N records" box: wins and losses this season by template and by opponent clan.
+- **Clan War countdown on the dashboard.** Next to "My Games", the time to the next Clan War timeslot, or "played today ✓". It shows up once you've opened the Clan War page.
+
 ## 3.59.1
 
 - **Past Tournaments and the Tournaments page have their own search filters.** Filters picked in Past Tournaments search, such as Round robin, carried over to Search on the Tournaments page, so it showed fewer than war.app's My Tournaments. Now Past Tournaments keeps its own filters, and the Tournaments page's start over on each visit, on You're still in and Not finished.
