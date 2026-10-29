@@ -635,3 +635,42 @@ test("with war.app's list unread, the teams filter leaves every card in", async 
     await settle();
     assert.equal(shown().length, 6);
 });
+
+test("Past Tournaments and the Tournaments page keep their own filters, and the Tournaments page's start over on each visit", async () => {
+    const list = [tournament(9104, { state: 1, type: 2 }), tournament(9103, { state: 2, type: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
+    const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 4, checkedAt: 0, tournaments: parse(reply(4, list)).tournaments } };
+    const html = TOURNAMENTS_SCENE("", [9104, 9102, 9101]).replace('<div id="ujs_TournamentsScene">', '<div id="ujs_PastTournamentsScene"><div id="ujs_MyTournamentsTopBar_2"></div></div><div id="ujs_TournamentsScene" style="display: none">');
+    const { $, settle } = screen({ setting: true, record, template: TEMPLATE, list, html });
+    const ids = () => $("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get();
+    // war.app redraws as it switches scenes, which is what the script's observer sees.
+    const go = async (from, to) => {
+        $(from).hide();
+        $(to).show().append("<div></div>");
+        await settle();
+    };
+    await settle();
+    $("#ujs_MyTournamentsTopBar_2 .tuydPtOpen").trigger("click");
+    await settle();
+    $("#tuydPtSearch [name=type]").val("roundRobin").trigger("change");
+    assert.deepEqual(ids(), ["9104", "9103"]);
+
+    await go("#ujs_PastTournamentsScene", "#ujs_TournamentsScene");
+    assert.equal($("#tuydPtSearch").length, 0);
+    $("#ujs_MyTournamentsTopBar .tuydPtOpen").trigger("click");
+    await settle();
+    assert.equal($("#tuydPtSearch [name=type]").val(), "", "Past Tournaments' kind doesn't carry over");
+    assert.deepEqual(ids(), ["9104", "9102", "9101"]);
+    $("#tuydPtSearch [name=query]").val("9102").trigger("input");
+
+    await go("#ujs_TournamentsScene", "#ujs_PastTournamentsScene");
+    $("#ujs_MyTournamentsTopBar_2 .tuydPtOpen").trigger("click");
+    await settle();
+    assert.equal($("#tuydPtSearch [name=type]").val(), "roundRobin", "Past Tournaments keeps its own");
+    assert.equal($("#tuydPtSearch [name=query]").val(), "");
+
+    await go("#ujs_PastTournamentsScene", "#ujs_TournamentsScene");
+    $("#ujs_MyTournamentsTopBar .tuydPtOpen").trigger("click");
+    await settle();
+    assert.equal($("#tuydPtSearch [name=query]").val(), "", "the Tournaments page starts over");
+    assert.equal($("#tuydPtSearch [name=you]").val(), "stillIn");
+});
