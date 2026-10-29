@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.59.0
+// @version 3.59.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.59.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.59.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10968,6 +10968,9 @@ function setupPastTournamentsSearch() {
     var stillInAt = 0;
     var stillInLoading = false;
     var filter = normalizePastTournamentsFilter({});
+    // Each page keeps its own filters; the Tournaments page's start over each time you come to it.
+    var filters = {};
+    var filterKey = "past";
     var limit = 100;
     addTournamentButtonStyles();
     addCSS(`
@@ -11312,13 +11315,13 @@ function setupPastTournamentsSearch() {
                 to: field("to").val(),
                 reversed: field("reversed").prop("checked")
             });
+            filters[filterKey] = filter;
             limit = 100;
             render();
         });
-        if (!onPastScene()) {
-            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { you: "stillIn", state: "notFinished" }));
-            limit = 100;
-        }
+        filterKey = onPastScene() ? "past" : "current";
+        filter = filters[filterKey] = filters[filterKey] || normalizePastTournamentsFilter(filterKey === "past" ? {} : { you: "stillIn", state: "notFinished" });
+        limit = 100;
         loadStored().then(render);
         render();
         if (on && !onPastScene() && (Date.now() - lastUpdate > 60 * 1000 || stored && !stored.complete)) {
@@ -11344,6 +11347,9 @@ function setupPastTournamentsSearch() {
         var here = scene() ? scene().id : null;
         if (dialog && here !== onScene) {
             closeDialog();
+        }
+        if (here !== onScene && here && !onPastScene()) {
+            delete filters.current;
         }
         if (here) {
             placeButton();

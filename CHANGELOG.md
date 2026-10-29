@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.59.1
+
+- **Past Tournaments and the Tournaments page have their own search filters.** Filters picked in Past Tournaments search, such as Round robin, carried over to Search on the Tournaments page, so it showed fewer than war.app's My Tournaments. Now Past Tournaments keeps its own filters, and the Tournaments page's start over on each visit, on You're still in and Not finished.
+
 ## 3.59.0
 
 - **Tournament search: "You're still in".** A new choice under You in the tournament search lists the tournaments war.app's My Tournaments shows: the ones you're still playing in, a round robin where you have games left, and invitations you can still accept, without the ones you've been knocked out of. From the Tournaments page, Search now opens on it (with Not finished), so it shows the same tournaments as My Tournaments, searchable. On Past Tournaments the script asks war.app for that list when you pick it. War.app's tournament list doesn't say whether you were eliminated, so this is the only way to tell.
