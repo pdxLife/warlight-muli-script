@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.58.1
+// @version 3.59.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.58.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.59.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10808,7 +10808,7 @@ function normalizePastTournamentsFilter(value) {
         maxPlayers: count(value.maxPlayers),
         speed: oneOf(value.speed, ["realTime", "multiDay"]),
         coins: oneOf(value.coins, ["free", "fee", "prize"]),
-        you: oneOf(value.you, ["joined", "declined", "unanswered", "notDeclined"]),
+        you: oneOf(value.you, ["stillIn", "joined", "declined", "unanswered", "notDeclined"]),
         state: oneOf(value.state, ["open", "running", "notFinished", "finished", "cancelled"]),
         unread: value.unread === true,
         from: date(value.from),
@@ -10822,7 +10822,12 @@ function pastTournamentDate(tournament) {
         : new Date(Date.UTC(2000, 0, 1) + tournament.starts).toISOString().slice(0, 10);
 }
 
-function pastTournamentMatches(tournament, filter, series) {
+// "stillIn" is war.app's own My Tournaments, by ID: what you're still playing in or can still join. The list itself
+// doesn't say whether you were eliminated.
+function pastTournamentMatches(tournament, filter, series, stillIn) {
+    if (filter.you === "stillIn" && !(stillIn || {})[tournament.id]) {
+        return false;
+    }
     var query = String(filter.query || "").trim().toLowerCase();
     if (query && [tournament.name, tournament.creator, tournament.clan].every(function (text) {
         return String(text || "").toLowerCase().indexOf(query) === -1;
@@ -10944,8 +10949,7 @@ function pastTournamentsKey(playerId) {
 // Past Tournaments lists every tournament you were invited to, 30 a page, with no search. With "Past Tournaments: Search
 // Your Whole List" on, a Search button by war.app's Filter opens a panel that searches and filters all of them, read from
 // war.app with its own request and kept in IndexedDB (see readPastTournaments). With it off, the button offers to turn it on.
-// The Tournaments page has the button too, by My Tournaments, opening the panel on the tournaments you joined that
-// aren't finished yet.
+// The Tournaments page has the button too, by My Tournaments, opening the panel on the tournaments you're still in.
 function setupPastTournamentsSearch() {
     var me = null;
     var on = false;
@@ -10960,6 +10964,9 @@ function setupPastTournamentsSearch() {
     var onScene = null;
     var cleared = false;
     var series = {};
+    var stillIn = null;
+    var stillInAt = 0;
+    var stillInLoading = false;
     var filter = normalizePastTournamentsFilter({});
     var limit = 100;
     addTournamentButtonStyles();
@@ -11129,9 +11136,38 @@ function setupPastTournamentsSearch() {
     };
     var shownTournaments = function () {
         var shown = (stored ? stored.tournaments : []).filter(function (tournament) {
-            return pastTournamentMatches(tournament, filter, series);
+            return pastTournamentMatches(tournament, filter, series, stillIn);
         });
         return filter.reversed ? shown.reverse() : shown;
+    };
+    // On the Tournaments page it's the My Tournaments cards on screen; elsewhere war.app's list is asked for (filter 8).
+    var readStillIn = function () {
+        if (scene() && !onPastScene()) {
+            stillIn = {};
+            $("#ujs_MyTournamentsContainer a[href*='Tournament?ID=']").each(function () {
+                var id = /[?&]ID=(\d+)/i.exec($(this).attr("href") || "");
+                if (id) {
+                    stillIn[id[1]] = true;
+                }
+            });
+            return;
+        }
+        if (stillInLoading || !lastMyTournamentsRequest || stillIn && Date.now() - stillInAt < 60 * 1000) {
+            return;
+        }
+        stillInLoading = true;
+        fetchMyTournaments(lastMyTournamentsRequest, 0, 2147483647, 8).then(function (page) {
+            stillIn = {};
+            page.tournaments.forEach(function (tournament) {
+                stillIn[tournament.id] = true;
+            });
+            stillInAt = Date.now();
+        }, function (error) {
+            log("Past Tournaments: " + (error && error.message || error));
+        }).then(function () {
+            stillInLoading = false;
+            render();
+        });
     };
     var render = function () {
         if (!dialog) {
@@ -11157,7 +11193,7 @@ function setupPastTournamentsSearch() {
                     <select name="series" aria-label="Series"><option value="">All series</option></select>
                     <select name="creator" aria-label="Creator"><option value="">Any creator</option></select></div>
                 <div><select name="you" aria-label="Your part">
-                        <option value="">You: any</option><option value="joined">You joined</option><option value="notDeclined">You didn't decline</option>
+                        <option value="">You: any</option><option value="stillIn">You're still in (My Tournaments)</option><option value="joined">You joined</option><option value="notDeclined">You didn't decline</option>
                         <option value="declined">You declined</option><option value="unanswered">You never answered</option></select>
                     <select name="state" aria-label="State">
                         <option value="">Any state</option><option value="notFinished">Not finished</option><option value="open">Open</option><option value="running">In progress</option>
@@ -11193,6 +11229,13 @@ function setupPastTournamentsSearch() {
         if (!stored || !stored.tournaments.length) {
             results.html("");
             return;
+        }
+        if (filter.you === "stillIn") {
+            readStillIn();
+            if (!stillIn) {
+                results.html('<div class="tuydPtHead">' + (lastMyTournamentsRequest ? "Checking which tournaments you're still in…" : "Waiting for war.app's list to see which tournaments you're still in.") + "</div>");
+                return;
+            }
         }
         var shown = shownTournaments();
         results.html('<div class="tuydPtHead">' + formatCount(shown.length) + " of " + formatCount(stored.tournaments.length) + " tournaments"
@@ -11273,7 +11316,7 @@ function setupPastTournamentsSearch() {
             render();
         });
         if (!onPastScene()) {
-            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { you: "joined", state: "notFinished" }));
+            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { you: "stillIn", state: "notFinished" }));
             limit = 100;
         }
         loadStored().then(render);

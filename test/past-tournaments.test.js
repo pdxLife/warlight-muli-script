@@ -283,7 +283,7 @@ const LIST = [
     tournament(9101, { name: "Titled Tuesday 1", me: 0, state: 1 })
 ];
 
-function screen({ setting = false, record = null, template = null, list = LIST, html = SCENE, url = "https://war.app/MultiPlayer/Tournaments/Past" } = {}) {
+function screen({ setting = false, record = null, template = null, list = LIST, current = [], html = SCENE, url = "https://war.app/MultiPlayer/Tournaments/Past" } = {}) {
     const { dom, $ } = createDom(html, url);
     const db = { updates: [], deletes: [], record };
     const Database = {
@@ -298,7 +298,8 @@ function screen({ setting = false, record = null, template = null, list = LIST, 
     const fetch = (url, options) => {
         requests.push({ url, ...requestArgs(options.body) });
         const args = requestArgs(options.body);
-        return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(reply(list.length, list.slice(args.offset, args.offset + args.count))) });
+        const answer = args.filter === 8 ? reply(current.length, current) : reply(list.length, list.slice(args.offset, args.offset + args.count));
+        return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(answer) });
     };
     const ctx = load(["setupPastTournamentsSearch", "pastTournamentsKey", "normalizePastTournamentsFilter", "pastTournamentSeries", "pastTournamentOptions", "pastTournamentMatches",
         "pastTournamentDate", "pastTournamentsListHtml", "pastTournamentKindText", "pastTournamentCoinsText", "pastTournamentBootText", "readPastTournaments", "fetchMyTournaments",
@@ -439,21 +440,36 @@ test("parseMyTournamentsReply also returns the open tournaments the Tournaments 
     assert.deepEqual(parse(reply(1, [tournament(5)])).open, []);
 });
 
+test("on Past Tournaments, You're still in asks war.app for its My Tournaments once", async () => {
+    const list = [tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 1 })];
+    const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 3, checkedAt: 0, tournaments: parse(reply(3, list)).tournaments } };
+    const { $, requests, settle } = screen({ setting: true, record, template: TEMPLATE, list, current: [tournament(9101, { state: 1 })] });
+    await settle();
+    $(".tuydPtOpen").trigger("click");
+    await settle();
+    $("#tuydPtSearch [name=you]").val("stillIn").trigger("change");
+    await settle();
+    assert.deepEqual($("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get(), ["9101"]);
+    $("#tuydPtSearch [name=state]").val("running").trigger("change");
+    await settle();
+    assert.deepEqual(requests.filter((r) => r.filter === 8).map((r) => [r.offset, r.count]), [[0, 2147483647]]);
+});
+
 test("Not finished keeps open and running tournaments", () => {
     const { normalizePastTournamentsFilter, pastTournamentMatches } = load(["normalizePastTournamentsFilter", "pastTournamentMatches", "pastTournamentDate"]);
     const filter = normalizePastTournamentsFilter({ state: "notFinished" });
     assert.deepEqual([0, 1, 2, 3].filter((state) => pastTournamentMatches({ id: 1, name: "x", state, prizes: [] }, filter, {})), [0, 1]);
 });
 
-const TOURNAMENTS_SCENE = (cards = "") => `<div id="UjsCanvasHolder"><div id="ujs_TournamentsScene">
-    <div id="ujs_MyTournaments"><div id="ujs_MyTournamentsTopBar"><div id="ujs_Spacer"></div></div><div id="ujs_MyTournamentsContainer"></div></div>
+const TOURNAMENTS_SCENE = (cards = "", mine = []) => `<div id="UjsCanvasHolder"><div id="ujs_TournamentsScene">
+    <div id="ujs_MyTournaments"><div id="ujs_MyTournamentsTopBar"><div id="ujs_Spacer"></div></div><div id="ujs_MyTournamentsContainer">${mine.map((id, i) => `<div id="ujs_TournamentInfoControl${i ? "_" + (i + 1) : ""}"><a href="/MultiPlayer/Tournament?ID=${id}"></a></div>`).join("")}</div></div>
     <div id="ujs_OpenTournaments"><div id="ujs_OpenTournamentsTopBar"><div id="ujs_Spacer_2"></div></div><div id="ujs_OpenTournamentsContainer">${cards}</div></div>
 </div></div>`;
 
-test("on the Tournaments page, Search opens on the tournaments you joined that aren't finished, reading only when it opens", async () => {
-    const list = [tournament(9104, { state: 1, me: 0 }), tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
-    const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 3, checkedAt: 0, tournaments: parse(reply(3, list)).tournaments } };
-    const { $, requests, settle } = screen({ setting: true, record, template: TEMPLATE, list, html: TOURNAMENTS_SCENE(), url: "https://war.app/MultiPlayer/Tournaments/" });
+test("on the Tournaments page, Search opens on the tournaments you're still in, as war.app's My Tournaments lists them", async () => {
+    const list = [tournament(9105, { state: 1, me: 1 }), tournament(9104, { state: 0, me: 0 }), tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
+    const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 5, checkedAt: 0, tournaments: parse(reply(5, list)).tournaments } };
+    const { $, requests, settle } = screen({ setting: true, record, template: TEMPLATE, list, html: TOURNAMENTS_SCENE("", [9104, 9102, 9101]), url: "https://war.app/MultiPlayer/Tournaments/" });
     await settle();
     assert.equal($("#ujs_MyTournamentsTopBar > .tuydPtOpen").text(), "Search");
     assert.equal(requests.length, 0, "nothing is read just for coming to the Tournaments page");
@@ -461,9 +477,10 @@ test("on the Tournaments page, Search opens on the tournaments you joined that a
     await settle();
     assert.equal($("#tuydPtSearch h3").text(), "Search your tournaments");
     assert.equal($("#tuydPtSearch [name=state]").val(), "notFinished");
-    assert.equal($("#tuydPtSearch [name=you]").val(), "joined");
-    assert.deepEqual($("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get(), ["9102", "9101"]);
-    assert.deepEqual(requests.map((r) => [r.filter, r.offset, r.count]), [[0, 0, 100]]);
+    assert.equal($("#tuydPtSearch [name=you]").val(), "stillIn");
+    assert.deepEqual($("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get(), ["9104", "9102", "9101"],
+        "an invitation you can still accept counts; 9105, joined and running but not on My Tournaments, doesn't");
+    assert.deepEqual(requests.map((r) => [r.filter, r.offset, r.count]), [[0, 0, 100]], "My Tournaments is read from the page, not asked for");
     $("#tuydPtSearch [name=query]").val("Tournament 9102").trigger("input");
     $(".tuydPtOpen").trigger("click");
     $(".tuydPtOpen").trigger("click");
