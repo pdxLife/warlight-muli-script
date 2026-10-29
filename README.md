@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.59.1  
+> **Version:** 3.60.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -38,6 +38,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Chat button** — a **Chat** button opens war.app's chat rooms (Global, Clan, groups) without going through a game. With the scrollable layout, Chat and **Refresh (R)** sit on the My / Open / Past Games row, lined up with the Filter button below.
 - **A game's chat from the dashboard** — **💬 Chat** on each game in My Games opens that game's Public (and Team) chat in a panel on the dashboard, where you can also write. It shows the last 20 messages; **Show all** loads the rest. The game loads hidden behind the dashboard, so it takes as long as opening the game, but you stay where you are.
 - **Clickable game rows** — entire rows are clickable, not just the link text.
+- **Clan War countdown** — next to "My Games", the time to the next Clan War timeslot ("Clan War in 1 h 31 min"), "timeslot open for 6 min" while one is open, or "played today ✓". It uses the schedule saved on your last visit to the Clan War page, so it shows up after you've opened that page once, and goes away when the season ends.
 - **Forum thread hiding** — right-click any forum thread on the dashboard to hide it; hidden threads persist across sessions.
 - **Sortable right-column tables** — reorder and toggle visibility of Bookmarks, Map of the Week, Forum, Clan Forum, Blog, and other sidebar blocks.
 
@@ -81,6 +82,12 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 
 - **Clan list search** — live text filter on the `/Clans/List` page with match count.
 - **Community events on clan pages** — below the Clan Wars box, a "Community events" box with the clan's standing in each current custom.wl-stats.com series (Clan League first, then Clan Cup, …): place, record and points. For Clan Cup, where a clan can enter up to five squads, it shows the clan's best squad. The clan's last Clan League shows even when it finished long ago, and a clan that won Clan League or Clan Cup gets a gold "🏆 Champion ×N" line listing those editions.
+- **Your clan's progress in Clan Wars** — on the Clan War page, a "Your clan in Season N" box below war.app's About Clan Wars: your clan's place and points, the rank rewards for that place and how far ahead the next clan down is, how many points short it is of the next better rewards, its wins this season and the next win reward, its territories and the points to the next one, how many territories are left and when the season should end at the pace of the last three days, whether you've played today (or the time to the next timeslot), and who in your clan played today and how it went. War.app shows the rewards but not how close your clan is to them.
+- **Clan War players** — on a clan's Clan War players list, each player's win rate this season and today's result next to war.app's wins and games.
+- **Your record in Clan War timeslots** — in a timeslot, next to each template, your record and your clan's on that template this season ("This season: you 2–1, clan 7–4").
+- **Clan War records** — on a clan's Clan War page, a "Season N records" box below its games: the clan's wins and losses this season by template and by opponent clan. Free wins don't count, since they weren't played.
+
+The Clan War additions read war.app's own Clan War data, with war.app's own request, as the page does; nothing is sent elsewhere.
 
 ### Profile
 
@@ -196,6 +203,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings (including notes in games, one row per game), hidden forum threads and, with Past Tournaments search on, your list of past tournaments (in the `TournamentData` store; not in Export).
 - **Cookies** — cached player profile data (~1 hour TTL).
 - **Session storage** — AWP World Tour stats and custom.wl-stats.com tournament links, kept for an hour.
+- **Local storage** — the Clan War schedule from your last visit to the Clan War page (for the dashboard countdown) and the territory count of Clan War maps.
 
 ## Other sites the script contacts
 
