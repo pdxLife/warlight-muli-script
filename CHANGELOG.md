@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.58.1
+
+- **Search on the Tournaments page opens on the tournaments you're in.** By My Tournaments, Search now opens "Search your tournaments" (not "past") with **You joined** and **Not finished** picked, so it lists the open and in-progress tournaments you joined. Change either filter to see the others.
+
 ## 3.58.0
 
 - **Filters on Open Tournaments.** With 6 or more open tournaments on the Tournaments page, a **Filter** button left of the "Open Tournaments" title opens filters: name or creator, kind (single or double elimination, round robin), players or teams, real-time or multi-day, coins (no entry fee, entry fee, coin prizes) and number of players. War.app's cards that don't match are hidden and the rest move up; the button turns gold while a filter is on, and the filter is remembered for next time. **Clear** shows them all again. Team sizes aren't on the cards, so the script reads them from war.app's own list once you use the filter.

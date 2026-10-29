@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.58.0
+// @version 3.58.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.58.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.58.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10944,7 +10944,8 @@ function pastTournamentsKey(playerId) {
 // Past Tournaments lists every tournament you were invited to, 30 a page, with no search. With "Past Tournaments: Search
 // Your Whole List" on, a Search button by war.app's Filter opens a panel that searches and filters all of them, read from
 // war.app with its own request and kept in IndexedDB (see readPastTournaments). With it off, the button offers to turn it on.
-// The Tournaments page has the button too, by My Tournaments, opening the panel on the tournaments not finished yet.
+// The Tournaments page has the button too, by My Tournaments, opening the panel on the tournaments you joined that
+// aren't finished yet.
 function setupPastTournamentsSearch() {
     var me = null;
     var on = false;
@@ -11216,8 +11217,9 @@ function setupPastTournamentsSearch() {
             return;
         }
         addCommunityLaddersStyles();
-        dialog = $(`<div id="tuydPtSearch" class="tuydCommunityPanel" role="dialog" aria-label="Search your past tournaments">
-            <h3>Search your past tournaments</h3>
+        var title = onPastScene() ? "Search your past tournaments" : "Search your tournaments";
+        dialog = $(`<div id="tuydPtSearch" class="tuydCommunityPanel" role="dialog" aria-label="${title}">
+            <h3>${title}</h3>
             <a href="#" class="tuydPtClose" title="Close" aria-label="Close">✕</a>
             <div class="tuydPtBody"></div>
             <div class="communityLaddersCredit">From war.app's Past Tournaments, by Muli's Userscript</div>
@@ -11271,7 +11273,7 @@ function setupPastTournamentsSearch() {
             render();
         });
         if (!onPastScene()) {
-            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { state: "notFinished" }));
+            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { you: "joined", state: "notFinished" }));
             limit = 100;
         }
         loadStored().then(render);
