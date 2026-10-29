@@ -277,3 +277,17 @@ test("the Past Games list escapes game, player and map names", () => {
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
 });
+
+test("the Past Tournaments search list escapes tournament, creator and clan names", () => {
+    const ctx = load(["pastTournamentsListHtml", "pastTournamentKindText", "pastTournamentCoinsText", "pastTournamentBootText", "pastTournamentDate", "htmlEscape"], {
+        PAST_TOURNAMENTS_STATES: ["Open", "In progress", "Finished", "Cancelled"],
+        PAST_TOURNAMENTS_YOU: ["Not answered", "Joined", "Declined"]
+    });
+    const tournaments = [{ id: PAYLOAD, name: PAYLOAD, creator: PAYLOAD, clan: PAYLOAD, type: 0, players: 8, teamSize: 1, boot: 60000, realTime: true, fee: 5, prizes: [[1, 10]], state: 2, me: PAYLOAD, unread: true, starts: 0 }];
+    const container = render(ctx.pastTournamentsListHtml(tournaments));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    for (const link of container.querySelectorAll("a")) {
+        assert.match(link.getAttribute("href"), /^\/MultiPlayer\/Tournament\?ID=/);
+    }
+});

@@ -6,7 +6,7 @@ const { source, load } = require("./harness");
 const SITE_AND_BROWSER_GLOBALS = new Set([
     "$", "$$$", "jQuery", "CNCDialog", "CreateModal", "PopErrorDialog", "ReportError",
     "Number", "String", "alert", "atob", "btoa", "clearInterval", "clearTimeout", "decodeURIComponent", "encodeURIComponent",
-    "encodeURI", "isNaN", "parseFloat", "parseInt", "setInterval", "setTimeout", "structuredClone", "unescape"
+    "encodeURI", "fetch", "isNaN", "parseFloat", "parseInt", "setInterval", "setTimeout", "structuredClone", "unescape"
 ]);
 
 function walk(node, visit) {

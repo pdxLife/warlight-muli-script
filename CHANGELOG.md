@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.56.0
+
+- **Search all your past tournaments.** War.app's Past Tournaments lists every tournament you were invited to, 30 a page, with no search. A **Search** button next to its Filter and Sort now opens a panel that searches and filters the whole list: by name, creator or clan, series (Titled Tuesday, WGL…, found from the names your tournaments share), creator, whether you joined, declined or never answered, state, kind (single or double elimination, round robin), players or teams, speed (real-time or multi-day), coins (no entry fee, entry fee, coin prizes), number of players, start date and unread chat, newest or oldest first. Each tournament links to its page and shows its creator, kind, boot time, coins, your part and its state. It's off at first: the first click on Search explains it and offers **Turn on**, or turn on **Past Tournaments: Search Your Whole List** in the settings menu under Tournaments. Once on, the script reads your list from war.app with war.app's own request (about a second for each 1,000 tournaments), keeps it in this browser and, each time you open Past Tournaments, goes on reading until it has the whole list, then adds new tournaments and updates the ones still running. **Rescan** reads it all again; **Turn off** deletes it from this browser.
+
 ## 3.55.0
 
 - **Quickmatch stats: your last 20 games.** A third tab in the Stats dialog, after Templates and Opponents, lists your 20 newest finished Quickmatch games, newest first: the date, template, opponents, your result and turns. Click the result to open the game. Boots follow **Count boot losses**: "Booted" in grey while they're left out of your record, "Lost (booted)" in red when they count. Click a heading to sort; Search looks through all your games, so searching for an opponent shows your last 20 games against them. The CSV now has a Date column too.
