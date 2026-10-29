@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.60.0
+// @version 3.60.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.60.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.60.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -7659,12 +7659,13 @@ function addClanWarStyles() {
             white-space: nowrap;
             pointer-events: none;
         }
+        /* War.app's name label is as wide as its text, up to 231px where it wraps, so the note keeps clear of that
+           width rather than following the label's right edge into the lines below short names. */
         .tuydCwTemplateNote {
             position: absolute;
-            left: 100%;
+            left: 247px;
             top: 2px;
             width: 220px;
-            margin-left: 16px;
             color: #e0c060;
             font-size: 13px;
             line-height: 17px;
