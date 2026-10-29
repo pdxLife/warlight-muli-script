@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.57.0
+// @version 3.58.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.57.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.58.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -55,6 +55,8 @@ var MENU_SECTIONS = [["Dashboard", "Dashboard"], ["Games", "Games"], ["Tournamen
 var UPDATE_CHECK_MS = 24 * 60 * 60 * 1000;
 var UPDATE_RETRY_MS = 60 * 60 * 1000;
 var PAST_TOURNAMENTS_FEATURE = "Search all your past tournaments";
+var OPEN_TOURNAMENTS_FILTER_KEY = "tidyUpYourDashboard.openTournamentsFilter";
+var OPEN_TOURNAMENTS_FILTER_MIN = 6;
 this.$$$ = jQuery.noConflict(true);
 window.wlerror = function () {
 };
@@ -8560,6 +8562,7 @@ function mainFeatures() {
         { name: "Refresh Open Games every few minutes", section: "Dashboard", match: pageIsDashboard, run: setupOpenGamesAutoRefresh },
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Search all your past tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupPastTournamentsSearch },
+        { name: "Filters on Open Tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupOpenTournamentsFilter },
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
@@ -10403,8 +10406,8 @@ function myTournamentsRequest(template, filter, offset, count) {
 }
 
 // war.app's answer, as ujs.js reads it: the message header, the "extras" war.app sends with every answer (mail and
-// notifications), then MyTournamentsReturn: the total, open tournaments (none here), the server's time and the list of
-// TournamentInfo. Integers and doubles are little-endian, a bool or enum is a byte, a text is a "has value" byte, a 7-bit
+// notifications), then MyTournamentsReturn: the total, the open tournaments anyone can join (only sent for the
+// Tournaments page's filter, 8), the server's time and your tournaments, each a TournamentInfo. Integers and doubles are little-endian, a bool or enum is a byte, a text is a "has value" byte, a 7-bit
 // length and UTF-8, a list is a count (-1 for none), and an optional value has a "has value" byte first. Dates count
 // milliseconds from the start of 2000. Only the fields used here are kept. If war.app changes the layout, this returns null.
 function parseMyTournamentsReply(hex) {
@@ -10617,25 +10620,25 @@ function parseMyTournamentsReply(hex) {
             return null;
         }
         var total = int();
-        optional(function () {
-            list(function () {
-                optional(tournament);
-            });
-        });
+        var tournamentList = function () {
+            return (optional(function () {
+                return list(function () {
+                    return optional(tournament);
+                });
+            }) || []).filter(Boolean);
+        };
+        var open = tournamentList();
         double();
-        var tournaments = optional(function () {
-            return list(function () {
-                return optional(tournament);
-            });
-        }) || [];
-        return p === bytes.length ? { total: total, tournaments: tournaments.filter(Boolean) } : null;
+        var tournaments = tournamentList();
+        return p === bytes.length ? { total: total, tournaments: tournaments, open: open } : null;
     } catch (e) {
         return null;
     }
 }
 
-function fetchMyTournaments(template, offset, count) {
-    var body = myTournamentsRequest(template, 0, offset, count);
+// Filter 0 is all your tournaments (Past Tournaments' All); 8, the Tournaments page's, also brings the open tournaments.
+function fetchMyTournaments(template, offset, count, filter) {
+    var body = myTournamentsRequest(template, filter || 0, offset, count);
     if (!body) {
         return Promise.reject(new Error("war.app's tournament request has changed"));
     }
@@ -10806,7 +10809,7 @@ function normalizePastTournamentsFilter(value) {
         speed: oneOf(value.speed, ["realTime", "multiDay"]),
         coins: oneOf(value.coins, ["free", "fee", "prize"]),
         you: oneOf(value.you, ["joined", "declined", "unanswered", "notDeclined"]),
-        state: oneOf(value.state, ["open", "running", "finished", "cancelled"]),
+        state: oneOf(value.state, ["open", "running", "notFinished", "finished", "cancelled"]),
         unread: value.unread === true,
         from: date(value.from),
         to: date(value.to),
@@ -10849,7 +10852,8 @@ function pastTournamentMatches(tournament, filter, series) {
         || filter.you === "unanswered" && tournament.me !== 0 || filter.you === "notDeclined" && tournament.me === 2) {
         return false;
     }
-    if (filter.state && ["open", "running", "finished", "cancelled"][tournament.state] !== filter.state) {
+    if (filter.state === "notFinished" ? tournament.state !== 0 && tournament.state !== 1
+        : filter.state && ["open", "running", "finished", "cancelled"][tournament.state] !== filter.state) {
         return false;
     }
     if (filter.unread && !tournament.unread) {
@@ -10917,6 +10921,22 @@ function pastTournamentsCsv(tournaments, series, origin) {
     }).join("\r\n") + "\r\n";
 }
 
+// A blue button in war.app's style for the tournament scenes' top bars, left of their titles.
+function addTournamentButtonStyles() {
+    if (addTournamentButtonStyles.done) {
+        return;
+    }
+    addTournamentButtonStyles.done = true;
+    addCSS(`
+        .tuydPtButton { position: absolute; left: 4px; bottom: 0; height: 28px; box-sizing: border-box; padding: 0 12px; line-height: 22px; color: #fff; font-size: 14px;
+            font-weight: 700; text-decoration: none; cursor: pointer; pointer-events: auto; white-space: nowrap;
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            border-style: solid; border-color: #242d9a; border-width: 3px 4px; background: #242d9a padding-box;
+            border-image: var(--tuyd-button, none) 15 15 13 fill / 3px 4px stretch; }
+        .tuydPtButton:hover, .tuydPtButton:focus { color: #fff; text-decoration: none; filter: brightness(1.15); }
+    `);
+}
+
 function pastTournamentsKey(playerId) {
     return "pastTournaments:" + playerId;
 }
@@ -10924,6 +10944,7 @@ function pastTournamentsKey(playerId) {
 // Past Tournaments lists every tournament you were invited to, 30 a page, with no search. With "Past Tournaments: Search
 // Your Whole List" on, a Search button by war.app's Filter opens a panel that searches and filters all of them, read from
 // war.app with its own request and kept in IndexedDB (see readPastTournaments). With it off, the button offers to turn it on.
+// The Tournaments page has the button too, by My Tournaments, opening the panel on the tournaments not finished yet.
 function setupPastTournamentsSearch() {
     var me = null;
     var on = false;
@@ -10935,18 +10956,13 @@ function setupPastTournamentsSearch() {
     var lastUpdate = 0;
     var dialog = null;
     var timer = null;
-    var onScene = false;
+    var onScene = null;
     var cleared = false;
     var series = {};
     var filter = normalizePastTournamentsFilter({});
     var limit = 100;
+    addTournamentButtonStyles();
     addCSS(`
-        .tuydPtButton { position: absolute; left: 4px; bottom: 0; height: 28px; box-sizing: border-box; padding: 0 12px; line-height: 22px; color: #fff; font-size: 14px;
-            font-weight: 700; text-decoration: none; cursor: pointer; pointer-events: auto; white-space: nowrap;
-            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-            border-style: solid; border-color: #242d9a; border-width: 3px 4px; background: #242d9a padding-box;
-            border-image: var(--tuyd-button, none) 15 15 13 fill / 3px 4px stretch; }
-        .tuydPtButton:hover, .tuydPtButton:focus { color: #fff; text-decoration: none; filter: brightness(1.15); }
         #tuydPtSearch { display: flex; flex-direction: column; }
         #tuydPtSearch .tuydPtClose { position: absolute; top: -42px; right: 4px; color: #fff; font-size: 18px; text-decoration: none; }
         #tuydPtSearch a { color: #e0c060; }
@@ -10977,8 +10993,15 @@ function setupPastTournamentsSearch() {
         #tuydPtSearch .communityLaddersCredit { margin-top: 6px; }
     `);
     var scene = function () {
-        var element = ujsElement("PastTournamentsScene");
-        return element && shownUjsElement(element) ? element : null;
+        return ["PastTournamentsScene", "TournamentsScene"].map(function (name) {
+            return ujsElement(name);
+        }).filter(function (element) {
+            return element && shownUjsElement(element);
+        })[0] || null;
+    };
+    var onPastScene = function () {
+        var element = scene();
+        return !!element && element.id === "ujs_PastTournamentsScene";
     };
     var wearArt = function (element) {
         var art = warappArt(scene() || document.body);
@@ -11066,7 +11089,7 @@ function setupPastTournamentsSearch() {
             return 'Couldn\'t read your tournaments from war.app. <a href="#" class="tuydPtRetry">Try again</a>' + tools;
         }
         if (waiting) {
-            return "Waiting for war.app's list: open another page of it, or reload.";
+            return "Waiting for war.app's list: " + (onPastScene() ? "open another page of it, or reload." : "press My Tournaments' Refresh, or reload.");
         }
         if (reading && reading.rescan) {
             return "Reading your whole list again" + (reading.total ? ": " + formatCount(reading.read) + " of " + formatCount(reading.total) : "") + "…";
@@ -11136,7 +11159,7 @@ function setupPastTournamentsSearch() {
                         <option value="">You: any</option><option value="joined">You joined</option><option value="notDeclined">You didn't decline</option>
                         <option value="declined">You declined</option><option value="unanswered">You never answered</option></select>
                     <select name="state" aria-label="State">
-                        <option value="">Any state</option><option value="open">Open</option><option value="running">In progress</option>
+                        <option value="">Any state</option><option value="notFinished">Not finished</option><option value="open">Open</option><option value="running">In progress</option>
                         <option value="finished">Finished</option><option value="cancelled">Cancelled</option></select>
                     <select name="type" aria-label="Kind">
                         <option value="">Any kind</option><option value="single">Single elimination</option><option value="double">Double elimination</option>
@@ -11152,6 +11175,16 @@ function setupPastTournamentsSearch() {
             </div>
             <div class="tuydPtStatus"></div>
             <div class="tuydPtResults"></div>`);
+            body.find(".tuydPtFilters").find("input, select").each(function () {
+                var value = filter[this.name];
+                if (this.type === "checkbox") {
+                    this.checked = value === true;
+                } else if (this.tagName !== "SELECT" || $(this).find("option").filter(function () {
+                    return this.value === String(value);
+                }).length) {
+                    $(this).val(value ? String(value) : "");
+                }
+            });
         }
         fillOptions();
         dialog.find(".tuydPtStatus").html(statusHtml());
@@ -11237,8 +11270,17 @@ function setupPastTournamentsSearch() {
             limit = 100;
             render();
         });
+        if (!onPastScene()) {
+            filter = normalizePastTournamentsFilter(Object.assign({}, filter, { state: "notFinished" }));
+            limit = 100;
+        }
         loadStored().then(render);
         render();
+        if (on && !onPastScene() && (Date.now() - lastUpdate > 60 * 1000 || stored && !stored.complete)) {
+            loadStored().then(function () {
+                update(false);
+            });
+        }
     };
     var placeButton = function () {
         var bar = scene() && $(scene()).find("[id^='ujs_MyTournamentsTopBar']").filter(function () {
@@ -11254,8 +11296,8 @@ function setupPastTournamentsSearch() {
     };
     var check = function () {
         timer = null;
-        var here = !!scene();
-        if (dialog && !here) {
+        var here = scene() ? scene().id : null;
+        if (dialog && here !== onScene) {
             closeDialog();
         }
         if (here) {
@@ -11265,7 +11307,7 @@ function setupPastTournamentsSearch() {
             cleared = true;
             Database.delete(Database.Table.TournamentData, key());
         }
-        if (here && !onScene && on && (Date.now() - lastUpdate > 60 * 1000 || stored && !stored.complete)) {
+        if (here !== onScene && on && onPastScene() && (Date.now() - lastUpdate > 60 * 1000 || stored && !stored.complete)) {
             loadStored().then(function () {
                 update(false);
             });
@@ -11309,6 +11351,289 @@ function setupPastTournamentsSearch() {
             }).observe(document.body, { childList: true, subtree: true });
         });
     });
+}
+
+// An Open Tournaments card as war.app draws it: "Name by creator", "64-player double elimination tournament. (17 spaces
+// left)" or "Round robin tournament", the coins line ("Entry fee: Free!  1st place prize: 100 coins. …", or none) and
+// the boot time, red for real-time. Team size isn't on the card; it's null until war.app's list says (openTournamentsInfo).
+function openTournamentFromCard(card) {
+    var $card = $(card);
+    // Only war.app's own hiding inside the card counts: the card itself may be hidden by the filter.
+    var text = function (name) {
+        var element = $card.find("[id^='ujs_" + name + "'][id$='_tmp']").first();
+        var hidden = element.parentsUntil(card).addBack().filter(function () {
+            return this.style.display === "none";
+        }).length;
+        return element.length && !hidden ? element.text().replace(/\s+/g, " ").trim() : "";
+    };
+    var id = /[?&]ID=(\d+)/i.exec($card.find("a[href*='Tournament?ID=']").attr("href") || "");
+    var label = $card.find("[id^='ujs_TournamentNameLabel'][id$='_tmp']").first();
+    var title = label.text().replace(/\s+/g, " ").trim();
+    var by = label.find("span").filter(function () {
+        return /^\s*by\s/.test($(this).text()) && !$(this).children().length;
+    }).last().text().replace(/\s+/g, " ").trim();
+    var info = text("InfoLabel");
+    var elimination = /^([\d,]+)-player (single|double) elimination/i.exec(info);
+    var coins = text("CoinsLabel");
+    var fee = /Entry fee:\s*Free/i.test(coins) ? 0 : /Entry fee:\s*([\d,]+)/i.exec(coins);
+    var prizes = [];
+    coins.replace(/(\d+)(?:st|nd|rd|th) place prize:\s*(?:up to\s*)?([\d,]+)/gi, function (match, place, amount) {
+        prizes.push([Number(place), Number(amount.replace(/,/g, ""))]);
+    });
+    var boot = $card.find("[id^='ujs_BootTimeLabel'][id$='_tmp']").first();
+    return {
+        id: id ? Number(id[1]) : null,
+        name: by && title.slice(-by.length) === by ? title.slice(0, -by.length).trim() : title,
+        creator: by.replace(/^by\s+/, ""),
+        clan: "",
+        type: elimination ? (elimination[2].toLowerCase() === "double" ? 1 : 0) : /^Round robin/i.test(info) ? 2 : null,
+        players: elimination ? Number(elimination[1].replace(/,/g, "")) : null,
+        teamSize: null,
+        realTime: /^(?:red|rgb\(255,\s*0,\s*0\))$/i.test(boot.length ? boot[0].style.color : ""),
+        fee: fee === 0 ? 0 : fee ? Number(fee[1].replace(/,/g, "")) : null,
+        prizes: prizes
+    };
+}
+
+function openTournamentCards() {
+    return $("#ujs_OpenTournamentsContainer").children().filter(function () {
+        return /^ujs_TournamentInfoControl(_\d+)?$/.test(this.id);
+    }).toArray();
+}
+
+// The filters that make sense for tournaments anyone can join, from the ones Past Tournaments search has.
+function normalizeOpenTournamentsFilter(value) {
+    var all = normalizePastTournamentsFilter(value);
+    return { query: all.query, type: all.type, teams: all.teams, speed: all.speed, coins: all.coins, minPlayers: all.minPlayers, maxPlayers: all.maxPlayers };
+}
+
+function openTournamentsFilterActive(filter) {
+    return Object.keys(filter).some(function (key) {
+        return !!filter[key];
+    });
+}
+
+// What a card doesn't tell (team size until war.app's list is read, a round robin's size) doesn't filter it out.
+function openTournamentMatches(tournament, filter) {
+    var known = Object.assign({}, normalizePastTournamentsFilter(filter));
+    if (tournament.teamSize === null || tournament.teamSize === undefined) {
+        known.teams = "";
+    }
+    if (tournament.players === null || tournament.players === undefined) {
+        known.minPlayers = 0;
+        known.maxPlayers = 0;
+    }
+    if (tournament.type === null) {
+        known.type = "";
+    }
+    return pastTournamentMatches(Object.assign({ prizes: [] }, tournament), known, {});
+}
+
+// war.app stacks the cards from the top with `bottom`, each as tall as its own lines. Cards that match take the places
+// from the top down, in war.app's order, and the rest are hidden; with no filter, every card goes back where it was.
+function layoutOpenTournaments(cards, matches) {
+    cards.forEach(function (card) {
+        if (card.getAttribute("data-tuyd-bottom") === null) {
+            card.setAttribute("data-tuyd-bottom", parseFloat(card.style.bottom) || 0);
+        }
+    });
+    var bottom = function (card) {
+        return Number(card.getAttribute("data-tuyd-bottom"));
+    };
+    var height = function (card) {
+        var art = document.getElementById(card.id + "_img");
+        return art ? parseFloat(art.style.height) || 0 : 0;
+    };
+    cards = cards.slice().sort(function (a, b) {
+        return bottom(b) - bottom(a);
+    });
+    var gap = cards.length > 1 ? Math.max(0, bottom(cards[0]) - bottom(cards[1]) - height(cards[1])) : 0;
+    var top = cards.length ? bottom(cards[0]) + height(cards[0]) : 0;
+    var shown = 0;
+    cards.forEach(function (card) {
+        var visible = !matches || matches(card);
+        card.style.display = visible ? "" : "none";
+        if (visible) {
+            card.style.bottom = (matches ? top - height(card) : bottom(card)) + "px";
+            top -= height(card) + gap;
+            shown++;
+        }
+    });
+    return { shown: shown, total: cards.length };
+}
+
+// war.app's Open Tournaments has no filter. With 6 or more open tournaments, a Filter button left of its title opens
+// filters by name or creator, kind, players or teams, speed, coins and number of players, above the bar so the list stays
+// in view; war.app's cards that don't match are hidden and the rest move up. Team sizes come from war.app's own list (filter 8 of GetMyTournaments), read
+// once the teams filter or the dropdown is used.
+function setupOpenTournamentsFilter() {
+    var filter = normalizeOpenTournamentsFilter({});
+    try {
+        filter = normalizeOpenTournamentsFilter(JSON.parse(localStorage.getItem(OPEN_TOURNAMENTS_FILTER_KEY)) || {});
+    } catch (e) {
+    }
+    var known = {};
+    var fetching = false;
+    var fetchedAt = 0;
+    var signature = "";
+    var timer = null;
+    addTournamentButtonStyles();
+    addCSS(`
+        #tuydOtFilter { position: absolute; bottom: 32px; left: 4px; width: 604px; box-sizing: border-box; z-index: 20; padding: 8px 10px; pointer-events: auto;
+            background: rgba(22, 22, 22, 0.97); border: 1px solid #555; border-radius: 4px; color: #ccc; font-size: 13px; }
+        #tuydOtFilter > div { margin-bottom: 6px; }
+        #tuydOtFilter > div:last-child { margin-bottom: 0; }
+        #tuydOtFilter input, #tuydOtFilter select { display: inline-block; width: auto; margin: 0 6px 2px 0; background: #222; color: #ddd; border: 1px solid #555;
+            padding: 1px 4px; color-scheme: dark; }
+        #tuydOtFilter input[type=search] { width: 220px; }
+        #tuydOtFilter input[type=number] { width: 56px; }
+        #tuydOtFilter label { font-weight: normal; margin: 0; }
+        #tuydOtFilter a { color: #e0c060; }
+        #tuydOtFilter .tuydOtCount { color: #8d8d8d; }
+        .tuydOtOpen.tuydOtActive { color: #ffd700; }
+    `);
+    var scene = function () {
+        var element = ujsElement("TournamentsScene");
+        return element && shownUjsElement(element) ? element : null;
+    };
+    var cardData = function (card) {
+        var tournament = openTournamentFromCard(card);
+        var info = known[tournament.id];
+        return info ? Object.assign(tournament, { teamSize: info.teamSize, players: info.players, realTime: info.realTime, fee: info.fee, prizes: info.prizes }) : tournament;
+    };
+    var learn = function () {
+        var cards = openTournamentCards();
+        var missing = cards.some(function (card) {
+            var tournament = openTournamentFromCard(card);
+            return tournament.id !== null && !known[tournament.id];
+        });
+        if (!missing || fetching || !lastMyTournamentsRequest || Date.now() - fetchedAt < 30 * 1000) {
+            return;
+        }
+        fetching = true;
+        fetchedAt = Date.now();
+        fetchMyTournaments(lastMyTournamentsRequest, 0, 2147483647, 8).then(function (page) {
+            page.open.concat(page.tournaments).forEach(function (tournament) {
+                known[tournament.id] = tournament;
+            });
+        }, function (error) {
+            log("Open Tournaments: " + (error && error.message || error));
+        }).then(function () {
+            fetching = false;
+            apply();
+        });
+    };
+    var apply = function () {
+        var cards = openTournamentCards();
+        var active = openTournamentsFilterActive(filter);
+        var counts = layoutOpenTournaments(cards, active ? function (card) {
+            return openTournamentMatches(cardData(card), filter);
+        } : null);
+        $(".tuydOtOpen").toggleClass("tuydOtActive", active)
+            .attr("title", active ? "Showing " + counts.shown + " of " + counts.total + " open tournaments (Muli's Userscript)" : "Filter the open tournaments (Muli's Userscript)");
+        $("#tuydOtFilter .tuydOtCount").text(active ? counts.shown + " of " + counts.total + " shown" + (counts.shown ? "" : ": none matches") : counts.total + " open tournaments");
+        if (active && filter.teams) {
+            learn();
+        }
+    };
+    var save = function () {
+        try {
+            localStorage.setItem(OPEN_TOURNAMENTS_FILTER_KEY, JSON.stringify(filter));
+        } catch (e) {
+        }
+    };
+    var closeDropdown = function () {
+        $("#tuydOtFilter").remove();
+    };
+    var openDropdown = function () {
+        var bar = $(ujsElement("OpenTournamentsTopBar"));
+        if (!bar.length || $("#tuydOtFilter").length) {
+            return;
+        }
+        var dropdown = $(`<div id="tuydOtFilter" role="dialog" aria-label="Filter the open tournaments">
+            <div><input type="search" name="query" placeholder="Name or creator" aria-label="Search by name or creator">
+                <select name="type" aria-label="Kind"><option value="">Any kind</option><option value="single">Single elimination</option>
+                    <option value="double">Double elimination</option><option value="roundRobin">Round robin</option></select>
+                <select name="teams" aria-label="Teams"><option value="">Players or teams</option><option value="solo">Players</option><option value="teams">Teams</option></select></div>
+            <div><select name="speed" aria-label="Speed"><option value="">Any speed</option><option value="realTime">Real-time</option><option value="multiDay">Multi-day</option></select>
+                <select name="coins" aria-label="Coins"><option value="">Any coins</option><option value="free">No entry fee</option><option value="fee">Entry fee</option>
+                    <option value="prize">Coin prizes</option></select>
+                <label>Players <input type="number" name="minPlayers" min="0" step="1" aria-label="At least this many players"> to
+                    <input type="number" name="maxPlayers" min="0" step="1" aria-label="At most this many players"></label></div>
+            <div><span class="tuydOtCount"></span> · <a href="#" class="tuydOtClear">Clear</a></div>
+        </div>`).appendTo(bar);
+        dropdown.find("input, select").each(function () {
+            $(this).val(filter[this.name] ? String(filter[this.name]) : "");
+        });
+        apply();
+        learn();
+    };
+    var check = function () {
+        timer = null;
+        var cards = scene() ? openTournamentCards() : [];
+        var bar = $(ujsElement("OpenTournamentsTopBar"));
+        if (cards.length < OPEN_TOURNAMENTS_FILTER_MIN) {
+            closeDropdown();
+            $(".tuydOtOpen").remove();
+            if (signature) {
+                signature = "";
+                layoutOpenTournaments(cards, null);
+            }
+            return;
+        }
+        if (bar.length && !bar.children(".tuydOtOpen").length) {
+            var button = $('<a href="#" class="tuydPtButton tuydOtOpen">Filter</a>').appendTo(bar);
+            var art = warappArt(scene());
+            if (art["--tuyd-button"]) {
+                button[0].style.setProperty("--tuyd-button", art["--tuyd-button"]);
+            }
+        }
+        var now = cards.map(function (card) {
+            return card.id + ":" + card.getAttribute("data-tuyd-bottom");
+        }).join(",");
+        if (now !== signature) {
+            signature = now;
+            apply();
+        }
+    };
+    $(document).on("click", ".tuydOtOpen", function (event) {
+        event.preventDefault();
+        if ($("#tuydOtFilter").length) {
+            closeDropdown();
+        } else {
+            openDropdown();
+        }
+    }).on("click", "#tuydOtFilter .tuydOtClear", function (event) {
+        event.preventDefault();
+        filter = normalizeOpenTournamentsFilter({});
+        $("#tuydOtFilter").find("input, select").val("");
+        save();
+        apply();
+    }).on("input change", "#tuydOtFilter input, #tuydOtFilter select", function () {
+        var field = function (name) {
+            return $("#tuydOtFilter [name=" + name + "]").val();
+        };
+        filter = normalizeOpenTournamentsFilter({
+            query: field("query"), type: field("type"), teams: field("teams"), speed: field("speed"), coins: field("coins"),
+            minPlayers: field("minPlayers"), maxPlayers: field("maxPlayers")
+        });
+        save();
+        apply();
+    }).on("mousedown", function (event) {
+        if ($("#tuydOtFilter").length && !$(event.target).closest("#tuydOtFilter, .tuydOtOpen").length) {
+            closeDropdown();
+        }
+    }).on("keydown", function (event) {
+        if (event.key === "Escape") {
+            closeDropdown();
+        }
+    });
+    new MutationObserver(function () {
+        if (!timer) {
+            timer = setTimeout(check, 200);
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+    check();
 }
 
 var QUICKMATCH_GAMES_KEY = "tidyUpYourDashboard.quickmatchGames";

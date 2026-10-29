@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.58.0
+
+- **Filters on Open Tournaments.** With 6 or more open tournaments on the Tournaments page, a **Filter** button left of the "Open Tournaments" title opens filters: name or creator, kind (single or double elimination, round robin), players or teams, real-time or multi-day, coins (no entry fee, entry fee, coin prizes) and number of players. War.app's cards that don't match are hidden and the rest move up; the button turns gold while a filter is on, and the filter is remembered for next time. **Clear** shows them all again. Team sizes aren't on the cards, so the script reads them from war.app's own list once you use the filter.
+- **Search on the Tournaments page.** The Past Tournaments **Search** button is now by My Tournaments too. There it opens the search panel on the tournaments not finished yet (a new **Not finished** state: open or in progress), and brings your list up to date only when you open it.
+- **The search panel shows the filters in use when reopened.** Closing and reopening Past Tournaments search showed empty filters over a filtered list; the filters now show as they are.
+
 ## 3.57.0
 
 - **Past Tournaments search: CSV.** A **CSV** link next to "N of M tournaments" in the Past Tournaments search panel downloads the tournaments that match your filters, in the order shown, as past-tournaments.csv: ID, name, series, creator, clan, kind, players, team size, boot time, real-time, entry fee, prizes, your part (joined, declined, not answered), state, start date, unread chat and a link to each.

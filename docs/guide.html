@@ -324,14 +324,18 @@
     <li>For community series (Titled Tuesday, War Gaming Live, P/R League…), a link to the tournament's page on custom.wl-stats.com.</li>
     <li>To find yourself in the bracket, use war.app's own <strong>Find…</strong> on the Bracket tab.</li>
   </ul>
+  <h3 id="open-tournaments">Filters on Open Tournaments</h3>
+  <p class="where">war.app → Multi-Player → Tournaments</p>
+  <p>With 6 or more open tournaments, a <strong>Filter</strong> button sits left of the "Open Tournaments" title. It opens filters above the list: name or creator, kind (single or double elimination, round robin), players or teams, real-time or multi-day, coins (no entry fee, entry fee, coin prizes) and number of players. Tournaments that don't match are hidden and the rest move up; "2 of 9 shown" counts them, and the button is gold while a filter is on. The filter is remembered for next time; <strong>Clear</strong> shows them all. A click elsewhere or Esc closes the filters. Team sizes aren't on war.app's cards, so the script reads them from war.app's list when you first use the filter; until then, the teams filter leaves every tournament in. <span class="setting">Filters on Open Tournaments</span> (on; settings → Tournaments).</p>
   <h3 id="past-tournaments">Search all your past tournaments</h3>
-  <p class="where">war.app → Multi-Player → Tournaments → Past Tournaments</p>
+  <p class="where">war.app → Multi-Player → Tournaments → Past Tournaments, and the Tournaments page</p>
   <p>War.app lists every tournament you were invited to, 30 a page, with no search. The script's <strong>Search</strong> button, next to war.app's Filter and Sort, opens a panel that searches and filters all of them.</p>
   <ul>
     <li>It's off at first. Click <strong>Search</strong> and the panel explains what it does, with <strong>Turn on</strong> and <strong>Not now</strong>. Or turn on <span class="setting">Past Tournaments: Search Your Whole List</span> (off; settings → Tournaments).</li>
     <li>Once it's on, the script reads your list from war.app, about a second for each 1,000 tournaments, and keeps it in this browser. Each time you open Past Tournaments it goes on reading until it has your whole list, then adds new tournaments and updates the ones still open or in progress. If it says "Waiting for war.app's list", go to another page of war.app's list, or reload.</li>
     <li>Filters: name, creator or clan; series (the start of names several of your tournaments share, such as Titled Tuesday or WGL); creator; whether you joined, declined, never answered, or didn't decline; state; kind (single or double elimination, round robin); players or teams; real-time or multi-day; no entry fee, entry fee or coin prizes; number of players; start date; unread chat; oldest first.</li>
     <li>Each tournament links to its page, with its creator, kind, boot time, entry fee and prizes, your part (Joined green, Declined red) and its state with the date it was set to start.</li>
+    <li>On the Tournaments page, the <strong>Search</strong> button left of "My Tournaments" opens the same panel with the state set to <strong>Not finished</strong> (open or in progress). There your list is brought up to date when you open the panel, not each time you come to the page.</li>
     <li><strong>CSV</strong>, next to "N of M tournaments", downloads the tournaments that match, in the order shown, for a spreadsheet: name, series, creator, clan, kind, players, boot time, coins, your part, state, start date and link.</li>
     <li><strong>Rescan</strong> reads your whole list again. <strong>Turn off</strong> stops it and deletes the list from this browser.</li>
   </ul>
