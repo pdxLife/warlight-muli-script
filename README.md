@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.57.0  
+> **Version:** 3.58.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -65,7 +65,8 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 - **custom.wl-stats.com link** — on a tournament that [custom.wl-stats.com](https://custom.wl-stats.com) has read (Titled Tuesday, War Gaming Live and P/R League groups played as war.app tournaments), links its page there and its series, next to "Created by".
-- **Search all your past tournaments** (setting **Past Tournaments: Search Your Whole List**, off by default) — a **Search** button on Past Tournaments, next to war.app's Filter and Sort, opens a panel that searches and filters every tournament you were invited to: name, creator or clan, series, whether you joined, declined or never answered, state, kind, players or teams, speed, coins, number of players, start date and unread chat. **CSV** downloads the tournaments that match as a spreadsheet. While the setting is off, Search explains it and offers to turn it on. The script reads your whole list from war.app (about a second for each 1,000 tournaments), keeps it in this browser, and on each visit goes on until it has all of it, then adds new tournaments and updates running ones. Turning it off deletes the list.
+- **Filters on Open Tournaments** — with 6 or more open tournaments on the Tournaments page, a **Filter** button by "Open Tournaments" filters them by name or creator, kind, players or teams, real-time or multi-day, coins and number of players; war.app's cards that don't match are hidden and the rest move up. The filter is remembered; **Clear** shows them all.
+- **Search all your past tournaments** (setting **Past Tournaments: Search Your Whole List**, off by default) — a **Search** button on Past Tournaments, next to war.app's Filter and Sort, opens a panel that searches and filters every tournament you were invited to: name, creator or clan, series, whether you joined, declined or never answered, state, kind, players or teams, speed, coins, number of players, start date and unread chat. **CSV** downloads the tournaments that match as a spreadsheet. The Tournaments page has the Search button too, by My Tournaments, opening on the tournaments not finished yet. While the setting is off, Search explains it and offers to turn it on. The script reads your whole list from war.app (about a second for each 1,000 tournaments), keeps it in this browser, and on each visit goes on until it has all of it, then adds new tournaments and updates running ones. Turning it off deletes the list.
 
 ### Ladders
 

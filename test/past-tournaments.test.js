@@ -62,7 +62,7 @@ function writeTournament(w, t) {
     w.int(t.id).byte(t.type);
 }
 
-function reply(total, tournaments, { extras = false } = {}) {
+function reply(total, tournaments, { extras = false, open = null } = {}) {
     const w = writer().short(242 | 0x8000).int(1514664249).int(4).int(88);
     if (extras) {
         w.byte(1).bool(true).int(1).int(3).text("x").bool(true).int(5).text("abc")
@@ -70,7 +70,12 @@ function reply(total, tournaments, { extras = false } = {}) {
             .bool(true).int(1).int(2).bool(true).int(1).text("z")
             .bool(true).bool(true).double(1).bool(false);
     } else w.byte(0);
-    w.byte(0).bool(true).int(total).bool(false).double(8.9e11).bool(true).int(tournaments.length);
+    w.byte(0).bool(true).int(total);
+    if (open) {
+        w.bool(true).int(open.length);
+        open.forEach((t) => writeTournament(w.bool(true), t));
+    } else w.bool(false);
+    w.double(8.9e11).bool(true).int(tournaments.length);
     tournaments.forEach((t) => writeTournament(w.bool(true), t));
     return w.hex();
 }
@@ -278,8 +283,8 @@ const LIST = [
     tournament(9101, { name: "Titled Tuesday 1", me: 0, state: 1 })
 ];
 
-function screen({ setting = false, record = null, template = null, list = LIST } = {}) {
-    const { dom, $ } = createDom(SCENE, "https://war.app/MultiPlayer/Tournaments/Past");
+function screen({ setting = false, record = null, template = null, list = LIST, html = SCENE, url = "https://war.app/MultiPlayer/Tournaments/Past" } = {}) {
+    const { dom, $ } = createDom(html, url);
     const db = { updates: [], deletes: [], record };
     const Database = {
         Table: { Settings: "Settings", TournamentData: "TournamentData" },
@@ -297,7 +302,7 @@ function screen({ setting = false, record = null, template = null, list = LIST }
     };
     const ctx = load(["setupPastTournamentsSearch", "pastTournamentsKey", "normalizePastTournamentsFilter", "pastTournamentSeries", "pastTournamentOptions", "pastTournamentMatches",
         "pastTournamentDate", "pastTournamentsListHtml", "pastTournamentKindText", "pastTournamentCoinsText", "pastTournamentBootText", "readPastTournaments", "fetchMyTournaments",
-        "myTournamentsRequest", "parseMyTournamentsReply", "pastTournamentsCsv", "csvCell", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "formatCount"], {
+        "myTournamentsRequest", "parseMyTournamentsReply", "pastTournamentsCsv", "csvCell", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "addTournamentButtonStyles", "formatCount"], {
         ...domGlobals(dom, $),
         window: dom.window,
         Database,
@@ -424,4 +429,189 @@ test("turning off the feature also stops watching war.app's requests: both use t
     const name = source.match(/^var PAST_TOURNAMENTS_FEATURE = "([^"]+)";$/m)[1];
     assert.ok(source.includes(`{ name: "${name}", section: "Tournaments", match: pageHasUjsScenes, run: setupPastTournamentsSearch }`));
     assert.match(source, /if \(disabledFeatures\(\)\.indexOf\(PAST_TOURNAMENTS_FEATURE\) === -1\) \{\s+watchMyTournamentsRequests\(\);/);
+});
+
+test("parseMyTournamentsReply also returns the open tournaments the Tournaments page's answer carries", () => {
+    const page = parse(reply(4, [tournament(9101)], { open: [tournament(9200, { name: "Open one", me: null, state: 0 }), tournament(9201, { teamSize: 3 })] }));
+    assert.deepEqual(page.tournaments.map((t) => t.id), [9101]);
+    assert.deepEqual(page.open.map((t) => [t.id, t.teamSize]), [[9200, 1], [9201, 3]]);
+    assert.deepEqual(parse(reply(1, [tournament(5)])).open, []);
+});
+
+test("Not finished keeps open and running tournaments", () => {
+    const { normalizePastTournamentsFilter, pastTournamentMatches } = load(["normalizePastTournamentsFilter", "pastTournamentMatches", "pastTournamentDate"]);
+    const filter = normalizePastTournamentsFilter({ state: "notFinished" });
+    assert.deepEqual([0, 1, 2, 3].filter((state) => pastTournamentMatches({ id: 1, name: "x", state, prizes: [] }, filter, {})), [0, 1]);
+});
+
+const TOURNAMENTS_SCENE = (cards = "") => `<div id="UjsCanvasHolder"><div id="ujs_TournamentsScene">
+    <div id="ujs_MyTournaments"><div id="ujs_MyTournamentsTopBar"><div id="ujs_Spacer"></div></div><div id="ujs_MyTournamentsContainer"></div></div>
+    <div id="ujs_OpenTournaments"><div id="ujs_OpenTournamentsTopBar"><div id="ujs_Spacer_2"></div></div><div id="ujs_OpenTournamentsContainer">${cards}</div></div>
+</div></div>`;
+
+test("on the Tournaments page, Search opens the panel on the tournaments not finished yet, reading only when it opens", async () => {
+    const list = [tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
+    const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 3, checkedAt: 0, tournaments: parse(reply(3, list)).tournaments } };
+    const { $, requests, settle } = screen({ setting: true, record, template: TEMPLATE, list, html: TOURNAMENTS_SCENE(), url: "https://war.app/MultiPlayer/Tournaments/" });
+    await settle();
+    assert.equal($("#ujs_MyTournamentsTopBar > .tuydPtOpen").text(), "Search");
+    assert.equal(requests.length, 0, "nothing is read just for coming to the Tournaments page");
+    $(".tuydPtOpen").trigger("click");
+    await settle();
+    assert.equal($("#tuydPtSearch [name=state]").val(), "notFinished");
+    assert.deepEqual($("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get(), ["9102", "9101"]);
+    assert.deepEqual(requests.map((r) => [r.filter, r.offset, r.count]), [[0, 0, 100]]);
+    $("#tuydPtSearch [name=query]").val("Tournament 9102").trigger("input");
+    $(".tuydPtOpen").trigger("click");
+    $(".tuydPtOpen").trigger("click");
+    assert.equal($("#tuydPtSearch [name=query]").val(), "Tournament 9102", "a reopened panel shows the filters still in use");
+    assert.equal($("#tuydPtSearch .tuydPtList tbody tr").length, 1);
+});
+
+// An Open Tournaments card as war.app draws it (names and ids are invented).
+const CARD = (n, { id, name, by = "Ann", info = "16-player single elimination tournament. (5 spaces left)", coins = null, boot = "3 days", red = false, height = 104 }) => {
+    const sfx = n > 1 ? "_" + n : "";
+    return `<div id="ujs_TournamentInfoControl${sfx}" style="left: 3px; bottom: 0px;"><div id="ujs_TournamentInfoControl${sfx}_img" style="width: 600px; height: ${height}px;"></div>`
+        + `<a id="ujs_TournamentInfoControl${sfx}_btn" href="/MultiPlayer/Tournament?ID=${id}"></a>`
+        + `<div id="ujs_MapThumbnailContainer${sfx}"><div id="ujs_MapThumbnail${sfx}"><div id="ujs_BootTimeLabel${sfx}"><div id="ujs_BootTimeLabel${sfx}_tmp" style="color: ${red ? "rgb(255, 0, 0)" : "rgb(0, 255, 0)"};">${boot}</div></div></div></div>`
+        + `<div id="ujs_Vert${sfx}"><div id="ujs_TournamentNameLabel${sfx}"><div id="ujs_TournamentNameLabel${sfx}_tmp"><span style="max-width: 100%">${name}<span style="color: #898989"> by ${by}</span></span></div></div>`
+        + `<div id="ujs_InfoLabel${sfx}"><div id="ujs_InfoLabel${sfx}_tmp">${info}</div></div>`
+        + `<div id="ujs_CoinsLabel${sfx}"${coins === null ? ' style="display: none"' : ""}><div id="ujs_CoinsLabel${sfx}_tmp">${coins || ""}</div></div></div></div>`;
+};
+
+// Stacks the cards from the top as war.app does: each `bottom` is the space below it, 9px between cards.
+function stacked(cards) {
+    const heights = cards.map((card) => card.height || 104);
+    let below = 8;
+    const bottoms = [];
+    for (let i = cards.length - 1; i >= 0; i--) {
+        bottoms[i] = below;
+        below += heights[i] + 9;
+    }
+    return cards.map((card, i) => CARD(i + 1, card).replace('bottom: 0px;', `bottom: ${bottoms[i]}px;`)).join("");
+}
+
+const OPEN = [
+    { id: 201, name: "Advanced Brawl SE", by: "t7soldier", info: "64-player double elimination tournament. (32 spaces left)", coins: "Entry fee: Free!  1st place prize: 100 coins.  2nd place prize: 43 coins.", boot: "1 day 12 hours", height: 118 },
+    { id: 202, name: "Strategic 2v2", by: "Bob", info: "64-player single elimination tournament. (44 spaces left)", coins: "Entry fee: Free!  1st place prize: 200 coins." },
+    { id: 203, name: "Scouse War", by: "FarkitMan", info: "32-player double elimination tournament. (29 spaces left)", coins: "Entry fee: 1,200 coins.  1st place prize: up to 2,540 coins.", height: 118 },
+    { id: 204, name: "Speedy RR", by: "Cy", info: "Round robin tournament", boot: "5 minutes", red: true },
+    { id: 205, name: "Quiet one", by: "Dee", info: "8-player single elimination tournament. (7 spaces left)" },
+    { id: 206, name: "Big teams", by: "Eve", info: "16-player single elimination tournament. (12 spaces left)" }
+];
+
+test("openTournamentFromCard reads a card's name, creator, kind, players, coins and speed", () => {
+    const { dom, $ } = createDom(TOURNAMENTS_SCENE(stacked(OPEN)));
+    const ctx = load(["openTournamentFromCard", "openTournamentCards"], { ...domGlobals(dom, $) });
+    const cards = ctx.openTournamentCards().map((card) => JSON.parse(JSON.stringify(ctx.openTournamentFromCard(card))));
+    assert.deepEqual(cards[0], { id: 201, name: "Advanced Brawl SE", creator: "t7soldier", clan: "", type: 1, players: 64, teamSize: null, realTime: false, fee: 0, prizes: [[1, 100], [2, 43]] });
+    assert.deepEqual([cards[2].fee, cards[2].prizes], [1200, [[1, 2540]]]);
+    assert.deepEqual([cards[3].type, cards[3].players, cards[3].realTime, cards[3].fee], [2, null, true, null]);
+    assert.equal(cards[4].creator, "Dee");
+    ctx.openTournamentCards()[2].style.display = "none";
+    assert.equal(ctx.openTournamentFromCard(ctx.openTournamentCards()[2]).fee, 1200, "a card the filter hid still reads in full");
+});
+
+test("layoutOpenTournaments moves the cards that match up in war.app's order, each at its own height, and puts them back", () => {
+    const { dom, $ } = createDom(TOURNAMENTS_SCENE(stacked(OPEN)));
+    const ctx = load(["layoutOpenTournaments", "openTournamentCards"], { ...domGlobals(dom, $) });
+    const cards = ctx.openTournamentCards();
+    const before = cards.map((card) => card.style.bottom);
+    const keep = new Set(["ujs_TournamentInfoControl_3", "ujs_TournamentInfoControl_5"]);
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.layoutOpenTournaments(cards, (card) => keep.has(card.id)))), { shown: 2, total: 6 });
+    assert.equal(cards[2].style.bottom, before[0], "the first match, as tall as the first card, takes its place");
+    assert.equal(Number.parseFloat(cards[4].style.bottom), Number.parseFloat(before[0]) - 9 - 104, "the next one sits 9px below it");
+    assert.deepEqual(cards.map((card) => card.style.display), ["none", "none", "", "none", "", "none"]);
+    ctx.layoutOpenTournaments(cards, null);
+    assert.deepEqual(cards.map((card) => card.style.bottom), before);
+    assert.deepEqual(cards.map((card) => card.style.display), ["", "", "", "", "", ""]);
+});
+
+function openScreen({ cards = OPEN, saved = null, template = TEMPLATE, open = [] } = {}) {
+    const { dom, $ } = createDom(TOURNAMENTS_SCENE(stacked(cards)), "https://war.app/MultiPlayer/Tournaments/");
+    const storage = dom.window.localStorage;
+    if (saved) storage.setItem("tidyUpYourDashboard.openTournamentsFilter", JSON.stringify(saved));
+    const requests = [];
+    const fetch = (url, options) => {
+        requests.push(requestArgs(options.body));
+        return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(reply(1, [tournament(9101)], { open })) });
+    };
+    const ctx = load(["setupOpenTournamentsFilter", "openTournamentFromCard", "openTournamentCards", "normalizeOpenTournamentsFilter", "normalizePastTournamentsFilter",
+        "openTournamentsFilterActive", "openTournamentMatches", "pastTournamentMatches", "pastTournamentDate", "layoutOpenTournaments", "fetchMyTournaments", "myTournamentsRequest",
+        "parseMyTournamentsReply", "addTournamentButtonStyles", "ujsElement", "shownUjsElement", "warappArt"], {
+        ...domGlobals(dom, $),
+        window: dom.window,
+        localStorage: storage,
+        fetch,
+        addCSS: () => { },
+        log: () => { },
+        Promise, TextDecoder, Uint8Array, DataView,
+        setTimeout: (fn) => setTimeout(fn, 0),
+        lastMyTournamentsRequest: template,
+        OPEN_TOURNAMENTS_FILTER_KEY: "tidyUpYourDashboard.openTournamentsFilter",
+        OPEN_TOURNAMENTS_FILTER_MIN: 6
+    });
+    ctx.setupOpenTournamentsFilter();
+    const settle = async () => {
+        for (let i = 0; i < 5; i++) {
+            await flush();
+            await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+    };
+    const shown = () => ctx.openTournamentCards().filter((card) => card.style.display !== "none").map((card) => $(card).find("a").attr("href").split("=")[1]);
+    return { $, storage, requests, settle, shown };
+}
+
+test("Open Tournaments gets no Filter button with fewer than 6 tournaments", async () => {
+    const { $, settle } = openScreen({ cards: OPEN.slice(0, 5) });
+    await settle();
+    assert.equal($(".tuydOtOpen").length, 0);
+});
+
+test("Filter on Open Tournaments hides the cards that don't match, remembers the filter, and Clear shows them all", async () => {
+    const { $, storage, requests, settle, shown } = openScreen();
+    await settle();
+    assert.equal($("#ujs_OpenTournamentsTopBar > .tuydOtOpen").text(), "Filter");
+    assert.equal(shown().length, 6);
+    $(".tuydOtOpen").trigger("click");
+    assert.equal($("#tuydOtFilter").parent().attr("id"), "ujs_OpenTournamentsTopBar");
+    assert.equal($("#tuydOtFilter .tuydOtCount").text(), "6 open tournaments");
+    $("#tuydOtFilter [name=coins]").val("fee").trigger("change");
+    assert.deepEqual(shown(), ["203"]);
+    assert.equal($("#tuydOtFilter .tuydOtCount").text(), "1 of 6 shown");
+    assert.ok($(".tuydOtOpen").hasClass("tuydOtActive"));
+    $("#tuydOtFilter [name=coins]").val("").trigger("change");
+    $("#tuydOtFilter [name=speed]").val("realTime").trigger("change");
+    assert.deepEqual(shown(), ["204"]);
+    $("#tuydOtFilter [name=speed]").val("").trigger("change");
+    $("#tuydOtFilter [name=query]").val("bob").trigger("input");
+    assert.deepEqual(shown(), ["202"]);
+    $("#tuydOtFilter [name=query]").val("").trigger("input");
+    $("#tuydOtFilter [name=type]").val("double").trigger("change");
+    assert.deepEqual(shown(), ["201", "203"]);
+    $("#tuydOtFilter [name=maxPlayers]").val("40").trigger("input");
+    assert.deepEqual(shown(), ["203"]);
+    assert.deepEqual(JSON.parse(storage.getItem("tidyUpYourDashboard.openTournamentsFilter")), { query: "", type: "double", teams: "", speed: "", coins: "", minPlayers: 0, maxPlayers: 40 });
+    $("#tuydOtFilter .tuydOtClear").trigger("click");
+    assert.equal(shown().length, 6);
+    assert.equal($("#tuydOtFilter [name=type]").val(), "");
+    $("#ujs_MyTournaments").trigger("mousedown");
+    assert.equal($("#tuydOtFilter").length, 0, "a click elsewhere closes it");
+    await settle();
+    assert.deepEqual(requests.map((r) => [r.filter, r.count]), [[8, 2147483647]], "opening it reads war.app's list once, for team sizes");
+});
+
+test("the teams filter uses team sizes from war.app's list, and a saved filter applies when the page opens", async () => {
+    const open = OPEN.map((card) => tournament(card.id, { teamSize: card.id === 206 ? 2 : 1, type: card.id === 204 ? 2 : 0 }));
+    const { $, settle, shown } = openScreen({ saved: { teams: "teams" }, open });
+    await settle();
+    assert.deepEqual(shown(), ["206"]);
+    assert.ok($(".tuydOtOpen").hasClass("tuydOtActive"));
+    assert.match($(".tuydOtOpen").attr("title"), /^Showing 1 of 6 open tournaments/);
+});
+
+test("with war.app's list unread, the teams filter leaves every card in", async () => {
+    const { settle, shown } = openScreen({ saved: { teams: "teams" }, template: null });
+    await settle();
+    assert.equal(shown().length, 6);
 });
