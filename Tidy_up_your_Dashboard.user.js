@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.56.0
+// @version 3.57.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -19,7 +19,7 @@
 // ==/UserScript==
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.56.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.57.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -10901,6 +10901,22 @@ function pastTournamentsListHtml(tournaments) {
     return '<table class="tuydPtList"><thead><tr><td>Tournament</td><td>You</td><td title="With the date it was set to start">State</td></tr></thead><tbody>' + rows + "</tbody></table>";
 }
 
+function pastTournamentsCsv(tournaments, series, origin) {
+    var rows = [["Tournament ID", "Tournament", "Series", "Creator", "Clan", "Kind", "Players", "Team size", "Boot time", "Real-time", "Entry fee", "Prizes",
+        "You", "State", "Start date", "Unread chat", "Link"]];
+    tournaments.forEach(function (tournament) {
+        rows.push([tournament.id, tournament.name, (series || {})[tournament.id] || "", tournament.creator, tournament.clan,
+            ["Single elimination", "Double elimination", "Round robin"][tournament.type] || "", tournament.players, tournament.teamSize,
+            pastTournamentBootText(tournament.boot), tournament.realTime ? "Yes" : "No", tournament.fee === null || tournament.fee === undefined ? "" : tournament.fee,
+            pastTournamentCoinsText(tournament).split(" · ").slice(1).join("; "), PAST_TOURNAMENTS_YOU[tournament.me] || "",
+            PAST_TOURNAMENTS_STATES[tournament.state] || "", pastTournamentDate(tournament), tournament.unread ? "Yes" : "No",
+            origin + "/MultiPlayer/Tournament?ID=" + tournament.id]);
+    });
+    return rows.map(function (row) {
+        return row.map(csvCell).join(",");
+    }).join("\r\n") + "\r\n";
+}
+
 function pastTournamentsKey(playerId) {
     return "pastTournaments:" + playerId;
 }
@@ -10957,6 +10973,7 @@ function setupPastTournamentsSearch() {
         #tuydPtSearch .tuydPtYou1 { color: #7c7; }
         #tuydPtSearch .tuydPtYou2 { color: #e77; }
         #tuydPtSearch .tuydPtMore { margin: 8px 6px; }
+        #tuydPtSearch .tuydPtHead .tuydPtCsv { margin-left: 8px; }
         #tuydPtSearch .communityLaddersCredit { margin-top: 6px; }
     `);
     var scene = function () {
@@ -11086,6 +11103,12 @@ function setupPastTournamentsSearch() {
             select.val(filter[field[0]]);
         });
     };
+    var shownTournaments = function () {
+        var shown = (stored ? stored.tournaments : []).filter(function (tournament) {
+            return pastTournamentMatches(tournament, filter, series);
+        });
+        return filter.reversed ? shown.reverse() : shown;
+    };
     var render = function () {
         if (!dialog) {
             return;
@@ -11137,13 +11160,9 @@ function setupPastTournamentsSearch() {
             results.html("");
             return;
         }
-        var shown = stored.tournaments.filter(function (tournament) {
-            return pastTournamentMatches(tournament, filter, series);
-        });
-        if (filter.reversed) {
-            shown.reverse();
-        }
-        results.html('<div class="tuydPtHead">' + formatCount(shown.length) + " of " + formatCount(stored.tournaments.length) + " tournaments</div>"
+        var shown = shownTournaments();
+        results.html('<div class="tuydPtHead">' + formatCount(shown.length) + " of " + formatCount(stored.tournaments.length) + " tournaments"
+            + (shown.length ? ' <a href="#" class="tuydPtCsv" title="Download these tournaments as a spreadsheet">CSV</a>' : "") + "</div>"
             + (shown.length ? pastTournamentsListHtml(shown.slice(0, limit)) : '<div class="tuydPtHead">No tournament matches.</div>')
             + (shown.length > limit ? '<div class="tuydPtMore"><a href="#" class="tuydPtShowMore">Show ' + Math.min(100, shown.length - limit) + " more</a></div>" : ""));
     };
@@ -11187,6 +11206,9 @@ function setupPastTournamentsSearch() {
         }).on("click", ".tuydPtRetry", function (event) {
             event.preventDefault();
             update(false);
+        }).on("click", ".tuydPtCsv", function (event) {
+            event.preventDefault();
+            downloadText("past-tournaments.csv", pastTournamentsCsv(shownTournaments(), series, location.origin), "text/csv;charset=utf-8");
         }).on("click", ".tuydPtShowMore", function (event) {
             event.preventDefault();
             limit += 100;

@@ -252,6 +252,25 @@ test("a tournament's kind, coins, boot time and start date read as text", () => 
     assert.equal(ctx.pastTournamentDate({ starts: null }), "");
 });
 
+test("pastTournamentsCsv has a row for each tournament, with every column, and keeps names from becoming formulas", () => {
+    const ctx = load(["pastTournamentsCsv", "csvCell", "pastTournamentBootText", "pastTournamentCoinsText", "pastTournamentDate"], {
+        PAST_TOURNAMENTS_STATES: ["Open", "In progress", "Finished", "Cancelled"],
+        PAST_TOURNAMENTS_YOU: ["Not answered", "Joined", "Declined"]
+    });
+    const csv = ctx.pastTournamentsCsv([
+        { id: 9101, name: "93rd Titled Tuesday - RCO", creator: "Ann", clan: "Clan, X", type: 0, players: 16, teamSize: 1, boot: 5 * 60000, realTime: true, fee: 1500, prizes: [[1, 5000], [2, 215]], state: 2, me: 1, unread: true, starts: 0 },
+        { id: 9100, name: "=HYPERLINK(\"x\")", creator: "", clan: "", type: 2, players: 5, teamSize: 2, boot: 3 * DAY, realTime: false, fee: null, prizes: [], state: 1, me: 2, unread: false, starts: null },
+        { id: 9099, name: "Free one", creator: "Bob", clan: "", type: 1, players: 8, teamSize: 1, boot: 3 * DAY, realTime: false, fee: 0, prizes: [], state: 0, me: null, unread: false, starts: null }
+    ], { 9101: "Titled Tuesday" }, "https://war.app");
+    assert.ok(csv.endsWith("\r\n"));
+    assert.deepEqual(csv.trim().split("\r\n"), [
+        "Tournament ID,Tournament,Series,Creator,Clan,Kind,Players,Team size,Boot time,Real-time,Entry fee,Prizes,You,State,Start date,Unread chat,Link",
+        '9101,93rd Titled Tuesday - RCO,Titled Tuesday,Ann,"Clan, X",Single elimination,16,1,5 minutes,Yes,1500,"1st 5,000; 2nd 215",Joined,Finished,2000-01-01,Yes,https://war.app/MultiPlayer/Tournament?ID=9101',
+        `9100,"'=HYPERLINK(""x"")",,,,Round robin,5,2,3 days,No,,,Declined,In progress,,No,https://war.app/MultiPlayer/Tournament?ID=9100`,
+        "9099,Free one,,Bob,,Double elimination,8,1,3 days,No,0,,,Open,,No,https://war.app/MultiPlayer/Tournament?ID=9099"
+    ]);
+});
+
 const SCENE = `<div id="UjsCanvasHolder"><div id="ujs_PastTournamentsScene"><div id="ujs_MyTournamentsTopBar"><div id="ujs_FilterTournamentsBtn"></div></div></div></div>`;
 const LIST = [
     tournament(9103, { name: "Titled Tuesday 3", me: 1 }),
@@ -270,6 +289,7 @@ function screen({ setting = false, record = null, template = null, list = LIST }
         readIndex: (table, index, key) => Promise.resolve(db.record && db.record.tournamentId === key ? db.record : undefined)
     };
     const requests = [];
+    const downloads = [];
     const fetch = (url, options) => {
         requests.push({ url, ...requestArgs(options.body) });
         const args = requestArgs(options.body);
@@ -277,11 +297,13 @@ function screen({ setting = false, record = null, template = null, list = LIST }
     };
     const ctx = load(["setupPastTournamentsSearch", "pastTournamentsKey", "normalizePastTournamentsFilter", "pastTournamentSeries", "pastTournamentOptions", "pastTournamentMatches",
         "pastTournamentDate", "pastTournamentsListHtml", "pastTournamentKindText", "pastTournamentCoinsText", "pastTournamentBootText", "readPastTournaments", "fetchMyTournaments",
-        "myTournamentsRequest", "parseMyTournamentsReply", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "formatCount"], {
+        "myTournamentsRequest", "parseMyTournamentsReply", "pastTournamentsCsv", "csvCell", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "formatCount"], {
         ...domGlobals(dom, $),
         window: dom.window,
         Database,
         fetch,
+        location: { origin: "https://war.app" },
+        downloadText: (name, text, type) => downloads.push({ name, text, type }),
         addCSS: () => { },
         log: () => { },
         Promise, TextDecoder, Uint8Array, DataView,
@@ -300,11 +322,11 @@ function screen({ setting = false, record = null, template = null, list = LIST }
             await new Promise((resolve) => setTimeout(resolve, 1));
         }
     };
-    return { $, ctx, db, requests, settle };
+    return { $, ctx, db, requests, downloads, settle };
 }
 
 test("with the setting off, Search offers to turn it on, and turning it on waits for war.app's request, then reads the list", async () => {
-    const { $, ctx, db, requests, settle } = screen();
+    const { $, ctx, db, requests, downloads, settle } = screen();
     await settle();
     assert.equal($("#ujs_MyTournamentsTopBar > .tuydPtOpen").text(), "Search");
     assert.deepEqual(db.deletes, [["TournamentData", "pastTournaments:10712"]], "a list left from before is deleted");
@@ -330,8 +352,19 @@ test("with the setting off, Search offers to turn it on, and turning it on waits
     assert.equal($("#tuydPtSearch .tuydPtList a").first().attr("href"), "/MultiPlayer/Tournament?ID=9103");
 
     $("#tuydPtSearch [name=you]").val("declined").trigger("change");
-    assert.equal($("#tuydPtSearch .tuydPtHead").first().text(), "1 of 3 tournaments");
+    assert.equal($("#tuydPtSearch .tuydPtHead").first().text(), "1 of 3 tournaments CSV");
     assert.equal($("#tuydPtSearch .tuydPtList a").text(), "Titled Tuesday 2");
+    $("#tuydPtSearch .tuydPtCsv").trigger("click");
+    assert.equal(downloads.length, 1);
+    assert.equal(downloads[0].name, "past-tournaments.csv");
+    assert.equal(downloads[0].type, "text/csv;charset=utf-8");
+    assert.deepEqual(downloads[0].text.trim().split("\r\n").map((line) => line.split(",")[0]), ["Tournament ID", "9102"], "only the tournaments shown");
+    $("#tuydPtSearch [name=you]").val("").trigger("change");
+    $("#tuydPtSearch [name=reversed]").prop("checked", true).trigger("change");
+    $("#tuydPtSearch .tuydPtCsv").trigger("click");
+    assert.deepEqual(downloads[1].text.trim().split("\r\n").slice(1).map((line) => line.split(",")[0]), ["9101", "9102", "9103"], "in the order shown");
+    $("#tuydPtSearch [name=query]").val("nothing like it").trigger("input");
+    assert.equal($("#tuydPtSearch .tuydPtCsv").length, 0, "no CSV when nothing matches");
 
     $("#tuydPtSearch .tuydPtOff").trigger("click");
     assert.deepEqual(db.updates.at(-1), ["Settings", { name: "pastTournamentsSearch", value: false }]);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.57.0
+
+- **Past Tournaments search: CSV.** A **CSV** link next to "N of M tournaments" in the Past Tournaments search panel downloads the tournaments that match your filters, in the order shown, as past-tournaments.csv: ID, name, series, creator, clan, kind, players, team size, boot time, real-time, entry fee, prizes, your part (joined, declined, not answered), state, start date, unread chat and a link to each.
+
 ## 3.56.0
 
 - **Search all your past tournaments.** War.app's Past Tournaments lists every tournament you were invited to, 30 a page, with no search. A **Search** button next to its Filter and Sort now opens a panel that searches and filters the whole list: by name, creator or clan, series (Titled Tuesday, WGL…, found from the names your tournaments share), creator, whether you joined, declined or never answered, state, kind (single or double elimination, round robin), players or teams, speed (real-time or multi-day), coins (no entry fee, entry fee, coin prizes), number of players, start date and unread chat, newest or oldest first. Each tournament links to its page and shows its creator, kind, boot time, coins, your part and its state. It's off at first: the first click on Search explains it and offers **Turn on**, or turn on **Past Tournaments: Search Your Whole List** in the settings menu under Tournaments. Once on, the script reads your list from war.app with war.app's own request (about a second for each 1,000 tournaments), keeps it in this browser and, each time you open Past Tournaments, goes on reading until it has the whole list, then adds new tournaments and updates the ones still running. **Rescan** reads it all again; **Turn off** deletes it from this browser.
