@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.55.0  
+> **Version:** 3.56.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -65,6 +65,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 - **custom.wl-stats.com link** — on a tournament that [custom.wl-stats.com](https://custom.wl-stats.com) has read (Titled Tuesday, War Gaming Live and P/R League groups played as war.app tournaments), links its page there and its series, next to "Created by".
+- **Search all your past tournaments** (setting **Past Tournaments: Search Your Whole List**, off by default) — a **Search** button on Past Tournaments, next to war.app's Filter and Sort, opens a panel that searches and filters every tournament you were invited to: name, creator or clan, series, whether you joined, declined or never answered, state, kind, players or teams, speed, coins, number of players, start date and unread chat. While the setting is off, Search explains it and offers to turn it on. The script reads your whole list from war.app (about a second for each 1,000 tournaments), keeps it in this browser, and on each visit goes on until it has all of it, then adds new tournaments and updates running ones. Turning it off deletes the list.
 
 ### Ladders
 
@@ -191,7 +192,7 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 ## Data Storage
 
-- **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings (including notes in games, one row per game) and hidden forum threads. (Its `TournamentData` store held captured tournament inviters and is no longer used.)
+- **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings (including notes in games, one row per game), hidden forum threads and, with Past Tournaments search on, your list of past tournaments (in the `TournamentData` store; not in Export).
 - **Cookies** — cached player profile data (~1 hour TTL).
 - **Session storage** — AWP World Tour stats and custom.wl-stats.com tournament links, kept for an hour.
 
