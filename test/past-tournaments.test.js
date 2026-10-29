@@ -337,6 +337,7 @@ test("with the setting off, Search offers to turn it on, and turning it on waits
     assert.deepEqual(db.deletes, [["TournamentData", "pastTournaments:10712"]], "a list left from before is deleted");
     $(".tuydPtOpen").trigger("click");
     assert.equal($("#tuydPtSearch").parent().attr("id"), "UjsCanvasHolder");
+    assert.equal($("#tuydPtSearch h3").text(), "Search your past tournaments");
     assert.match($("#tuydPtSearch .tuydPtOffer").text(), /reads your whole list from war\.app/);
     $("#tuydPtSearch .tuydPtOn").trigger("click");
     assert.deepEqual(db.updates[0], ["Settings", { name: "pastTournamentsSearch", value: true }]);
@@ -449,8 +450,8 @@ const TOURNAMENTS_SCENE = (cards = "") => `<div id="UjsCanvasHolder"><div id="uj
     <div id="ujs_OpenTournaments"><div id="ujs_OpenTournamentsTopBar"><div id="ujs_Spacer_2"></div></div><div id="ujs_OpenTournamentsContainer">${cards}</div></div>
 </div></div>`;
 
-test("on the Tournaments page, Search opens the panel on the tournaments not finished yet, reading only when it opens", async () => {
-    const list = [tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
+test("on the Tournaments page, Search opens on the tournaments you joined that aren't finished, reading only when it opens", async () => {
+    const list = [tournament(9104, { state: 1, me: 0 }), tournament(9103, { state: 2 }), tournament(9102, { state: 1 }), tournament(9101, { state: 0 })];
     const record = { tournamentId: "pastTournaments:10712", value: { complete: true, next: 0, total: 3, checkedAt: 0, tournaments: parse(reply(3, list)).tournaments } };
     const { $, requests, settle } = screen({ setting: true, record, template: TEMPLATE, list, html: TOURNAMENTS_SCENE(), url: "https://war.app/MultiPlayer/Tournaments/" });
     await settle();
@@ -458,7 +459,9 @@ test("on the Tournaments page, Search opens the panel on the tournaments not fin
     assert.equal(requests.length, 0, "nothing is read just for coming to the Tournaments page");
     $(".tuydPtOpen").trigger("click");
     await settle();
+    assert.equal($("#tuydPtSearch h3").text(), "Search your tournaments");
     assert.equal($("#tuydPtSearch [name=state]").val(), "notFinished");
+    assert.equal($("#tuydPtSearch [name=you]").val(), "joined");
     assert.deepEqual($("#tuydPtSearch .tuydPtList a").map((i, a) => $(a).attr("href").split("=")[1]).get(), ["9102", "9101"]);
     assert.deepEqual(requests.map((r) => [r.filter, r.offset, r.count]), [[0, 0, 100]]);
     $("#tuydPtSearch [name=query]").val("Tournament 9102").trigger("input");
