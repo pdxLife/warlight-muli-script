@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.62.0
+// @version 3.62.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -33,8 +33,8 @@ var GAMES_CACHE_MS = 5 * 60 * 1000;
 var OPEN_GAMES_BOOT_UNITS = { minutes: 1, hours: 60, days: 1440 };
 var CLAN_SERIES_KINDS = ["clan_league", "clan_cup", "nations_cup"];
 // The players' series on the Ladders page, in order after the AWP World Tour and the MTL: P/R League,
-// Titled Tuesday, then the Seasonal Ladder.
-var PLAYER_SERIES_KINDS = ["league", "events", "ladder"];
+// Titled Tuesday, Manager League, then the Seasonal Ladder.
+var PLAYER_SERIES_KINDS = ["league", "events", "manager_league", "ladder"];
 var STAGED_SERIES_KINDS = ["clan_cup", "nations_cup"];
 var COMMUNITY_PAGE_SERIES = ["titled-tuesday", "pr-league", "seasonal-ladder", "clan-league", "nations-cup"];
 var COMMUNITY_PAGE_BLOG_POSTS = 5;

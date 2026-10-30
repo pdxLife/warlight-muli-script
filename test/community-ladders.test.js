@@ -1,5 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 function render(html) {
@@ -9,6 +11,7 @@ function render(html) {
     return container;
 }
 
+const PLAYER_SERIES_KINDS = JSON.parse(readFileSync(join(__dirname, "../src/core/constants.js"), "utf8").match(/PLAYER_SERIES_KINDS = (\[.*?\]);/)[1]);
 const AWP_SITE = "https://awp.wl-stats.com";
 const CUSTOM_SITE = "https://custom.wl-stats.com";
 const RANKINGS_URL = `${AWP_SITE}/api/v1/rankings`;
@@ -93,7 +96,7 @@ function laddersPage({ response = rankings, fail = false, seriesResponse = serie
         WL_STATS_CACHE_MS: 60 * 60 * 1000,
         SERIES_CACHE_MS: 10 * 60 * 1000,
         CLAN_SERIES_KINDS: ["clan_league", "clan_cup", "nations_cup"], STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"],
-        PLAYER_SERIES_KINDS: ["league", "events", "ladder"]
+        PLAYER_SERIES_KINDS
     });
     return { ctx, dom, $, requests, logs };
 }
@@ -732,6 +735,6 @@ test("the players' list goes AWP World Tour, MTL, P/R League, Titled Tuesday, th
     const names = $("#communityLadders .communityLadder").map((i, row) => $(row).find(".communityLadderButton").text()).get();
     assert.deepEqual(names.slice(0, 5), ["AWP World Tour", "Multi-Template Ladder", "P/R League", "Titled Tuesday", "Seasonal Ladder"]);
     assert.deepEqual(names.slice(5), ["Clan Cup", "Nations Cup"], "the clan series as before");
-    const order = Array.from(ctx.inPlayerSeriesOrder([{ kind: "ladder" }, { kind: "clan_cup" }, { kind: "new_kind" }, { kind: "events" }, { kind: "league" }]).map((series) => series.kind));
-    assert.deepEqual(order, ["league", "clan_cup", "events", "ladder", "new_kind"], "a series of a new kind goes last; clan series stay put");
+    const order = Array.from(ctx.inPlayerSeriesOrder([{ kind: "ladder" }, { kind: "clan_cup" }, { kind: "manager_league" }, { kind: "new_kind" }, { kind: "events" }, { kind: "league" }]).map((series) => series.kind));
+    assert.deepEqual(order, ["league", "clan_cup", "events", "manager_league", "ladder", "new_kind"], "a series of a new kind goes last; clan series stay put");
 });
