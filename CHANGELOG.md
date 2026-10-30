@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.60.2
+
+- **Behind the scenes: the script's code is now organized by feature.** Nothing changes for players, and you still install the same single file. The code moved from one file of nearly 16,000 lines into smaller files in `src/`, which are joined into the installed script.
+
 ## 3.60.1
 
 - **Clan War timeslots: the record no longer covers short template names' details.** Next to a short template name such as "French Brawl", "This season: you …, clan …" ran over war.app's "Average game length" line. It now sits right of where the longest names end, for every template.

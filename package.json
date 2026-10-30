@@ -2,6 +2,7 @@
   "name": "warlight-muli-script",
   "private": true,
   "scripts": {
+    "build": "node tools/build.js",
     "test": "node --test --test-timeout=30000 test/",
     "check": "node --check Tidy_up_your_Dashboard.user.js"
   },

@@ -5,7 +5,7 @@ A quick manual check of the script on the live site, about 10 minutes. Run it be
 ## 1. Get the version to test
 
 - **Released version:** Tampermonkey → Dashboard → Installed userscripts → click the script's **Last updated** date to install the latest version now. Accept the update if Tampermonkey asks you to confirm site permissions.
-- **Local changes:** in Tampermonkey, open the script, paste in the local `Tidy_up_your_Dashboard.user.js`, and save.
+- **Local changes:** run `npm run build`, then in Tampermonkey, open the script, paste in the local `Tidy_up_your_Dashboard.user.js`, and save.
 - Reload war.app and check that the version in the settings menu title matches.
 
 ## 2. Keep the log open

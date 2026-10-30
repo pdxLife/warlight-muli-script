@@ -1,12 +1,10 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const vm = require("node:vm");
 const acorn = require("acorn");
 const { JSDOM } = require("jsdom");
 const jqueryFactory = require("jquery");
+const { build } = require("../tools/build");
 
-const SCRIPT_PATH = path.join(__dirname, "..", "Tidy_up_your_Dashboard.user.js");
-const source = fs.readFileSync(SCRIPT_PATH, "utf8");
+const source = build();
 
 // The userscript runs page setup at load time, so tests evaluate individual
 // top-level functions instead of the whole file.

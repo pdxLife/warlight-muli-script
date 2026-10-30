@@ -1,21 +1,23 @@
 # CLAUDE.md
 
-Userscript for [war.app](https://war.app) (formerly Warzone), run through Tampermonkey. The whole script is the single file `Tidy_up_your_Dashboard.user.js`. There is no build step: the file in the repo is exactly what users install.
+Userscript for [war.app](https://war.app) (formerly Warzone), run through Tampermonkey. The code lives in `src/`, and `tools/build.js` joins it into `Tidy_up_your_Dashboard.user.js`, the single file users install. That file is committed, because `@downloadURL` serves it straight from `main`, so never edit it by hand: edit `src/`, run `npm run build`, and commit both.
 
 ## Commands
 
 ```bash
 npm install        # dev dependencies, only needed for tests
+npm run build      # joins src/ into the .user.js
 npm test           # node --test test/
 npm run check      # syntax check of the userscript
 ```
 
-To try changes on the live site, reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
+To try changes on the live site, build, then reinstall the script in Tampermonkey from the local file or from the raw GitHub URL. `QA.md` is the manual checklist for the live site; run it before a release and add a row when a feature adds visible UI.
 
 `docs/` is the project's site on GitHub Pages (https://pdxlife.github.io/warlight-muli-script/), mainly hosting images for forum posts; `PUBLISHING.md` explains it. `docs/guide.html` is its how-to page for every feature, with setting names as the settings menu shows them: update its section when a feature is added, changed or removed. Images used in forum posts are PNG or JPG, and motion is an animated PNG made with `tools/make_apng.py`: war.app's phone app shows neither SVG nor GIF (tested), the forum can't play video, and the app shows an APNG's first frame as a still, so that frame must make sense alone. A file a forum post uses must never be renamed or deleted.
 
 ## How the script is put together
 
+- **Source files:** `src/header.js` is the metadata block, `src/core/` holds what every area uses (`boot.js` is the startup sequence, `features.js` the feature lists), and `src/features/` has one file per area. The files are plain scripts, not ES modules: there are no imports, and all of them share one scope once joined, so a function in any file can call one in any other. The build puts `header.js`, `core/constants.js` and `core/boot.js` first, then every other file sorted by path, so a new file needs no registration. Boot runs before the other files' top-level code, so they stay independent at load time: a `var` that needs another's value belongs in the same file or in `constants.js`, and a test enforces this. New feature code goes in its area's file; add a file when it's a feature of its own. Error line numbers in the log refer to the built file.
 - **Header:** `@grant none`, so the script runs in the page context. The site's own globals (`$.cookie`, `wljs_WaitDialogJS`, `CreateModal`, Bootstrap's `.modal()`) are available. Switching to any `GM_*` grant sandboxes the script and breaks these.
 - **Two jQuerys:** `$` is the site's jQuery, which has the cookie plugin. `$$$` is the `@require`d jQuery 1.11.2 plus jQuery UI, used for the log dialog. DataTables is attached to `$$$`, so call it as `$$$(...).DataTable()`. Never reassign `window.$` or call `noConflict` on the site's jQuery: war.app's pages, the cookie plugin and Bootstrap depend on it.
 - **Startup flow:** `DOM_ContentReady()` starts `loadPlayerData()` and runs a list of page features through `runFeatures()`. It then calls `Database.init()`, whose callback runs the menu setup, `checkVersion()` and `databaseReady()`, which is a second feature list for settings-driven features. The lists are built by `pageFeatures()`, `mainFeatures()` and `maakFeatures()`. Each feature is `{ name, section?, match?, run }` and runs in its own try/catch. Add new features as entries pointing at named top-level functions, not as inline blocks. List order is execution order. A feature with a `section` gets a switch in that section of the settings menu, next to the settings (`userscriptSettings`, each with a `section` too); `MENU_SECTIONS` lists the sections in order with their headings. Its `name` is shown to users and is the key in the stored disabled list, so don't rename it casually. The disabled list lives in the `disabledFeatures` setting and is mirrored to `localStorage` (`DISABLED_FEATURES_KEY`), because page features run before IndexedDB opens.
@@ -28,8 +30,9 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 
 ## Tests
 
-`test/harness.js` parses the userscript with acorn and evaluates individual top-level function declarations in a `vm` sandbox. Loading the whole file would run page setup. Each test passes in only the globals the function under test needs. Common ones are `$` (npm jQuery 1.11.2 bound to a jsdom window, via `createDom()` and `domGlobals()`), `log`, `Database` and `location`.
+`test/harness.js` builds the userscript from `src/`, parses it with acorn and evaluates individual top-level function declarations in a `vm` sandbox. Loading the whole file would run page setup. Each test passes in only the globals the function under test needs. Common ones are `$` (npm jQuery 1.11.2 bound to a jsdom window, via `createDom()` and `domGlobals()`), `log`, `Database` and `location`.
 
+- `test/build.test.js` fails if the committed `.user.js` isn't what `src/` builds. After a merge conflict, resolve `src/` and rebuild rather than fixing the built file.
 - `test/startup.test.js` checks statically that every called or feature-registered function exists. If it flags a new site or browser global, add that name to its allowlist.
 - A function becomes testable once it is a **top-level `function` declaration**. Inline logic in `databaseReady()` or `DOM_ContentReady()` has to be extracted first, as was done with `setupBlacklistCounter()`.
 - Values created in the sandbox come from another realm. Copy arrays with `Array.from` or a JSON round-trip before using `deepStrictEqual`.
@@ -37,7 +40,7 @@ To try changes on the live site, reinstall the script in Tampermonkey from the l
 
 ## Conventions
 
-- When bumping the version, update `@version`, the `GM_info` fallback near the top of the script, the version line in `README.md`, and the version next to the title in `docs/index.html` together. A test checks that they match.
+- When bumping the version, update `@version` in `src/header.js`, the `GM_info` fallback in `src/core/constants.js`, the version line in `README.md`, and the version next to the title in `docs/index.html` together. A test checks that they match.
 - `@downloadURL` and `@updateURL` must point at this repo's raw file, not Greasy Fork. Otherwise upstream releases overwrite this fork.
 - Escape third-party and user-supplied strings with `htmlEscape()` before putting them into HTML. URLs from outside (API data, bookmarks) go through `htmlEscape(safeUrl(url))`; `safeUrl` allows only `http(s)://` and same-site `/` paths. `test/security.test.js` covers each renderer with an injection payload, so add a case there when adding a new one.
 - Every `@require` must carry a `#sha256-` hash. A test enforces this.
