@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.61.1
+
+- **The Seasonal Ladder's custom.wl-stats.com button can be clicked.** War.app's title sits over the top bar, so only the button's right end reacted.
+
 ## 3.61.0
 
 - **The Seasonal Ladder links to custom.wl-stats.com.** War.app's Seasons list and season pages get a blue "custom.wl-stats.com" button at the right of the top bar. On a season it opens that season there, past ones too; on the Seasons list, the ladder's page, which lists every season. On a narrow window the button just says "custom".
