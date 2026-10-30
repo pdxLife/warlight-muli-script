@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.62.1
+
+- **Ladders page: the Seasonal Ladder comes last in the Players list.** Manager League now sits above it, after Titled Tuesday.
+
 ## 3.62.0
 
 - **Search the community ladders and leagues.** The Community ladders & leagues panel on the Ladders page has a search box at its top right. Rows narrow as you type, by a ladder's name or anything else a row shows, such as a leader or your clan.
