@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { createDom, load, domGlobals, flush } = require("./harness");
 
 const CUSTOM_SITE = "https://custom.wl-stats.com";
-const FUNCTIONS = ["ladderProfileRows", "profileLaddersTable", "setupLadderProfileRows", "settleRequest", "fetchWlStats", "htmlEscape", "safeUrl", "getRankText", "formatCount"];
+const FUNCTIONS = ["ladderProfileRows", "seasonalCareer", "profileLaddersTable", "setupLadderProfileRows", "settleRequest", "fetchWlStats", "htmlEscape", "safeUrl", "getRankText", "formatCount"];
 
 // war.app's Ladders table on a profile (recorded from /Profile?p=2921525624).
 const warappLadders = `<h3>Ladders</h3><table cellpadding="2"><thead><tr><td>Ladder</td><td>Best Rank</td><td>Current Rank</td></tr></thead>`

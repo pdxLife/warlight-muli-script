@@ -96,6 +96,18 @@ function pageIsLadders() {
     return location.href.match(/^https?:\/\/[^\/]+\/Ladders\/?(?:[?#]|$)/i);
 }
 
+function pageIsLadderSeasons() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderSeasons\/?(?:[?#]|$)/i);
+}
+
+function pageIsLadderSeason() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderSeason\/?\?/i);
+}
+
+function pageIsLadderPlayer() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderPlayer\/?\?/i);
+}
+
 function pageIsMapOfTheWeek() {
     return location.href.match(/^https?:\/\/[^\/]+\/MapOfTheWeek.*/i);
 }

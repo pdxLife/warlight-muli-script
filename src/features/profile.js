@@ -184,23 +184,12 @@ function ladderProfileRows(mtl, seasonal) {
     if (mtl) {
         rows.push({ first: true, cells: [link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "-", rated(mtl.rank, mtl.rating)] });
     }
-    var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
-    if (seasons.length) {
-        var best = seasons.filter(function (entry) {
-            return entry.rank && !(entry.season && entry.season.status === "running");
-        }).sort(function (a, b) {
-            return a.rank - b.rank || b.rating - a.rating;
-        })[0];
-        var titles = seasons.filter(function (entry) {
-            return entry.champion;
-        }).length;
-        var running = seasons.filter(function (entry) {
-            return entry.season && entry.season.status === "running";
-        })[0];
+    var career = seasonalCareer(seasonal);
+    if (career.seasons.length) {
         rows.push({ first: false, cells: [
             link(seasonal.url, "Seasonal Ladder"),
-            (best ? finalPlace(best) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
-            running ? rated(running.rank, running.rating) : "Not in this season"
+            (career.best ? finalPlace(career.best) : "") + (career.titles ? " · champion" + (career.titles > 1 ? " ×" + career.titles : "") : ""),
+            career.running ? rated(career.running.rank, career.running.rating) : "Not in this season"
         ] });
     }
     return rows;

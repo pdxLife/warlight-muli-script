@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.61.0
+
+- **The Seasonal Ladder links to custom.wl-stats.com.** War.app's Seasons list and season pages get a blue "custom.wl-stats.com" button at the right of the top bar. On a season it opens that season there, past ones too; on the Seasons list, the ladder's page, which lists every season. On a narrow window the button just says "custom".
+- **A player's Seasonal Ladder record.** A player's page in a season gets a button to their page on custom.wl-stats.com and, when the window is wide enough, a small box beside war.app's own text: their wins and losses that season and over all their seasons, and how many seasons they've won or their best final place. War.app's 1v1, 2v2 and 3v3 ladders stay as they are.
+
 ## 3.60.2
 
 - **Behind the scenes: the script's code is now organized by feature.** Nothing changes for players, and you still install the same single file. The code moved from one file of nearly 16,000 lines into smaller files in `src/`, which are joined into the installed script.
