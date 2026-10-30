@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.61.2
+
+- **The Seasonal Ladder's custom.wl-stats.com button sits right after the title.** It was at the far right of the top bar, a long way from the page on a wide window.
+
 ## 3.61.1
 
 - **The Seasonal Ladder's custom.wl-stats.com button can be clicked.** War.app's title sits over the top bar, so only the button's right end reacted.

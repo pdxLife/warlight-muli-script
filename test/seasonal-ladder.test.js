@@ -57,7 +57,7 @@ test("a past season's player view links the player on custom.wl-stats.com and ad
     ctx.setupSeasonalLadderCustom();
     await flush();
     assert.deepEqual(requests, [seasonUrl(4070), PLAYER_URL]);
-    assert.equal($("#ujs_TopBar_img .tuydSeasonalLink").attr("href"), player.url);
+    assert.equal($("#ujs_HeaderLabel_tmp .tuydSeasonalLinkAnchor .tuydSeasonalLink").attr("href"), player.url);
     assert.equal($(".tuydSeasonalLink").text(), "custom.wl-stats.com");
     assert.deepEqual(lines($), ["custom.wl-stats.com", "Season XXXIX: 14 W, 6 L", "All 3 seasons: 36 W, 24 L", "Best: 7th (Season XXXIX)"]);
     assert.deepEqual($(".tuydSeasonalBox a").map((i, a) => $(a).attr("href")).get(), [player.seasons[1].season.url, player.url]);
@@ -95,6 +95,17 @@ test("the Profile button drawn after the scene still gets the view its link and 
     await flush();
     assert.equal(requests.length, 2, "one load per view");
     assert.equal($(".tuydSeasonalLink").length, 1, "nothing is added twice");
+});
+
+test("war.app rewriting the title on a re-layout doesn't lose the button", async () => {
+    const { ctx, $, requests } = app("https://war.app/LadderSeason?ID=4070", scene("LadderScene", "Seasonal Ladder"), { [seasonUrl(4070)]: season39 });
+    ctx.setupSeasonalLadderCustom();
+    await flush();
+    $("#ujs_HeaderLabel_tmp").text("Seasonal Ladder");
+    await flush();
+    assert.equal($("#ujs_HeaderLabel_tmp .tuydSeasonalLink").attr("href"), season39.season.url);
+    assert.equal($(".tuydSeasonalLink").length, 1);
+    assert.deepEqual(requests, [seasonUrl(4070)], "no new load");
 });
 
 test("a player custom.wl-stats.com doesn't know gets the season's link and no box", async () => {
