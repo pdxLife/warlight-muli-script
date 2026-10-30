@@ -38,6 +38,12 @@ To try changes on the live site, build, then reinstall the script in Tampermonke
 - Values created in the sandbox come from another realm. Copy arrays with `Array.from` or a JSON round-trip before using `deepStrictEqual`.
 - jsdom has no layout. The harness patches `offsetWidth` so jQuery's `:visible` respects `display: none`.
 
+## Working on changes
+
+- State assumptions before building on them. If a request has more than one reasonable reading, ask rather than pick one silently.
+- Change only what the task needs: no extra features, settings or abstractions, and no tidying of nearby code, comments or formatting. Mention unrelated problems instead of fixing them. The rebuilt `.user.js` and the docs this file requires (`QA.md`, `docs/guide.html`, version lines) count as part of the change.
+- Say how a change will be verified before making it. Reproduce a logic bug with a failing test first. jsdom has no layout, so layout and live-site behaviour are checked through `QA.md`.
+
 ## Conventions
 
 - When bumping the version, update `@version` in `src/header.js`, the `GM_info` fallback in `src/core/constants.js`, the version line in `README.md`, and the version next to the title in `docs/index.html` together. A test checks that they match.
