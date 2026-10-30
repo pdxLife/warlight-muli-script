@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.60.1  
+> **Version:** 3.60.2  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -235,7 +235,7 @@ git clone git@github.com:pdxLife/warlight-muli-script.git
 cd warlight-muli-script
 ```
 
-The script is a single file: `Tidy_up_your_Dashboard.user.js`. Edit it directly and reload in your userscript manager to test changes.
+The code is in `src/`. `npm run build` joins it into `Tidy_up_your_Dashboard.user.js`, the single file users install. To test changes, build, then reload that file in your userscript manager. Run `npm install` once and `npm test` to run the tests.
 
 ## License
 
