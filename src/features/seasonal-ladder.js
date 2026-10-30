@@ -101,8 +101,10 @@ function addSeasonalLadderStyles() {
     }
     addSeasonalLadderStyles.done = true;
     addTournamentButtonStyles();
+    // War.app's title is a text box nearly as wide as the bar, on top of the button.
     addCSS(`
         .tuydSeasonalBar { container: tuydSeasonalBar / inline-size; }
+        .tuydSeasonalBar ~ [id^='ujs_HeaderLabel'] .ujsTextInner { pointer-events: none; }
         .tuydPtButton.tuydSeasonalLink { left: auto; right: 12px; bottom: 8px; }
         @container tuydSeasonalBar (max-width: 639px) {
             .tuydSeasonalLinkSite { display: none; }
