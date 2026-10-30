@@ -18,7 +18,7 @@ const MTL_URL = `${CUSTOM_SITE}/api/v1/ladders/mtl`;
 const laddersUrls = (playerId) => [SEASONAL_URL, MTL_URL].concat(playerId ? [`${MTL_URL}/players/${playerId}`] : []);
 
 const COMMUNITY_FUNCTIONS = ["setupCommunityLadders", "shownUjsElement", "renderCommunityLadders", "communityLadderRow", "renderAwpLadderRow", "warappArt",
-    "addCommunityLaddersStyles", "fitCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
+    "addCommunityLaddersStyles", "fitCommunityLadders", "filterCommunityLadders", "signedInPlayerId", "fetchWlStats", "pageIsLadders", "pageIsCommunityEvents",
     "ujsElement", "htmlEscape", "safeUrl", "getRankText", "loadCommunityData", "settleRequest", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil",
     "seriesLink", "seasonalLadderSeries", "withSeasonalLadder", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "inPlayerSeriesOrder", "inClanSeriesOrder", "awpStanding", "signupsHtml", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml", "standingsHtml", "weeklyEventStatusHtml", "renderSeriesLadderRow",
     "setupCommunityEventsStanding", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "joinedEventLabel", "markJoinedEvent", "eventLineRoom", "fitEventLines"];
@@ -122,6 +122,46 @@ test("a signed-in player outside the race is told so, and a signed-out visitor g
     signedOut.ctx.setupCommunityLadders();
     await flush();
     assert.equal(signedOut.$("#communityLadders .communityLadder").first().find(".communityLadderText").text(), "2026 race · 5 players");
+});
+
+test("the search narrows the rows by anything they show, and says when nothing matches", async () => {
+    const { ctx, $ } = laddersPage();
+    ctx.setupCommunityLadders();
+    await flush();
+    const search = (text) => $(".communityLaddersSearch").val(text).trigger("input");
+    const rows = () => $("#communityLadders .communityLadder:visible .communityLadderButton").map((i, a) => $(a).text()).get();
+    const lists = () => $("#communityLadders .communityLaddersSection:visible h4").map((i, h4) => $(h4).text()).get();
+    const all = rows();
+    assert.ok(all.length > 3);
+    assert.deepEqual(lists(), ["Players", "Clans & nations"]);
+    assert.equal($(".communityLaddersNone:visible").length, 0);
+
+    search("CUP");
+    assert.deepEqual(rows(), ["Clan Cup", "Nations Cup"]);
+    assert.deepEqual(lists(), ["Clans & nations"], "a list with no match goes too");
+
+    search("  stales78 ");
+    assert.deepEqual(rows(), ["P/R League"], "a leader's name finds the league");
+    assert.deepEqual(lists(), ["Players"]);
+
+    search("nothing like this");
+    assert.deepEqual(rows(), []);
+    assert.equal($(".communityLaddersNone:visible").length, 1);
+
+    search("");
+    assert.deepEqual(rows(), all);
+    assert.equal($(".communityLaddersNone:visible").length, 0);
+});
+
+test("the panel follows the dialog when war.app moves it without resizing it", async () => {
+    const { ctx, $ } = laddersPage({ html: `<div id="UjsCanvasHolder">${laddersScene}</div>` });
+    ctx.setupCommunityLadders();
+    await flush();
+    $("#UjsCanvasHolder")[0].getBoundingClientRect = () => ({ left: 0, top: 0, width: 1600, bottom: 800 });
+    $("#ujs_DialogBackgroundForDropShadow_img")[0].getBoundingClientRect = () => ({ left: 400, top: 0, width: 600, bottom: 300 });
+    $("#ujs_Section").attr("style", "left: 400px");
+    await flush();
+    assert.equal($("#communityLadders")[0].style.left, "180px");
 });
 
 test("war.app redrawing the scene brings the panel back once, without another request", async () => {

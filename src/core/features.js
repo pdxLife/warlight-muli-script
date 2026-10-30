@@ -17,6 +17,7 @@ function pageFeatures() {
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
+        { name: "War.app's four ladders in two rows", section: "Community", match: pageHasUjsScenes, run: setupLaddersTwoRows },
         { name: "custom.wl-stats.com link and player record on the Seasonal Ladder", section: "Community", match: pageHasUjsScenes, run: setupSeasonalLadderCustom },
         { name: "Search your friends in a team ladder proposal", section: "Community", run: setupLadderFriendSearch },
         { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },

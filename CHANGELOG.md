@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.62.0
+
+- **Search the community ladders and leagues.** The Community ladders & leagues panel on the Ladders page has a search box at its top right. Rows narrow as you type, by a ladder's name or anything else a row shows, such as a leader or your clan.
+- **War.app's four ladders in two rows.** On a wide window, the 1v1, Seasonal, 2v2 and 3v3 ladders sit two by two, so the community panel starts about 150px higher. On a narrower window they stay in one column. Settings menu → Community → "War.app's four ladders in two rows".
+
 ## 3.61.2
 
 - **The Seasonal Ladder's custom.wl-stats.com button sits right after the title.** It was at the far right of the top bar, a long way from the page on a wide window.

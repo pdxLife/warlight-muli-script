@@ -137,14 +137,14 @@ function setupMtlForumTop() {
 function setupCommunityLadders() {
     var rows = null;
     var community = null;
-    var observer = null;
+    var observers = [];
     // Opening one of war.app's ladders hides the Ladders view and changes the address (/LadderSeasons)
     // without loading a page; the panel, which sits outside that view, goes with it and comes back after.
     var hide = function () {
-        if (observer) {
+        observers.forEach(function (observer) {
             observer.disconnect();
-            observer = null;
-        }
+        });
+        observers = [];
         $("#communityLadders").remove();
     };
     var show = function () {
@@ -162,6 +162,9 @@ function setupCommunityLadders() {
             return;
         }
         var panel = $(renderCommunityLadders(rows));
+        panel.find(".communityLaddersSearch").on("input", function () {
+            filterCommunityLadders(panel, this.value);
+        });
         var art = warappArt(scene);
         Object.keys(art).forEach(function (name) {
             if (art[name]) {
@@ -171,13 +174,19 @@ function setupCommunityLadders() {
         var holder = $("#UjsCanvasHolder");
         (holder.length ? holder : dialog.parent().parent()).append(panel);
         fitCommunityLadders(panel, dialog);
-        // war.app re-lays out the dialog shortly after a resize, so follow the dialog and the page area.
+        // war.app re-lays out the dialog shortly after a resize, so follow the dialog and the page area,
+        // and the styles it moves the dialog with, which don't always change its size.
+        var fit = function () {
+            fitCommunityLadders(panel, dialog);
+        };
+        var moved = new MutationObserver(fit);
+        moved.observe(scene, { attributes: true, attributeFilter: ["style"], subtree: true });
+        observers.push(moved);
         if (window.ResizeObserver) {
-            observer = new ResizeObserver(function () {
-                fitCommunityLadders(panel, dialog);
-            });
-            observer.observe(dialog[0]);
-            observer.observe(panel.parent()[0]);
+            var resized = new ResizeObserver(fit);
+            resized.observe(dialog[0]);
+            resized.observe(panel.parent()[0]);
+            observers.push(resized);
         }
     };
     var load = function () {
@@ -209,6 +218,21 @@ function setupCommunityLadders() {
     new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
 }
 
+function filterCommunityLadders(panel, text) {
+    var wanted = text.trim().toLowerCase();
+    var found = 0;
+    panel.find(".communityLaddersSection").each(function () {
+        var matches = $(this).find(".communityLadder").filter(function () {
+            var match = $(this).text().toLowerCase().indexOf(wanted) !== -1;
+            $(this).toggle(match);
+            return match;
+        }).length;
+        $(this).toggle(matches > 0);
+        found += matches;
+    });
+    panel.find(".communityLaddersNone").toggle(!found);
+}
+
 // Two columns need about 940px; below that the panel takes the dialog's width and its lists stack.
 function fitCommunityLadders(panel, dialog) {
     var box = dialog[0].getBoundingClientRect();
@@ -218,7 +242,7 @@ function fitCommunityLadders(panel, dialog) {
     } else {
         var area = panel.parent()[0].getBoundingClientRect();
         var room = area.width - 32;
-        var width = room >= 940 ? Math.min(room, 1040) : box.width;
+        var width = room >= 940 ? Math.min(room, Math.max(1040, box.width)) : box.width;
         var left = Math.max(0, Math.min(box.left - area.left + (box.width - width) / 2, area.width - width));
         panel.css({ width: width + "px", left: Math.round(left) + "px", top: Math.round(box.bottom - area.top + 10) + "px" });
     }
@@ -263,6 +287,25 @@ function addCommunityLaddersStyles() {
             font-size: 16px;
             font-weight: 700;
             text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        }
+        .tuydCommunityPanel .communityLaddersSearch {
+            position: absolute;
+            top: -42px;
+            right: 0;
+            width: 200px;
+            height: 28px;
+            box-sizing: border-box;
+            padding: 0 8px;
+            color: #eee;
+            font-size: 13px;
+            background: #111;
+            border: 1px solid #555;
+            border-radius: 3px;
+        }
+        @container tuydLadders (max-width: 699px) {
+            .tuydCommunityPanel .communityLaddersSearch {
+                width: 130px;
+            }
         }
         .tuydCommunityPanel .communityLaddersRows {
             overflow-y: auto;
@@ -438,9 +481,10 @@ function renderCommunityLadders(rows) {
     var section = function (title, list) {
         return list.length ? '<div class="communityLaddersSection"><h4>' + title + '</h4>' + list.join("") + '</div>' : "";
     };
-    return '<div id="communityLadders" class="tuydCommunityPanel"><h3>Community ladders &amp; leagues</h3><div class="communityLaddersRows">' +
+    return '<div id="communityLadders" class="tuydCommunityPanel"><h3>Community ladders &amp; leagues</h3>' +
+        '<input type="search" class="communityLaddersSearch" placeholder="Search" aria-label="Search the community ladders and leagues"><div class="communityLaddersRows">' +
         section("Players", rows.players) + section("Clans &amp; nations", rows.clans) +
-        '</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
+        '</div><div class="communityLaddersNone tuydMuted" style="display: none">No ladder or league matches.</div><div class="communityLaddersCredit">Added by Muli\'s Userscript</div></div>';
 }
 
 // statusHtml, detailHtml and youHtml must already be escaped.
