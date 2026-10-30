@@ -130,7 +130,7 @@ window.userscriptSettings = [
         text: 'Load Community Level Records (via maak.ch)',
         selected: false,
         section: 'Third-party data',
-        help: 'Shows the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles, the Ladders page, the Community page and in MTL threads come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles, the Ladders page, the Seasonal Ladder pages, the Community page and in MTL threads come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 

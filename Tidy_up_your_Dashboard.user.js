@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.60.2
+// @version 3.61.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.60.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.61.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -554,6 +554,7 @@ function pageFeatures() {
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
+        { name: "custom.wl-stats.com link and player record on the Seasonal Ladder", section: "Community", match: pageHasUjsScenes, run: setupSeasonalLadderCustom },
         { name: "Search your friends in a team ladder proposal", section: "Community", run: setupLadderFriendSearch },
         { name: "Your standing on Community Events", section: "Community", run: setupCommunityEventsStanding },
         { name: "Community page: community events, the MTL top 10 and the 5 latest blog posts", section: "Community", match: pageIsCommunityHome, run: setupCommunityPageSummary },
@@ -945,6 +946,18 @@ function pageIsCommunityEvents() {
 
 function pageIsLadders() {
     return location.href.match(/^https?:\/\/[^\/]+\/Ladders\/?(?:[?#]|$)/i);
+}
+
+function pageIsLadderSeasons() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderSeasons\/?(?:[?#]|$)/i);
+}
+
+function pageIsLadderSeason() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderSeason\/?\?/i);
+}
+
+function pageIsLadderPlayer() {
+    return location.href.match(/^https?:\/\/[^\/]+\/LadderPlayer\/?\?/i);
 }
 
 function pageIsMapOfTheWeek() {
@@ -13395,23 +13408,12 @@ function ladderProfileRows(mtl, seasonal) {
     if (mtl) {
         rows.push({ first: true, cells: [link(mtl.url, "MTL"), mtl.best_rank ? rated(mtl.best_rank, mtl.best_rating) : "-", rated(mtl.rank, mtl.rating)] });
     }
-    var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
-    if (seasons.length) {
-        var best = seasons.filter(function (entry) {
-            return entry.rank && !(entry.season && entry.season.status === "running");
-        }).sort(function (a, b) {
-            return a.rank - b.rank || b.rating - a.rating;
-        })[0];
-        var titles = seasons.filter(function (entry) {
-            return entry.champion;
-        }).length;
-        var running = seasons.filter(function (entry) {
-            return entry.season && entry.season.status === "running";
-        })[0];
+    var career = seasonalCareer(seasonal);
+    if (career.seasons.length) {
         rows.push({ first: false, cells: [
             link(seasonal.url, "Seasonal Ladder"),
-            (best ? finalPlace(best) : "") + (titles ? " · champion" + (titles > 1 ? " ×" + titles : "") : ""),
-            running ? rated(running.rank, running.rating) : "Not in this season"
+            (career.best ? finalPlace(career.best) : "") + (career.titles ? " · champion" + (career.titles > 1 ? " ×" + career.titles : "") : ""),
+            career.running ? rated(career.running.rank, career.running.rating) : "Not in this season"
         ] });
     }
     return rows;
@@ -14517,6 +14519,168 @@ function setupQuickmatchProfileRecord() {
         }
     });
 }
+// A player's Seasonal Ladder seasons as custom.wl-stats.com has them. Only finished seasons count as a
+// best finish: a running season's rank isn't final.
+function seasonalCareer(seasonal) {
+    var seasons = seasonal && Array.isArray(seasonal.seasons) ? seasonal.seasons.filter(Boolean) : [];
+    var running = function (entry) {
+        return entry.season && entry.season.status === "running";
+    };
+    return {
+        seasons: seasons,
+        running: seasons.filter(running)[0],
+        best: seasons.filter(function (entry) {
+            return entry.rank && !running(entry);
+        }).sort(function (a, b) {
+            return a.rank - b.rank || b.rating - a.rating;
+        })[0],
+        titles: seasons.filter(function (entry) {
+            return entry.champion;
+        }).length
+    };
+}
+
+// The Seasonal Ladder view that's open. War.app's 1v1, 2v2 and 3v3 ladders draw the same scenes at the
+// same addresses, so the scene's title tells them apart.
+function seasonalLadderView() {
+    var view = [
+        { open: pageIsLadderPlayer, scene: "LadderPlayerScene", title: /^Season .+ Player$/, player: true },
+        { open: pageIsLadderSeason, scene: "LadderScene", title: /^Seasonal Ladder$/ },
+        { open: pageIsLadderSeasons, scene: "LadderSeasonsScene", title: /^Seasons$/ }
+    ].filter(function (candidate) {
+        return candidate.open();
+    })[0];
+    var scene = view && ujsElement(view.scene);
+    if (!scene || !shownUjsElement(scene) || !view.title.test($(scene).find("[id^='ujs_HeaderLabel']").first().text().trim())) {
+        return null;
+    }
+    return { scene: scene, player: !!view.player, seasonId: warappSeasonId(location.href) };
+}
+
+function warappSeasonId(url) {
+    var match = String(url || "").match(/[?&](?:Season)?ID=(\d+)/i);
+    return match ? match[1] : null;
+}
+
+// The season on the page, or the ladder with its newest season when custom.wl-stats.com hasn't read that one.
+function fetchSeasonalLadder(seasonId) {
+    var url = CUSTOM_SITE + "/api/v1/ladders/seasonal";
+    var load = function (address) {
+        return settleRequest(fetchWlStats(address, SERIES_CACHE_MS), "the Seasonal Ladder");
+    };
+    return seasonId ? load(url + "?warapp_id=" + seasonId).then(function (ladder) {
+        return ladder || load(url);
+    }) : load(url);
+}
+
+function seasonalLadderUrl(ladder, player, seasonId) {
+    if (player && player.url) {
+        return player.url;
+    }
+    if (!ladder) {
+        return null;
+    }
+    return seasonId && ladder.season && warappSeasonId(ladder.season.warapp_url) === seasonId ? ladder.season.url : ladder.url;
+}
+
+// Leaves out custom.wl-stats.com's ratings: it works out its own, which differ from the ones war.app shows beside this.
+function seasonalPlayerBoxHtml(player, seasonId) {
+    var career = seasonalCareer(player);
+    if (!career.seasons.length) {
+        return "";
+    }
+    var link = function (url, html) {
+        return '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(url)) + '">' + html + '</a>';
+    };
+    var record = function (entries) {
+        var sum = function (key) {
+            return entries.reduce(function (total, entry) {
+                return total + (Number(entry[key]) || 0);
+            }, 0);
+        };
+        return formatCount(sum("wins")) + " W, " + formatCount(sum("losses")) + " L";
+    };
+    var season = career.seasons.filter(function (entry) {
+        return entry.season && warappSeasonId(entry.season.warapp_url) === seasonId;
+    })[0];
+    var count = career.seasons.length;
+    var lines = [link(player.url, count === 1 ? "1 season" : "All " + formatCount(count) + " seasons") + ": " + record(career.seasons)];
+    if (season) {
+        lines.unshift(link(season.season.url, htmlEscape(season.season.name)) + ": " + record([season]));
+    }
+    if (career.titles) {
+        lines.push("Seasons won: " + formatCount(career.titles));
+    } else if (career.best) {
+        lines.push("Best: " + htmlEscape(getRankText(career.best.rank)) + (career.best.season && career.best.season.name ? " (" + htmlEscape(career.best.season.name) + ")" : ""));
+    }
+    return '<div class="tuydSeasonalBox"><div class="tuydMuted">custom.wl-stats.com</div><div>' + lines.join("</div><div>") + '</div></div>';
+}
+
+function addSeasonalLadderStyles() {
+    if (addSeasonalLadderStyles.done) {
+        return;
+    }
+    addSeasonalLadderStyles.done = true;
+    addTournamentButtonStyles();
+    addCSS(`
+        .tuydSeasonalBar { container: tuydSeasonalBar / inline-size; }
+        .tuydPtButton.tuydSeasonalLink { left: auto; right: 12px; bottom: 8px; }
+        @container tuydSeasonalBar (max-width: 639px) {
+            .tuydSeasonalLinkSite { display: none; }
+        }
+        .tuydSeasonalPanel { container: tuydSeasonalPanel / inline-size; }
+        .tuydSeasonalBox { position: absolute; top: 6px; right: 8px; width: 240px; pointer-events: auto; color: #babbbb; font-size: 13px; line-height: 18px; }
+        .tuydSeasonalBox .tuydMuted { color: #8d8d8d; font-size: 12px; }
+        .tuydSeasonalBox a { color: #e0c060; }
+        @container tuydSeasonalPanel (max-width: 799px) {
+            .tuydSeasonalBox { display: none; }
+        }
+    `);
+}
+
+// war.app positions everything from zero-size anchors, so these additions go in the background boxes,
+// the only elements with a real size. The panel's box is the one above the dialog's backing.
+function addSeasonalLadderLink(scene, url) {
+    addSeasonalLadderStyles();
+    var link = $('<a class="tuydPtButton tuydSeasonalLink" target="_blank" rel="noopener">custom<span class="tuydSeasonalLinkSite">.wl-stats.com</span></a>').attr("href", safeUrl(url));
+    link[0].style.setProperty("--tuyd-button", warappArt(scene)["--tuyd-button"]);
+    $(scene).find("[id^='ujs_TopBar'][id$='_img']").first().addClass("tuydSeasonalBar").append(link);
+}
+
+function addSeasonalPlayerBox(scene, html) {
+    addSeasonalLadderStyles();
+    $(scene).find("[id^='ujs_NameRow']").first().parent().children("[id$='_img']").first().addClass("tuydSeasonalPanel").append(html);
+}
+
+function setupSeasonalLadderCustom() {
+    var check = function () {
+        var view = seasonalLadderView();
+        if (!view || view.scene.hasAttribute("data-tuyd-custom")) {
+            return;
+        }
+        // The Profile button is drawn when war.app's answer arrives, so a later change finds it.
+        var profile = view.player && ($(view.scene).find("[id^='ujs_NameRow'] a[href*='Profile?p=']").attr("href") || "").match(/[?&]p=(\d+)/i);
+        if (view.player && !profile) {
+            return;
+        }
+        view.scene.setAttribute("data-tuyd-custom", "");
+        $.when(
+            fetchSeasonalLadder(view.seasonId),
+            profile ? settleRequest(fetchWlStats(CUSTOM_SITE + "/api/v1/ladders/seasonal/players/" + profile[1], SERIES_CACHE_MS), "the player's Seasonal Ladder seasons") : null
+        ).done(function (ladder, player) {
+            var url = seasonalLadderUrl(ladder, player, view.seasonId);
+            if (url) {
+                addSeasonalLadderLink(view.scene, url);
+            }
+            var box = player ? seasonalPlayerBoxHtml(player, view.seasonId) : "";
+            if (box) {
+                addSeasonalPlayerBox(view.scene, box);
+            }
+        });
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}
 window.userscriptSettings = [
     {
         id: 'scrollGames',
@@ -14649,7 +14813,7 @@ window.userscriptSettings = [
         text: 'Load Community Level Records (via maak.ch)',
         selected: false,
         section: 'Third-party data',
-        help: 'Shows the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles, the Ladders page, the Community page and in MTL threads come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
+        help: 'Shows the community level record count on profiles. (MTL and Seasonal Ladder figures on profiles, the Ladders page, the Seasonal Ladder pages, the Community page and in MTL threads come from custom.wl-stats.com and need no setting.) This data is loaded from maak.ch, a server run by the original script author, which can run code on War.app while it loads. Leave this off unless you trust that server.'
     }
 ];
 

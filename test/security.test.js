@@ -167,7 +167,7 @@ test("custom.wl-stats.com series rows and Community Events lines escape API data
 
 test("custom.wl-stats.com ladders (Seasonal Ladder, MTL, profile rows) escape API data", () => {
     const { $ } = createDom();
-    const ctx = load(["seasonalLadderSeries", "renderSeriesLadderRow", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "ladderProfileRows", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml",
+    const ctx = load(["seasonalLadderSeries", "renderSeriesLadderRow", "renderMtlLadderRow", "mtlYouHtml", "mtlLeader", "mtlEventLines", "communityEventHtml", "awpEventLines", "seriesEventLines", "siteLink", "moreLinkHtml", "ladderProfileRows", "seasonalCareer", "communityLadderRow", "seriesYouHtml", "standingParts", "seriesStatusHtml", "seriesDetailHtml",
         "standingsHtml", "weeklyEventStatusHtml", "seriesLink", "signupsHtml", "formatCount", "parseUtcTime", "formatEventTime", "timeUntil", "getRankText", "htmlEscape", "safeUrl"], { $, STAGED_SERIES_KINDS: ["clan_cup", "nations_cup"] });
     const player = { rank: 1, name: PAYLOAD, player_id: "5", rating: PAYLOAD, wins: PAYLOAD, losses: PAYLOAD, url: "javascript:alert(1)", best_rank: PAYLOAD, best_rating: PAYLOAD };
     const seasonal = ctx.seasonalLadderSeries({ name: PAYLOAD, url: "javascript:alert(1)", season: { name: PAYLOAD, url: "data:text/html,x", status: "running" }, players: [player] }, "5");
@@ -181,6 +181,15 @@ test("custom.wl-stats.com ladders (Seasonal Ladder, MTL, profile rows) escape AP
     assertInert(container);
     assert.ok(container.textContent.includes(PAYLOAD));
     assert.ok([...container.querySelectorAll("a")].every((a) => a.getAttribute("href") === "#"), container.innerHTML);
+});
+
+test("seasonalPlayerBoxHtml escapes season names and drops unsafe links", () => {
+    const ctx = load(["seasonalPlayerBoxHtml", "seasonalCareer", "warappSeasonId", "htmlEscape", "safeUrl", "getRankText", "formatCount"]);
+    const season = { name: PAYLOAD, status: "finished", url: "javascript:alert(1)", warapp_url: "https://war.app/LadderSeason?ID=4070" };
+    const container = render(ctx.seasonalPlayerBoxHtml({ url: "data:text/html,x", seasons: [{ season, rank: 7, wins: 14, losses: 6 }] }, "4070"));
+    assertInert(container);
+    assert.equal(container.querySelectorAll("a").length, 2);
+    container.querySelectorAll("a").forEach((a) => assert.equal(a.getAttribute("href"), "#"));
 });
 
 test("custom.wl-stats.com profile stats escape API data", () => {
