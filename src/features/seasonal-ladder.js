@@ -101,11 +101,10 @@ function addSeasonalLadderStyles() {
     }
     addSeasonalLadderStyles.done = true;
     addTournamentButtonStyles();
-    // War.app's title is a text box nearly as wide as the bar, on top of the button.
     addCSS(`
         .tuydSeasonalBar { container: tuydSeasonalBar / inline-size; }
-        .tuydSeasonalBar ~ [id^='ujs_HeaderLabel'] .ujsTextInner { pointer-events: none; }
-        .tuydPtButton.tuydSeasonalLink { left: auto; right: 12px; bottom: 8px; }
+        .tuydSeasonalLinkAnchor { position: relative; flex: none; width: 0; height: 0; }
+        .tuydPtButton.tuydSeasonalLink { left: 14px; top: -14px; bottom: auto; }
         @container tuydSeasonalBar (max-width: 639px) {
             .tuydSeasonalLinkSite { display: none; }
         }
@@ -119,15 +118,17 @@ function addSeasonalLadderStyles() {
     `);
 }
 
-// war.app positions everything from zero-size anchors, so these additions go in the background boxes,
-// the only elements with a real size. The panel's box is the one above the dialog's backing.
+// The title is a centered text box as wide as the bar: taking no width, the anchor keeps it centered
+// and holds the button just after its text, however long that is.
 function addSeasonalLadderLink(scene, url) {
     addSeasonalLadderStyles();
     var link = $('<a class="tuydPtButton tuydSeasonalLink" target="_blank" rel="noopener">custom<span class="tuydSeasonalLinkSite">.wl-stats.com</span></a>').attr("href", safeUrl(url));
     link[0].style.setProperty("--tuyd-button", warappArt(scene)["--tuyd-button"]);
-    $(scene).find("[id^='ujs_TopBar'][id$='_img']").first().addClass("tuydSeasonalBar").append(link);
+    $(scene).find("[id^='ujs_HeaderLabel'][id$='_tmp']").first().addClass("tuydSeasonalBar").append($('<span class="tuydSeasonalLinkAnchor"></span>').append(link));
 }
 
+// war.app positions everything from zero-size anchors, so the box goes in a background box, one of the
+// few elements with a real size: the one above the dialog's backing.
 function addSeasonalPlayerBox(scene, html) {
     addSeasonalLadderStyles();
     $(scene).find("[id^='ujs_NameRow']").first().parent().children("[id$='_img']").first().addClass("tuydSeasonalPanel").append(html);
@@ -136,7 +137,16 @@ function addSeasonalPlayerBox(scene, html) {
 function setupSeasonalLadderCustom() {
     var check = function () {
         var view = seasonalLadderView();
-        if (!view || view.scene.hasAttribute("data-tuyd-custom")) {
+        if (!view) {
+            return;
+        }
+        if (view.scene.hasAttribute("data-tuyd-custom")) {
+            // The button's text makes the title no view's, so a view here has lost it: each time war.app
+            // lays a scene out, it rewrites the title.
+            var added = view.scene.getAttribute("data-tuyd-custom");
+            if (added) {
+                addSeasonalLadderLink(view.scene, added);
+            }
             return;
         }
         // The Profile button is drawn when war.app's answer arrives, so a later change finds it.
@@ -151,6 +161,7 @@ function setupSeasonalLadderCustom() {
         ).done(function (ladder, player) {
             var url = seasonalLadderUrl(ladder, player, view.seasonId);
             if (url) {
+                view.scene.setAttribute("data-tuyd-custom", url);
                 addSeasonalLadderLink(view.scene, url);
             }
             var box = player ? seasonalPlayerBoxHtml(player, view.seasonId) : "";
