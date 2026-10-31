@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.62.2
+
+- **Clan War timeslots: your record no longer runs over a long template name.** "This season: …" now sits just below the name, beside the Enqueue button.
+
 ## 3.62.1
 
 - **Ladders page: the Seasonal Ladder comes last in the Players list.** Manager League now sits above it, after Titled Tuesday.
