@@ -1158,12 +1158,12 @@ function addClanWarStyles() {
             white-space: nowrap;
             pointer-events: none;
         }
-        /* War.app's name label is as wide as its text, up to 231px where it wraps, so the note keeps clear of that
-           width rather than following the label's right edge into the lines below short names. */
+        /* A long name runs past any left the row has room for, so the note hangs below it, beside Enqueue
+           and right of war.app's length and queued lines. */
         .tuydCwTemplateNote {
             position: absolute;
             left: 247px;
-            top: 2px;
+            top: calc(100% + 2px);
             width: 220px;
             color: #e0c060;
             font-size: 13px;
