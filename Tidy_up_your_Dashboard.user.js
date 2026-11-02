@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.62.3
+// @version 3.62.4
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -8130,6 +8130,7 @@ function idleUpgradeRows() {
         var row = $(this);
         var button = row.find("a[id^='ujs_UpgradeBtn']").first();
         var cost = /[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var wait = /^\s*In\s+([^￦₩]+?)\s*[￦₩]/i.exec(button.parent().text());
         var host = row.find("[id$='_tmp']").filter(function () {
             return /\/\s*sec\b/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
         }).first();
@@ -8137,6 +8138,7 @@ function idleUpgradeRows() {
         return cost ? {
             row: this,
             cost: parseIdleNumber(cost[1]),
+            wait: wait ? wait[1] : "",
             output: output ? parseIdleNumber(output[1]) : null,
             host: host[0] || null
         } : null;
@@ -8177,8 +8179,9 @@ function showIdleUpgradeHints() {
     // war.app rewrites its labels several times a second, so the hint sits beside the label, in its holder.
     var holder = $(best.host).parent();
     if (!hint.length) {
-        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost.">Best value</span>');
+        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost."></span>');
     }
+    hint.text("Best value" + (best.wait ? " · in " + best.wait : ""));
     if (hint.parent()[0] !== holder[0]) {
         hint.appendTo(holder);
     }

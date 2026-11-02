@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.62.3  
+> **Version:** 3.62.4  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -146,7 +146,7 @@ Helpers for War.app Idle, in the settings menu's Idle section. They only inform 
 - **Artifact list**: a "List" button next to the artifact window's Sort box shows every artifact in a compact list, by rarity or name, with copies counted.
 - **Second-tab warning** when Idle is open in another tab of the same browser, since two places at once can lose progress.
 - **What a tech is missing, and its market cost**: in a tech's details box, beside each item you don't have enough of, "need 5 more ≈ ₩221M", at the cheapest of the level's markets, with the price rising as you buy the way Idle's markets do; with two or more items short, the total on the tech's name line ("all ≈ ₩248M", in red when it's more than your money). Items no market sells say so. Nothing is bought for you.
-- **"Best value"** on the army camp that adds the most armies per ₩.
+- **"Best value"** on the army camp that adds the most armies per ₩, with how long until you can pay for it.
 - **Pop-up log**: a "Log" button left of the map's zoom buttons lists the last 100 pop-ups Idle showed on the map, newest first.
 - **Artifact storage**: mark artifacts you never want used in the artifact List; they're dimmed and tagged "Stored", never suggested as a better copy, and activating one says so.
 - **Tab-title count** of what Idle is waiting on you for (unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus, the coin wheel), with an optional desktop notification while the tab is in the background.

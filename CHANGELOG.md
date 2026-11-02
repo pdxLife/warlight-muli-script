@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.62.4
+
+- **Idle: "Best value" says when you can buy it.** War.app's wait is easy to miss on a dimmed button, so the tag repeats it: "Best value · in 42m".
+
 ## 3.62.3
 
 Fixes for war.app's update 6.07.

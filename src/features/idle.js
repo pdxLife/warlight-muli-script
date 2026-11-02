@@ -510,6 +510,7 @@ function idleUpgradeRows() {
         var row = $(this);
         var button = row.find("a[id^='ujs_UpgradeBtn']").first();
         var cost = /[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var wait = /^\s*In\s+([^￦₩]+?)\s*[￦₩]/i.exec(button.parent().text());
         var host = row.find("[id$='_tmp']").filter(function () {
             return /\/\s*sec\b/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
         }).first();
@@ -517,6 +518,7 @@ function idleUpgradeRows() {
         return cost ? {
             row: this,
             cost: parseIdleNumber(cost[1]),
+            wait: wait ? wait[1] : "",
             output: output ? parseIdleNumber(output[1]) : null,
             host: host[0] || null
         } : null;
@@ -557,8 +559,9 @@ function showIdleUpgradeHints() {
     // war.app rewrites its labels several times a second, so the hint sits beside the label, in its holder.
     var holder = $(best.host).parent();
     if (!hint.length) {
-        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost.">Best value</span>');
+        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost."></span>');
     }
+    hint.text("Best value" + (best.wait ? " · in " + best.wait : ""));
     if (hint.parent()[0] !== holder[0]) {
         hint.appendTo(holder);
     }
