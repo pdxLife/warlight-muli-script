@@ -209,58 +209,51 @@ test("a second Idle tab in the same browser warns in both tabs", () => {
     assert.equal(first.$("#idleTabWarning").length, 0, "Got it closes it");
 });
 
-// Mirrors Idle's money counter and army camp rows (recorded on Fort Harbor).
-const moneyCounter = (text) => `<div id="ujs_MoneyContainer"><div id="ujs_MoneyLabel"><div id="ujs_MoneyLabel_tmp" class="ujsTextInner">${text}</div></div></div>`;
-const campRow = (n, name, cost, output) => `<div id="ujs_WziTabBodyArmyCampRow${n ? "_" + n : ""}"><div id="ujs_NameLabel_${n}"><div id="ujs_NameLabel_${n}_tmp">${name}</div></div>`
-    + `<div id="ujs_UpgradeBtnContainer_${n}"><div id="ujs_UpgradeBtn_${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_UpgradeBtn_${n}_btn" href="#"></a><div id="ujs_Text_5${n}"><div id="ujs_Text_5${n}_tmp">Upgrade ￦${cost}</div></div></div></div>`
+// Mirrors Idle's army camp rows (recorded on Fort Harbor). Since 6.07 a button reads "Upgrade ￦784K" when
+// you can pay and "In 1h25m ￦12B" when you can't.
+const campRow = (n, name, button, output) => `<div id="ujs_WziTabBodyArmyCampRow${n ? "_" + n : ""}"><div id="ujs_NameLabel_${n}"><div id="ujs_NameLabel_${n}_tmp">${name}</div></div>`
+    + `<div id="ujs_UpgradeBtnContainer_${n}"><div id="ujs_UpgradeBtn_${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_UpgradeBtn_${n}_btn" href="#"></a><div id="ujs_Text_5${n}"><div id="ujs_Text_5${n}_tmp">${button}</div></div></div></div>`
     + `<div id="ujs_ArmiesPerSecondLabel_${n}"><div id="ujs_ArmiesPerSecondLabel_${n}_tmp">₳${output} / sec</div></div></div>`;
 
 function upgradePage(html) {
     const { dom, $ } = createDom(html, "https://war.app/Idle/Play");
-    const ctx = load(["formatIdleWait", "parseIdleMoney", "parseIdleNumber", "idleUpgradeRows", "idleBestCamp", "idlePanelRight", "showIdleUpgradeHints"], { ...domGlobals(dom, $), IDLE_NUMBER_SUFFIXES });
+    const ctx = load(["parseIdleMoney", "parseIdleNumber", "idleUpgradeRows", "idleBestCamp", "idlePanelRight", "showIdleUpgradeHints"], { ...domGlobals(dom, $), IDLE_NUMBER_SUFFIXES });
     return { ctx, $ };
 }
 
-test("waits read as seconds, minutes, hours or days", () => {
+test("reads Idle's money counter, not its armies counter", () => {
     const { ctx } = upgradePage("");
-    assert.equal(ctx.formatIdleWait(20.2), "in 21s");
-    assert.equal(ctx.formatIdleWait(600), "in 10m");
-    assert.equal(ctx.formatIdleWait(3600 * 19.5), "in 19h 30m");
-    assert.equal(ctx.formatIdleWait(3600 * 3), "in 3h");
-    assert.equal(ctx.formatIdleWait(3600 * 50), "in 2d 2h");
     assert.deepEqual(JSON.parse(JSON.stringify(ctx.parseIdleMoney("￦1.18B (171K/sec)"))), { money: 1.18e9, rate: 171000 });
     assert.equal(ctx.parseIdleMoney("₳357.6M (45K/sec)"), null, "armies aren't money");
 });
 
-test("upgrades you can't afford yet say when you can, and the best army camp for the money is marked", () => {
-    const { ctx, $ } = upgradePage(moneyCounter("￦1.18B (171K/sec)") + campRow(2, "Gislic", "12B", "5.86K") + campRow(3, "Vindertion", "8.8B", "4.7K")
-        + campRow(4, "Dawnwardize", "18B", "5.86K") + campRow(5, "Cheap", "1B", "400"));
+test("the army camp that adds the most for the money is marked, whether or not you can pay yet", () => {
+    const { ctx, $ } = upgradePage(campRow(2, "Gislic", "In 17h\n￦12B", "5.86K") + campRow(3, "Vindertion", "In 12h\n￦8.8B", "4.7K")
+        + campRow(4, "Dawnwardize", "In 1d2h\n￦18B", "5.86K") + campRow(5, "Cheap", "Upgrade\n￦1B", "400"));
+    assert.equal(ctx.idleUpgradeRows().length, 4);
     ctx.showIdleUpgradeHints();
     const hint = (n) => $(`#ujs_ArmiesPerSecondLabel_${n} > .idleUpgradeHint`);
-    assert.equal(hint(2).text(), "in 17h 35m", "(12B − 1.18B) ÷ 171K/sec");
-    assert.equal(hint(3).text(), "in 12h 23m · Best value", "4.7K for 8.8B beats 5.86K for 12B or 18B and 400 for 1B");
+    assert.equal(hint(3).text(), "Best value", "4.7K for 8.8B beats 5.86K for 12B or 18B and 400 for 1B");
     assert.ok(hint(3).hasClass("idleBestValue"));
-    assert.equal(hint(5).length, 0, "affordable now and not the best value: nothing added");
-    assert.equal($(".idleBestValue").length, 1);
+    assert.equal($(".idleUpgradeHint").length, 1, "war.app shows the waits now, so nothing else is added");
     ctx.showIdleUpgradeHints();
-    assert.equal($(".idleUpgradeHint").length, 3, "a second pass updates the hints instead of adding more");
+    assert.equal($(".idleUpgradeHint").length, 1, "a second pass adds nothing");
     $("#ujs_ArmiesPerSecondLabel_3_tmp").html("<span>₳4.7K</span> / sec");
     ctx.showIdleUpgradeHints();
-    assert.equal(hint(3).text(), "in 12h 23m · Best value", "war.app rewriting its label leaves the hint, which sits beside it");
+    assert.equal(hint(3).text(), "Best value", "war.app rewriting its label leaves the hint, which sits beside it");
 });
 
-// Mirrors a Mines row: two ores side by side, each with its own "/s" label (recorded on Fort Harbor).
-const mineRow = (n, cost, outputs) => `<div id="ujs_WziTabBodyMineRow_${n}"><div id="ujs_NameLabel_${n}"><div id="ujs_NameLabel_${n}_tmp">Neutinoclar</div></div>`
-    + `<div id="ujs_UpgradeBtnContainer_${n}"><div id="ujs_UpgradeBtn_${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_UpgradeBtn_${n}_btn" href="#"></a><div id="ujs_Text_5${n}"><div id="ujs_Text_5${n}_tmp">Upgrade ￦${cost}</div></div></div></div>`
-    + outputs.map((output, i) => `<div id="ujs_Rate_${n}_${i}"><div id="ujs_Rate_${n}_${i}_tmp">${output}/s</div></div>`).join("") + `</div>`;
-
-test("a mine making several ores gets its hint after the last one, not over the second", () => {
-    const { ctx, $ } = upgradePage(moneyCounter("￦7.65B (318K/sec)") + mineRow(7, "18B", ["1.04", "1.04"]));
-    $("#ujs_Rate_7_0").append('<span class="idleUpgradeHint">in 9h 2m</span>');
+test("Best value moves when another camp becomes the best, and leaves when a camp is maxed", () => {
+    const { ctx, $ } = upgradePage(campRow(3, "Vindertion", "Upgrade\n￦8.8B", "4.7K") + campRow(5, "Cheap", "Upgrade\n￦1B", "100"));
     ctx.showIdleUpgradeHints();
-    assert.equal($(".idleUpgradeHint").length, 1);
-    assert.equal($("#ujs_Rate_7_1 > .idleUpgradeHint").text(), "in 9h 3m", "(18B − 7.65B) ÷ 318K/sec, beside the second ore");
-    assert.equal($("#ujs_Rate_7_0 > .idleUpgradeHint").length, 0, "a hint left over the first ore is moved");
+    assert.equal($("#ujs_ArmiesPerSecondLabel_3 > .idleBestValue").length, 1);
+    $("#ujs_Text_53_tmp").text("In 12h\n￦88B");
+    ctx.showIdleUpgradeHints();
+    assert.equal($(".idleBestValue").length, 1, "only ever one tag");
+    assert.equal($("#ujs_ArmiesPerSecondLabel_5 > .idleBestValue").length, 1);
+    $("#ujs_Text_53_tmp, #ujs_Text_55_tmp").text("(maxed)");
+    ctx.showIdleUpgradeHints();
+    assert.equal($(".idleUpgradeHint").length, 0, "no camp left to upgrade");
 });
 
 test("the tab title counts what Idle is waiting on you for, and a background tab gets a notification", async () => {

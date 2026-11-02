@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.62.3
+
+Fixes for war.app's update 6.07.
+
+- **Idle: tech cost hints are back.** A tech's box shows "need N more ≈ ₩…" again. Where war.app now shows a wait beside an item, the hint is shorter and sits after it.
+- **Idle: "Best value" works again**, whether or not you can pay for the camp yet. "Time to afford" is gone, because war.app now shows it on the Upgrade button.
+- **Private chat list removed.** War.app now sorts this list itself, with Active Players and Inactive headings.
+
 ## 3.62.2
 
 - **Clan War timeslots: your record no longer runs over a long template name.** "This season: …" now sits just below the name, beside the Enqueue button.

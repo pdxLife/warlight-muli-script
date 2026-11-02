@@ -495,47 +495,30 @@ function showIdleTabWarning() {
     });
 }
 
-function formatIdleWait(seconds) {
-    var minutes = Math.ceil(seconds / 60);
-    if (seconds < 60) {
-        return "in " + Math.max(1, Math.ceil(seconds)) + "s";
-    }
-    if (minutes < 60) {
-        return "in " + minutes + "m";
-    }
-    var hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-        return "in " + hours + "h" + (minutes % 60 ? " " + minutes % 60 + "m" : "");
-    }
-    return "in " + Math.floor(hours / 24) + "d" + (hours % 24 ? " " + hours % 24 + "h" : "");
-}
-
 // "￦1.18B (171K/sec)" from Idle's money counter.
 function parseIdleMoney(text) {
     var match = /[￦₩]\s*([\d.,]+\s*[a-z]?)\s*\(\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(String(text || ""));
     return match ? { money: parseIdleNumber(match[1]), rate: parseIdleNumber(match[2]) } : null;
 }
 
-// The rows of Idle's camp, mine and hospital tabs that can be upgraded for money.
+// Idle's army camp rows that can still be upgraded. Since 6.07 a button says "Upgrade" only when you
+// can pay; otherwise it says when you can ("In 1h25m"), with the cost below either way.
 function idleUpgradeRows() {
-    return $("[id^='ujs_WziTabBody']").filter(function () {
-        return /^ujs_WziTabBody(?:ArmyCamp|Mine|Hospital|MercenaryCamp)Row(?:_\d+)?$/.test(this.id);
+    return $("[id^='ujs_WziTabBodyArmyCampRow']").filter(function () {
+        return /^ujs_WziTabBodyArmyCampRow(?:_\d+)?$/.test(this.id);
     }).map(function () {
         var row = $(this);
         var button = row.find("a[id^='ujs_UpgradeBtn']").first();
-        var cost = /Upgrade\s*[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
-        var outputs = row.find("[id$='_tmp']").filter(function () {
-            return /\/\s*s(?:ec)?\b|Saves/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
-        });
-        var host = outputs.first();
+        var cost = /[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var host = row.find("[id$='_tmp']").filter(function () {
+            return /\/\s*sec\b/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
+        }).first();
         var output = /^\s*₳\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(host.text());
         return cost ? {
             row: this,
-            camp: /ArmyCampRow/.test(this.id),
             cost: parseIdleNumber(cost[1]),
             output: output ? parseIdleNumber(output[1]) : null,
-            host: host[0] || null,
-            outputs: outputs.get()
+            host: host[0] || null
         } : null;
     }).get().filter(function (entry) {
         return entry && entry.cost != null;
@@ -546,7 +529,7 @@ function idleUpgradeRows() {
 // makes the most per ₩ of its upgrade cost gains the most for the money.
 function idleBestCamp(rows) {
     return rows.filter(function (entry) {
-        return entry.camp && entry.output && entry.cost > 0;
+        return entry.output && entry.cost > 0;
     }).sort(function (a, b) {
         return b.output / b.cost - a.output / a.cost;
     })[0] || null;
@@ -565,44 +548,26 @@ function idlePanelRight(element) {
 }
 
 function showIdleUpgradeHints() {
-    var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
-    if (!wallet || wallet.money == null) {
+    var best = idleBestCamp(idleUpgradeRows());
+    var hint = best ? $(best.row).find(".idleUpgradeHint") : $();
+    $(".idleUpgradeHint").not(hint).remove();
+    if (!best) {
         return;
     }
-    var rows = idleUpgradeRows();
-    var best = idleBestCamp(rows);
-    rows.forEach(function (entry) {
-        if (!entry.host) {
-            return;
-        }
-        var wait = entry.cost > wallet.money && wallet.rate > 0 ? formatIdleWait((entry.cost - wallet.money) / wallet.rate) : "";
-        var text = [wait, entry === best ? "Best value" : ""].filter(Boolean).join(" · ");
-        var hint = $(entry.row).find(".idleUpgradeHint");
-        if (!text) {
-            hint.remove();
-            return;
-        }
-        // war.app rewrites its labels several times a second, so the hint sits beside the row's last
-        // output (mines make two or three ores, side by side), in that label's holder.
-        var last = entry.outputs.reduce(function (rightmost, element) {
-            return element.getBoundingClientRect().right >= rightmost.getBoundingClientRect().right ? element : rightmost;
-        });
-        var holder = $(last).parent();
-        if (!hint.length) {
-            hint = $('<span class="idleUpgradeHint"></span>');
-        }
-        if (hint.parent()[0] !== holder[0]) {
-            hint.appendTo(holder);
-        }
-        hint.toggleClass("idleBestValue", entry === best).text(text)
-            .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
-        var label = $(last).children().first()[0] || last;
-        var labelBox = label.getBoundingClientRect();
-        var width = Math.round(labelBox.width || label.offsetWidth || 0);
-        var below = labelBox.right + 8 + hint[0].offsetWidth > idlePanelRight(last) - 4;
-        hint.toggleClass("idleUpgradeHintBelow", below)
-            .css(below ? { left: "", lineHeight: "" } : { left: width + 8 + "px", lineHeight: (last.offsetHeight || 18) + "px" });
-    });
+    // war.app rewrites its labels several times a second, so the hint sits beside the label, in its holder.
+    var holder = $(best.host).parent();
+    if (!hint.length) {
+        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost.">Best value</span>');
+    }
+    if (hint.parent()[0] !== holder[0]) {
+        hint.appendTo(holder);
+    }
+    var label = $(best.host).children().first()[0] || best.host;
+    var labelBox = label.getBoundingClientRect();
+    var width = Math.round(labelBox.width || label.offsetWidth || 0);
+    var below = labelBox.right + 8 + hint[0].offsetWidth > idlePanelRight(best.host) - 4;
+    hint.toggleClass("idleUpgradeHintBelow", below)
+        .css(below ? { left: "", lineHeight: "" } : { left: width + 8 + "px", lineHeight: (best.host.offsetHeight || 18) + "px" });
 }
 
 function formatIdleMoney(amount) {
@@ -689,11 +654,13 @@ function idleTechCostRows(dialog) {
         var labels = $(this).children(".ujsText").map(function () {
             return { holder: this, text: $(this).children(".ujsTextInner").text().trim() };
         }).get();
-        var counts = labels.length === 2 && /^([\d.,]+\s*[a-z]?)\s*\/\s*([\d.,]+\s*[a-z]?)$/i.exec(labels[0].text);
+        var counts = labels.length >= 2 && /^([\d.,]+\s*[a-z]?)\s*\/\s*([\d.,]+\s*[a-z]?)$/i.exec(labels[0].text);
         if (!counts) {
             return null;
         }
-        return { row: this, nameHolder: labels[1].holder, name: labels[1].text, have: parseIdleNumber(counts[1]), need: parseIdleNumber(counts[2]) };
+        // Since 6.07 a third label says how long the item will take, and is hidden while it's empty.
+        var wait = labels[2] && labels[2].text && labels[2].holder.style.display !== "none" ? labels[2] : null;
+        return { row: this, lastHolder: (wait || labels[1]).holder, waiting: !!wait, name: labels[1].text, have: parseIdleNumber(counts[1]), need: parseIdleNumber(counts[2]) };
     }).get().filter(function (row) {
         return row && row.have !== null && row.need !== null;
     });
@@ -817,21 +784,22 @@ function setupIdleTechCost() {
         var priced = 0;
         var missing = 0;
         idleTechCostRows(dialog).forEach(function (row) {
-            var label = $(row.nameHolder).children(".ujsTextInner")[0];
+            var label = $(row.lastHolder).children(".ujsTextInner")[0];
             var short = Math.ceil(row.need - row.have);
             if (short <= 0) {
-                place(row.nameHolder, label, "idleTechCost", "", "");
+                place(row.lastHolder, label, "idleTechCost", "", "");
                 return;
             }
             missing++;
             var buy = idleCheapestPurchase(row.name, short, prices, rates);
             if (!buy) {
-                place(row.nameHolder, label, "idleTechCost idleTechCostNone", "need " + short.toLocaleString("en-US") + " more · no market sells it", "None of this level's markets sells " + row.name + " (Muli's Userscript)");
+                place(row.lastHolder, label, "idleTechCost idleTechCostNone", row.waiting ? "no market" : "need " + short.toLocaleString("en-US") + " more · no market sells it", "None of this level's markets sells " + row.name + " (Muli's Userscript)");
                 return;
             }
             total += buy.cost;
             priced++;
-            place(row.nameHolder, label, "idleTechCost", "need " + short.toLocaleString("en-US") + " more ≈ " + formatIdleMoney(buy.cost),
+            // war.app's wait leaves too little room in the box for the full text.
+            place(row.lastHolder, label, "idleTechCost", (row.waiting ? "" : "need " + short.toLocaleString("en-US") + " more ") + "≈ " + formatIdleMoney(buy.cost),
                 "Buying " + short.toLocaleString("en-US") + " " + row.name + " at " + buy.market + (buy.exact ? ", with the price rising as you buy" : " at today's price; it rises as you buy") + " (Muli's Userscript)");
         });
         var nameLabel = dialog.find("[id^='ujs_NameLabel'] .ujsTextInner").first();
