@@ -233,14 +233,20 @@ test("the army camp that adds the most for the money is marked, whether or not y
     assert.equal(ctx.idleUpgradeRows().length, 4);
     ctx.showIdleUpgradeHints();
     const hint = (n) => $(`#ujs_ArmiesPerSecondLabel_${n} > .idleUpgradeHint`);
-    assert.equal(hint(3).text(), "Best value", "4.7K for 8.8B beats 5.86K for 12B or 18B and 400 for 1B");
+    assert.equal(hint(3).text(), "Best value · in 12h", "4.7K for 8.8B beats 5.86K for 12B or 18B and 400 for 1B");
     assert.ok(hint(3).hasClass("idleBestValue"));
     assert.equal($(".idleUpgradeHint").length, 1, "war.app shows the waits now, so nothing else is added");
     ctx.showIdleUpgradeHints();
     assert.equal($(".idleUpgradeHint").length, 1, "a second pass adds nothing");
     $("#ujs_ArmiesPerSecondLabel_3_tmp").html("<span>₳4.7K</span> / sec");
     ctx.showIdleUpgradeHints();
-    assert.equal(hint(3).text(), "Best value", "war.app rewriting its label leaves the hint, which sits beside it");
+    assert.equal(hint(3).text(), "Best value · in 12h", "war.app rewriting its label leaves the hint, which sits beside it");
+    $("#ujs_Text_53_tmp").text("In 4h35m\n￦8.8B");
+    ctx.showIdleUpgradeHints();
+    assert.equal(hint(3).text(), "Best value · in 4h35m", "the wait follows war.app's button");
+    $("#ujs_Text_53_tmp").text("Upgrade\n￦8.8B");
+    ctx.showIdleUpgradeHints();
+    assert.equal(hint(3).text(), "Best value", "nothing to wait for once you can pay");
 });
 
 test("Best value moves when another camp becomes the best, and leaves when a camp is maxed", () => {
