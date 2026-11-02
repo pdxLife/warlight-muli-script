@@ -6,7 +6,8 @@ const SUFFIXES = eval("(" + source.match(/var IDLE_NUMBER_SUFFIXES = ([^\n]*);/)
 const FUNCTIONS = ["parseIdleNumber", "parseIdleMoney", "shownUjsElement", "formatIdleMoney", "idleMarketRates", "idleMarketPrices", "idleMarketCost", "idleCheapestPurchase", "idleTechCostRows"];
 
 // Mirrors Idle's Items tab market rows and a tech's details box (names and numbers are invented or
-// copied from a real level).
+// copied from a real level). Since 6.07 each cost row has a third label for how long the item will
+// take, hidden while it's empty.
 function marketRow(n, market, items) {
     return `<div id="ujs_WziTabBodyMarketRow_${n}"><div id="ujs_NameLabel_${n}"><div class="ujsInner ujsTextInner">${market}</div></div><div id="ujs_ResourcesContainer_${n}">`
         + items.map((item, i) => `<div id="ujs_ResourceLabelContainer_${n}${i}"><div class="ujsText"><div class="ujsInner ujsTextInner">${item}</div></div></div>`).join("") + `</div></div>`;
@@ -14,9 +15,10 @@ function marketRow(n, market, items) {
 
 function techDialog(name, rows) {
     return `<div id="ujs_WziTabBodyTechDialog"><div id="ujs_Header"><div class="ujsGameObject ujsText" id="ujs_NameLabel_9" style="bottom: 5px;"><div class="ujsInner ujsTextInner">${name}</div></div></div>`
-        + `<div id="ujs_CostContainer">` + rows.map(([counts, item], i) => `<div id="ujs_horz_${i}"><div class="ujsGameObject ujsImg"></div>`
+        + `<div id="ujs_CostContainer">` + rows.map(([counts, item, wait], i) => `<div id="ujs_horz_${i}"><div class="ujsGameObject ujsImg"></div>`
             + `<div class="ujsGameObject ujsText" id="ujs_Text_${i}a"><div class="ujsInner ujsTextInner">${counts}</div></div>`
-            + `<div class="ujsGameObject ujsText" id="ujs_Text_${i}b" style="bottom: 1px;"><div class="ujsInner ujsTextInner">${item}</div></div></div>`).join("") + `</div></div>`;
+            + `<div class="ujsGameObject ujsText" id="ujs_Text_${i}b" style="bottom: 1px;"><div class="ujsInner ujsTextInner">${item}</div></div>`
+            + `<div class="ujsGameObject ujsText" id="ujs_Text_${i}c" style="bottom: 1px;${wait ? "" : " display: none;"}"><div class="ujsInner ujsTextInner">${wait || ""}</div></div></div>`).join("") + `</div></div>`;
 }
 
 const MARKETS = marketRow(1, "Belluminkling", ["Tin Bar for ￦1.46K", "Copper Bar for ￦45", "Iron Bar for ￦21K", "Zinc Bar for ￦127K"])
@@ -99,4 +101,30 @@ test("puts the missing count and cost beside each short item, and a total on the
     const hints = $(".idleTechCost").map((i, e) => $(e).text()).get();
     assert.deepEqual(Array.from(hints).sort(), ["all ≈ ₩2.82B", "need 504 more ≈ ₩22.7K", "need 64 more ≈ ₩2.82B"].sort(), "the Tin Bar row has enough and gets nothing");
     assert.ok($(".idleTechCostTotal").hasClass("idleTechCostShort") === false, "₩9.8B is enough");
+});
+
+test("beside war.app's own wait for an item, the hint is shorter and sits after that wait", async () => {
+    const { dom, $ } = createDom(MARKETS + techDialog("Caches", [["2/5.42K", "Copper Bar", "(not being made)"], ["0/27", "Welding Rod", "(in 5m)"], ["0/9", "Tin Bar"]]), "https://war.app/Idle/Play");
+    dom.window.Range.prototype.getBoundingClientRect = function () {
+        return { right: this.startContainer.textContent.length, left: 0 };
+    };
+    const timers = [];
+    const ctx = load(FUNCTIONS.concat(["readIdleSave", "setupIdleTechCost"]), {
+        ...domGlobals(dom, $),
+        IDLE_NUMBER_SUFFIXES: SUFFIXES,
+        addCSS: () => { },
+        setTimeout: (fn) => { timers.push(fn); return 1; },
+        indexedDB: { databases: () => Promise.resolve([]) }
+    });
+    ctx.setupIdleTechCost();
+    $("#ujs_CostContainer").append("<i></i>");
+    await flush();
+    timers.splice(0).forEach((fn) => fn());
+    const tag = (i) => $(`#ujs_horz_${i} > .idleTechCost`);
+    assert.equal(tag(0).text(), "≈ ₩244K");
+    assert.equal(parseFloat(tag(0)[0].style.left), "(not being made)".length + 8, "after the wait, not over it");
+    assert.equal(tag(1).text(), "no market");
+    assert.match(tag(1).attr("title"), /None of this level's markets sells Welding Rod/);
+    assert.equal(tag(2).text(), "need 9 more ≈ ₩13.1K", "with no wait there's room for all of it");
+    assert.equal(parseFloat(tag(2)[0].style.left), "Tin Bar".length + 8);
 });

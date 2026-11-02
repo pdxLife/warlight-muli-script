@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.62.2
+// @version 3.62.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.62.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -581,14 +581,13 @@ function pageFeatures() {
         { name: "Your rank next to your rating on Quickmatch leaderboards", section: "Community", match: pageIsQuickmatch, run: setupLeaderboardRank },
         { name: "Your Quickmatch record and stats", section: "Community", match: pageIsQuickmatch, run: setupQuickmatchStats },
         { name: "Player pace in game lobbies", section: "Games", match: pageIsGame, run: setupLobbyPace },
-        { name: "Private chat list: players still in the game first", section: "Games", match: pageIsGame, run: setupPrivateChatList },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
         { name: "Log of Idle's pop-ups", section: "Idle", match: pageIsIdle, run: setupIdlePopupLog },
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
-        { name: "Time to afford and best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
+        { name: "Best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
         { name: "What a tech is missing and its market cost in Idle", section: "Idle", match: pageIsIdle, run: setupIdleTechCost },
         { name: "Count of things Idle needs you for in the tab title", section: "Idle", match: pageIsIdle, run: setupIdleAttention },
         { name: "global styles", run: setGlobalStyles },
@@ -1595,95 +1594,6 @@ function bindCustomContextMenu() {
         $(".context-menu").hide(100);
     });
 }
-// Names of the players war.app's Players panel marks as out of the game.
-function gameOutPlayers() {
-    return $("[id^='ujs_PlayersSummaryPlayer']").filter(function () {
-        return /^ujs_PlayersSummaryPlayer(?:_\d+)?$/.test(this.id);
-    }).filter(function () {
-        var status = $(this).find("[id^='ujs_PlayerStatusLabel']").filter(function () {
-            return !/_tmp$/.test(this.id);
-        }).first().text();
-        return /\b(?:Eliminated|Booted|Surrendered|Removed by host|Declined)\b/i.test(status);
-    }).map(function () {
-        return $(this).find("[id^='ujs_PlayerNameContainer']").first().text().replace(/\s+/g, " ").trim().replace(/^L\d+ /, "");
-    }).get();
-}
-
-function privateChatRows(prompt) {
-    return $(prompt).parent().children(".ujsBtn").map(function () {
-        return { element: this, name: $(this).find(".ujsTextInner").first().text().trim() };
-    }).get().filter(function (row) {
-        return row.name;
-    });
-}
-
-// war.app stacks the rows by their `bottom`; the rows trade places, so the list keeps its size.
-function orderPrivateChatRows(rows, outNames) {
-    var slots = rows.map(function (row) {
-        return parseFloat(row.element.style.bottom) || 0;
-    }).sort(function (a, b) {
-        return b - a;
-    });
-    var isOut = function (row) {
-        return outNames.indexOf(row.name) !== -1;
-    };
-    var byName = function (a, b) {
-        return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-    };
-    var ordered = rows.filter(function (row) {
-        return !isOut(row);
-    }).sort(byName).concat(rows.filter(isOut).sort(byName));
-    var changed = false;
-    ordered.forEach(function (row, i) {
-        if (parseFloat(row.element.style.bottom) !== slots[i]) {
-            row.element.style.bottom = slots[i] + "px";
-            changed = true;
-        }
-        var first = isOut(row) && i > 0 && !isOut(ordered[i - 1]);
-        $(row.element).toggleClass("tuydPmOut", isOut(row));
-        var divider = $(row.element).children(".tuydPmDivider");
-        if (first && !divider.length) {
-            var image = $(row.element).children(".ujsImgInner").first()[0];
-            $('<div class="tuydPmDivider"></div>').css({
-                width: image ? image.style.width : "100%",
-                bottom: (image ? parseFloat(image.style.height) || 30 : 30) + 1
-            }).appendTo(row.element);
-        } else if (!first) {
-            divider.remove();
-        }
-    });
-    return changed;
-}
-
-function setupPrivateChatList() {
-    addCSS(`
-        .ujsBtn.tuydPmOut > :not(.tuydPmDivider) {
-            opacity: 0.55;
-        }
-        .tuydPmDivider {
-            position: absolute;
-            left: 0;
-            height: 0;
-            border-bottom: 2px solid #e0c060;
-            pointer-events: none;
-        }
-    `);
-    var timer = null;
-    var check = function () {
-        timer = null;
-        $("[id^='ujs_PromptFromList'] .ujsTextInner").filter(function () {
-            return /chat privately with/i.test($(this).text());
-        }).each(function () {
-            orderPrivateChatRows(privateChatRows($(this).parent()), gameOutPlayers());
-        });
-    };
-    new MutationObserver(function () {
-        if (!timer) {
-            timer = setTimeout(check, 200);
-        }
-    }).observe(document.body, { childList: true, subtree: true });
-}
-
 // The messages of one chat tab, oldest first; war.app stacks them by `bottom`, the newest at the bottom.
 // Messages hidden by your block list are left out.
 function chatMessages(tab) {
@@ -8205,47 +8115,30 @@ function showIdleTabWarning() {
     });
 }
 
-function formatIdleWait(seconds) {
-    var minutes = Math.ceil(seconds / 60);
-    if (seconds < 60) {
-        return "in " + Math.max(1, Math.ceil(seconds)) + "s";
-    }
-    if (minutes < 60) {
-        return "in " + minutes + "m";
-    }
-    var hours = Math.floor(minutes / 60);
-    if (hours < 24) {
-        return "in " + hours + "h" + (minutes % 60 ? " " + minutes % 60 + "m" : "");
-    }
-    return "in " + Math.floor(hours / 24) + "d" + (hours % 24 ? " " + hours % 24 + "h" : "");
-}
-
 // "￦1.18B (171K/sec)" from Idle's money counter.
 function parseIdleMoney(text) {
     var match = /[￦₩]\s*([\d.,]+\s*[a-z]?)\s*\(\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(String(text || ""));
     return match ? { money: parseIdleNumber(match[1]), rate: parseIdleNumber(match[2]) } : null;
 }
 
-// The rows of Idle's camp, mine and hospital tabs that can be upgraded for money.
+// Idle's army camp rows that can still be upgraded. Since 6.07 a button says "Upgrade" only when you
+// can pay; otherwise it says when you can ("In 1h25m"), with the cost below either way.
 function idleUpgradeRows() {
-    return $("[id^='ujs_WziTabBody']").filter(function () {
-        return /^ujs_WziTabBody(?:ArmyCamp|Mine|Hospital|MercenaryCamp)Row(?:_\d+)?$/.test(this.id);
+    return $("[id^='ujs_WziTabBodyArmyCampRow']").filter(function () {
+        return /^ujs_WziTabBodyArmyCampRow(?:_\d+)?$/.test(this.id);
     }).map(function () {
         var row = $(this);
         var button = row.find("a[id^='ujs_UpgradeBtn']").first();
-        var cost = /Upgrade\s*[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
-        var outputs = row.find("[id$='_tmp']").filter(function () {
-            return /\/\s*s(?:ec)?\b|Saves/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
-        });
-        var host = outputs.first();
+        var cost = /[￦₩]\s*([\d.,]+\s*[a-z]?)/i.exec(button.parent().text());
+        var host = row.find("[id$='_tmp']").filter(function () {
+            return /\/\s*sec\b/.test($(this).text()) && !$(this).closest("[id^='ujs_UpgradeBtn']").length;
+        }).first();
         var output = /^\s*₳\s*([\d.,]+\s*[a-z]?)\s*\/\s*sec/i.exec(host.text());
         return cost ? {
             row: this,
-            camp: /ArmyCampRow/.test(this.id),
             cost: parseIdleNumber(cost[1]),
             output: output ? parseIdleNumber(output[1]) : null,
-            host: host[0] || null,
-            outputs: outputs.get()
+            host: host[0] || null
         } : null;
     }).get().filter(function (entry) {
         return entry && entry.cost != null;
@@ -8256,7 +8149,7 @@ function idleUpgradeRows() {
 // makes the most per ₩ of its upgrade cost gains the most for the money.
 function idleBestCamp(rows) {
     return rows.filter(function (entry) {
-        return entry.camp && entry.output && entry.cost > 0;
+        return entry.output && entry.cost > 0;
     }).sort(function (a, b) {
         return b.output / b.cost - a.output / a.cost;
     })[0] || null;
@@ -8275,44 +8168,26 @@ function idlePanelRight(element) {
 }
 
 function showIdleUpgradeHints() {
-    var wallet = parseIdleMoney($("[id^='ujs_MoneyLabel']").first().text());
-    if (!wallet || wallet.money == null) {
+    var best = idleBestCamp(idleUpgradeRows());
+    var hint = best ? $(best.row).find(".idleUpgradeHint") : $();
+    $(".idleUpgradeHint").not(hint).remove();
+    if (!best) {
         return;
     }
-    var rows = idleUpgradeRows();
-    var best = idleBestCamp(rows);
-    rows.forEach(function (entry) {
-        if (!entry.host) {
-            return;
-        }
-        var wait = entry.cost > wallet.money && wallet.rate > 0 ? formatIdleWait((entry.cost - wallet.money) / wallet.rate) : "";
-        var text = [wait, entry === best ? "Best value" : ""].filter(Boolean).join(" · ");
-        var hint = $(entry.row).find(".idleUpgradeHint");
-        if (!text) {
-            hint.remove();
-            return;
-        }
-        // war.app rewrites its labels several times a second, so the hint sits beside the row's last
-        // output (mines make two or three ores, side by side), in that label's holder.
-        var last = entry.outputs.reduce(function (rightmost, element) {
-            return element.getBoundingClientRect().right >= rightmost.getBoundingClientRect().right ? element : rightmost;
-        });
-        var holder = $(last).parent();
-        if (!hint.length) {
-            hint = $('<span class="idleUpgradeHint"></span>');
-        }
-        if (hint.parent()[0] !== holder[0]) {
-            hint.appendTo(holder);
-        }
-        hint.toggleClass("idleBestValue", entry === best).text(text)
-            .attr("title", (wait ? "When you can afford this at your current ₩/sec. " : "") + (entry === best ? "The army camp that adds the most armies per ₩ of its upgrade cost." : ""));
-        var label = $(last).children().first()[0] || last;
-        var labelBox = label.getBoundingClientRect();
-        var width = Math.round(labelBox.width || label.offsetWidth || 0);
-        var below = labelBox.right + 8 + hint[0].offsetWidth > idlePanelRight(last) - 4;
-        hint.toggleClass("idleUpgradeHintBelow", below)
-            .css(below ? { left: "", lineHeight: "" } : { left: width + 8 + "px", lineHeight: (last.offsetHeight || 18) + "px" });
-    });
+    // war.app rewrites its labels several times a second, so the hint sits beside the label, in its holder.
+    var holder = $(best.host).parent();
+    if (!hint.length) {
+        hint = $('<span class="idleUpgradeHint idleBestValue" title="The army camp that adds the most armies per ₩ of its upgrade cost.">Best value</span>');
+    }
+    if (hint.parent()[0] !== holder[0]) {
+        hint.appendTo(holder);
+    }
+    var label = $(best.host).children().first()[0] || best.host;
+    var labelBox = label.getBoundingClientRect();
+    var width = Math.round(labelBox.width || label.offsetWidth || 0);
+    var below = labelBox.right + 8 + hint[0].offsetWidth > idlePanelRight(best.host) - 4;
+    hint.toggleClass("idleUpgradeHintBelow", below)
+        .css(below ? { left: "", lineHeight: "" } : { left: width + 8 + "px", lineHeight: (best.host.offsetHeight || 18) + "px" });
 }
 
 function formatIdleMoney(amount) {
@@ -8399,11 +8274,13 @@ function idleTechCostRows(dialog) {
         var labels = $(this).children(".ujsText").map(function () {
             return { holder: this, text: $(this).children(".ujsTextInner").text().trim() };
         }).get();
-        var counts = labels.length === 2 && /^([\d.,]+\s*[a-z]?)\s*\/\s*([\d.,]+\s*[a-z]?)$/i.exec(labels[0].text);
+        var counts = labels.length >= 2 && /^([\d.,]+\s*[a-z]?)\s*\/\s*([\d.,]+\s*[a-z]?)$/i.exec(labels[0].text);
         if (!counts) {
             return null;
         }
-        return { row: this, nameHolder: labels[1].holder, name: labels[1].text, have: parseIdleNumber(counts[1]), need: parseIdleNumber(counts[2]) };
+        // Since 6.07 a third label says how long the item will take, and is hidden while it's empty.
+        var wait = labels[2] && labels[2].text && labels[2].holder.style.display !== "none" ? labels[2] : null;
+        return { row: this, lastHolder: (wait || labels[1]).holder, waiting: !!wait, name: labels[1].text, have: parseIdleNumber(counts[1]), need: parseIdleNumber(counts[2]) };
     }).get().filter(function (row) {
         return row && row.have !== null && row.need !== null;
     });
@@ -8527,21 +8404,22 @@ function setupIdleTechCost() {
         var priced = 0;
         var missing = 0;
         idleTechCostRows(dialog).forEach(function (row) {
-            var label = $(row.nameHolder).children(".ujsTextInner")[0];
+            var label = $(row.lastHolder).children(".ujsTextInner")[0];
             var short = Math.ceil(row.need - row.have);
             if (short <= 0) {
-                place(row.nameHolder, label, "idleTechCost", "", "");
+                place(row.lastHolder, label, "idleTechCost", "", "");
                 return;
             }
             missing++;
             var buy = idleCheapestPurchase(row.name, short, prices, rates);
             if (!buy) {
-                place(row.nameHolder, label, "idleTechCost idleTechCostNone", "need " + short.toLocaleString("en-US") + " more · no market sells it", "None of this level's markets sells " + row.name + " (Muli's Userscript)");
+                place(row.lastHolder, label, "idleTechCost idleTechCostNone", row.waiting ? "no market" : "need " + short.toLocaleString("en-US") + " more · no market sells it", "None of this level's markets sells " + row.name + " (Muli's Userscript)");
                 return;
             }
             total += buy.cost;
             priced++;
-            place(row.nameHolder, label, "idleTechCost", "need " + short.toLocaleString("en-US") + " more ≈ " + formatIdleMoney(buy.cost),
+            // war.app's wait leaves too little room in the box for the full text.
+            place(row.lastHolder, label, "idleTechCost", (row.waiting ? "" : "need " + short.toLocaleString("en-US") + " more ") + "≈ " + formatIdleMoney(buy.cost),
                 "Buying " + short.toLocaleString("en-US") + " " + row.name + " at " + buy.market + (buy.exact ? ", with the price rising as you buy" : " at today's price; it rises as you buy") + " (Muli's Userscript)");
         });
         var nameLabel = dialog.find("[id^='ujs_NameLabel'] .ujsTextInner").first();
