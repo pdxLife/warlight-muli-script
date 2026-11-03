@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.63.4
+
+Fixes for war.app's update 6.07, which renamed its game data.
+
+- **Lobby: each player's pace line is back** ("avg turn … · booted N%"), with the ⚠ for players over your limits.
+- **Quickmatch stats read the templates of new games again.** Games played since 6.07 had stayed under "Template not read yet".
+
 ## 3.63.3
 
 - **The Seasonal Ladder badge is darker**, the green war.app's ladder buttons actually show.

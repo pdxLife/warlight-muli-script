@@ -283,8 +283,8 @@ function setupLobbyPace() {
         var unknown = names.filter(function (name) {
             return !paces[name] && !pending[name];
         });
-        if (unknown.length && window.UJS_Hooks && window.UJS_Hooks.za) {
-            var candidates = lobbyProfileCandidates(window.UJS_Hooks.za, unknown);
+        if (unknown.length && ujsGameData(window.UJS_Hooks)) {
+            var candidates = lobbyProfileCandidates(ujsGameData(window.UJS_Hooks), unknown);
             unknown.forEach(function (name) {
                 if (candidates[name] && candidates[name].length) {
                     profile(name, candidates[name]);

@@ -113,6 +113,25 @@ test("profile links are built from war.app's game data, found by the players' na
     assert.equal(found.Nobody, undefined);
 });
 
+test("war.app's game data is found in UJS_Hooks whatever war.app's minified names are", () => {
+    const ctx = load(["ujsGameData"]);
+    const data = { Map: null, e1a: [] };
+    // war.app 6.07 renamed za to ya and Sd to Od; the game object holds no Map field of its own.
+    assert.equal(ctx.ujsGameData({ ya: data, Od: { ta: {} }, uDd: () => 1 }), data);
+    assert.equal(ctx.ujsGameData({ Sd: { ta: {} }, za: data }), data, "the one with a Map, not the first");
+    const noMap = { e1a: [] };
+    assert.equal(ctx.ujsGameData({ ya: noMap, Od: null }), noMap, "the first object when none has a Map");
+    assert.equal(ctx.ujsGameData({ ya: null }), null, "outside a game");
+    assert.equal(ctx.ujsGameData(undefined), null);
+});
+
+test("the lobby and Quickmatch read the game data without war.app's minified names", () => {
+    const { source } = require("./harness");
+    const body = (name) => source.slice(source.indexOf("function " + name + "("), source.indexOf("\nfunction ", source.indexOf("function " + name + "(") + 1));
+    assert.match(body("setupLobbyPace"), /lobbyProfileCandidates\(ujsGameData\(window\.UJS_Hooks\)/);
+    assert.doesNotMatch(source, /UJS_Hooks\.za|hooks\.za \?/);
+});
+
 test("the version label shows in a lobby and goes away once war.app turns it into the game", async () => {
     const { dom, $ } = createDom("", "https://war.app/MultiPlayer?GameID=1");
     dom.window.document.title = "Lobby - War.app";
