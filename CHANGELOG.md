@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.5
+
+- **Game notes: territory and bonus buttons are back**, and so is 🔗 (with Ctrl/Cmd/Shift+click) for putting a clicked territory or bonus in your notes. War.app's update 6.07 renamed what they use.
+
 ## 3.63.4
 
 Fixes for war.app's update 6.07, which renamed its game data.
