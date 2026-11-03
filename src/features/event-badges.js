@@ -48,7 +48,7 @@ function markEventGames(games) {
     $("#MyGamesTable tr.GameRow").each(function () {
         var link = $(this).find("a[href*='GameID=']").last();
         var match = /[?&]GameID=(\d+)/i.exec(link.attr("href") || "");
-        var game = match && games[match[1]];
+        var game = match && (games[match[1]] || seasonalLadderGame(match[1], link.text()));
         var cell = link.closest("td");
         var corner = cell.children(".tuydEventBadgeCorner");
         if (!game) {
@@ -61,6 +61,23 @@ function markEventGames(games) {
             link.addClass("tuydNameBesideBadge");
         }
     });
+}
+
+// custom.wl-stats.com doesn't list Seasonal Ladder games among a player's games, but war.app names them
+// "Season LXXII: A vs B".
+function seasonalLadderGame(gameId, name) {
+    var match = /^\s*Season ([IVXLCDM]+): .+ vs .+/.exec(name);
+    var number = match && romanNumber(match[1]);
+    return number ? { game_id: gameId, series: "Seasonal Ladder", label: "Season " + match[1], url: CUSTOM_SITE + "/series/seasonal-ladder/seasons/" + number } : null;
+}
+
+function romanNumber(text) {
+    var values = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+    var total = 0;
+    for (var i = 0; i < text.length; i++) {
+        total += values[text[i]] < (values[text[i + 1]] || 0) ? -values[text[i]] : values[text[i]];
+    }
+    return total;
 }
 
 // The badge shows the series' short name; the full label is its tooltip.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.0
+
+- **Seasonal Ladder games have a badge on My Games.** War.app's "Season LXXII: A vs B" games get a blue "Seasonal Ladder" badge that opens the season on custom.wl-stats.com.
+
 ## 3.62.4
 
 - **Idle: "Best value" says when you can buy it.** War.app's wait is easy to miss on a dimmed button, so the tag repeats it: "Best value · in 42m".
