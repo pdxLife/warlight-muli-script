@@ -459,7 +459,7 @@ function addCommunityLaddersStyles() {
             color: #1b1b1b !important;
         }
         .tuydEventBadge.tuydEventBadgeSeasonal {
-            background: #198225;
+            background: #0c4012;
         }
         @container tuydEventCard (max-width: 599.98px) {
             .tuydEventStanding,
