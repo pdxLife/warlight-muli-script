@@ -33,7 +33,7 @@ function dashboard({ rows, playerId = "2921525624", responses = { [gamesUrl("292
         return (response === undefined ? result.reject({ status: 0, statusText: "error" }) : result.resolve(response)).promise();
     };
     const logs = [];
-    const ctx = load(["setupEventBadges", "markEventGames", "renderEventBadge", "settleRequest", "signedInPlayerId", "fetchWlStats", "addCommunityLaddersStyles", "htmlEscape", "safeUrl"], {
+    const ctx = load(["setupEventBadges", "markEventGames", "seasonalLadderGame", "romanNumber", "renderEventBadge", "settleRequest", "signedInPlayerId", "fetchWlStats", "addCommunityLaddersStyles", "htmlEscape", "safeUrl"], {
         ...domGlobals(dom, $),
         log: (entry) => logs.push(entry),
         addCSS: () => {},
@@ -127,4 +127,16 @@ test("with one site down, the other site's badges still show", async () => {
     ctx.setupEventBadges();
     await flush();
     assert.deepEqual(badges($), ["-", "AWP Tour"]);
+});
+
+test("war.app's Seasonal Ladder games get a badge from their name, linking to the season", async () => {
+    const { ctx, $ } = dashboard({ rows: [row(45700001, "Season LXXII: rlhull6 vs KKND"), row(45700002, "Season XLIX: Math Wolf vs KKND"),
+        row(45700003, "Season finale: KKND vs friends"), row(45419715, "Season IV: renamed cup game")] });
+    ctx.setupEventBadges();
+    await flush();
+    assert.deepEqual(badges($), ["Seasonal Ladder", "Seasonal Ladder", "-", "Nations Cup"], "a game custom.wl-stats.com lists keeps its own badge");
+    const badge = $("tr[gameid='45700001'] .tuydEventBadge");
+    assert.equal(badge.attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/72");
+    assert.equal(badge.attr("title"), "Seasonal Ladder · Season LXXII");
+    assert.equal($("tr[gameid='45700002'] .tuydEventBadge").attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/49");
 });
