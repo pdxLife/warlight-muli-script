@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.63.0
+// @version 3.63.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -4683,6 +4683,9 @@ function addCommunityLaddersStyles() {
             background: #e0c060;
             color: #1b1b1b !important;
         }
+        .tuydEventBadge.tuydEventBadgeSeasonal {
+            background: #2e7d32;
+        }
         @container tuydEventCard (max-width: 599.98px) {
             .tuydEventStanding,
             .tuydEventMore {
@@ -6108,7 +6111,8 @@ function renderEventBadge(game) {
     var series = String(game.series || "");
     var full = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
     var text = { "AWP World Tour": "AWP Tour" }[series] || series || label;
-    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(full) + '">' + htmlEscape(text) + '</a>';
+    var color = game.source === "awp" ? " tuydEventBadgeAwp" : series === "Seasonal Ladder" ? " tuydEventBadgeSeasonal" : "";
+    return '<a class="tuydEventBadge' + color + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(full) + '">' + htmlEscape(text) + '</a>';
 }
 function browserIsFirefox() {
     return navigator.userAgent.toLowerCase().indexOf('firefox') > -1

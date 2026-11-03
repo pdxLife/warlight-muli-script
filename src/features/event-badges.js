@@ -86,5 +86,6 @@ function renderEventBadge(game) {
     var series = String(game.series || "");
     var full = series && label.toLowerCase().indexOf(series.toLowerCase()) === -1 ? series + " · " + label : label || series;
     var text = { "AWP World Tour": "AWP Tour" }[series] || series || label;
-    return '<a class="tuydEventBadge' + (game.source === "awp" ? " tuydEventBadgeAwp" : "") + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(full) + '">' + htmlEscape(text) + '</a>';
+    var color = game.source === "awp" ? " tuydEventBadgeAwp" : series === "Seasonal Ladder" ? " tuydEventBadgeSeasonal" : "";
+    return '<a class="tuydEventBadge' + color + '" target="_blank" rel="noopener" data-game-id="' + htmlEscape(game.game_id) + '" href="' + htmlEscape(safeUrl(game.url)) + '" title="' + htmlEscape(full) + '">' + htmlEscape(text) + '</a>';
 }
