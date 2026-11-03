@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.63.4
+// @version 3.63.5
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.5';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6609,16 +6609,17 @@ function insertAtCursor(text, start, end, words) {
 
 // The game's territories and bonuses by name, from war.app's game data (window.UJS_Hooks on a game page).
 function gameMapPlaces(hooks) {
-    var map = hooks && hooks.za && hooks.za.Map;
+    var data = ujsGameData(hooks);
+    var map = data && data.Map;
     var places = [];
-    [["territory", map && map.Ia], ["bonus", map && map.pd]].forEach(function (list) {
+    [["territory", map && map.Ia], ["bonus", map && map.nd]].forEach(function (list) {
         if (!list[1] || !Array.isArray(list[1].keys) || typeof list[1].Aa !== "function") {
             return;
         }
         list[1].keys.forEach(function (id) {
             var entry = list[1].Aa(id);
-            if (entry && typeof entry.Ya === "string" && entry.Ya.trim()) {
-                places.push({ kind: list[0], id: id, name: entry.Ya.trim() });
+            if (entry && typeof entry.Wa === "string" && entry.Wa.trim()) {
+                places.push({ kind: list[0], id: id, name: entry.Wa.trim() });
             }
         });
     });
@@ -6660,23 +6661,24 @@ function notesPlaces(text, places) {
 }
 
 // Highlights a territory or bonus on war.app's map and moves the map to it, as a chat link does, through
-// war.app's own game object (UJS_Hooks.Sd.ta). Its names are minified and can change with a war.app
-// update; false then, and nothing happens.
+// war.app's own game object (UJS_Hooks.Od.ta). Its names are minified and change with war.app updates
+// (6.07 renamed them all); false then, and nothing happens.
 function highlightPlace(hooks, place) {
-    var game = hooks && hooks.Sd && hooks.Sd.ta;
-    var map = hooks && hooks.za && hooks.za.Map;
+    var game = hooks && hooks.Od && hooks.Od.ta;
+    var data = ujsGameData(hooks);
+    var map = data && data.Map;
     var view = game && game.Xb;
     try {
-        if (place.kind === "territory" && game && typeof game.nv === "function" && view && typeof view.xI === "function") {
+        if (place.kind === "territory" && game && typeof game.vv === "function" && view && typeof view.CI === "function") {
             var territory = map.Ia.Aa(place.id);
-            game.nv(place.id);
-            view.xI(territory.lh());
+            game.vv(place.id);
+            view.CI(territory.xh());
             return true;
         }
-        if (place.kind === "bonus" && game && typeof game.Au === "function" && view && typeof view.wQa === "function") {
-            var bonus = map.pd.Aa(place.id);
-            game.Au(bonus);
-            view.wQa(bonus);
+        if (place.kind === "bonus" && game && typeof game.Iu === "function" && view && typeof view.GRa === "function") {
+            var bonus = map.nd.Aa(place.id);
+            game.Iu(bonus);
+            view.GRa(bonus);
             return true;
         }
     } catch (e) {
@@ -6685,17 +6687,17 @@ function highlightPlace(hooks, place) {
     return false;
 }
 
-// war.app's Live object (UJS_Hooks.Sd.ta.Nh) can hand the next territory click on the map, or the next
-// bonus link click, to a callback instead of acting on it ("InterceptNextTerritoryClick", AKc, and
-// "InterceptNextBonusLinkClick", zKc). null when those minified names aren't there.
+// war.app's Live object (UJS_Hooks.Od.ta.Ih) can hand the next territory click on the map, or the next
+// bonus link click, to a callback instead of acting on it ("InterceptNextTerritoryClick", PMc, and
+// "InterceptNextBonusLinkClick", OMc). null when those minified names aren't there.
 function gameLive(hooks) {
-    var live = hooks && hooks.Sd && hooks.Sd.ta && hooks.Sd.ta.Nh;
-    return live && typeof live.AKc === "function" && typeof live.zKc === "function" ? live : null;
+    var live = hooks && hooks.Od && hooks.Od.ta && hooks.Od.ta.Ih;
+    return live && typeof live.PMc === "function" && typeof live.OMc === "function" ? live : null;
 }
 
 function canHighlightPlaces(hooks) {
-    var game = hooks && hooks.Sd && hooks.Sd.ta;
-    return !!(game && typeof game.nv === "function" && typeof game.Au === "function" && game.Xb && typeof game.Xb.xI === "function" && typeof game.Xb.wQa === "function");
+    var game = hooks && hooks.Od && hooks.Od.ta;
+    return !!(game && typeof game.vv === "function" && typeof game.Iu === "function" && game.Xb && typeof game.Xb.CI === "function" && typeof game.Xb.GRa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
@@ -7092,14 +7094,14 @@ function setupGameNotes() {
                 return false;
             }
             picking = null;
-            live.AKc(null);
-            live.zKc(null);
+            live.PMc(null);
+            live.OMc(null);
             $("#tuydGameNotes .tuydGameNotesSaved").text("");
-            putLinkInNotes(String(place.Ya || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
             return true;
         };
-        live.AKc(take);
-        live.zKc(take);
+        live.PMc(take);
+        live.OMc(take);
     };
     // war.app's own shortcut: with its chat open, Ctrl/Cmd+click or Shift+click on a territory puts its link
     // in the chat. With the notes open the same click puts the name in the notes, chat open or not: while
@@ -7115,15 +7117,15 @@ function setupGameNotes() {
             if (held !== token || !place) {
                 return false;
             }
-            putLinkInNotes(String(place.Ya || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
             held = null;
-            live.AKc(null);
-            live.zKc(null);
+            live.PMc(null);
+            live.OMc(null);
             holdForNotes();
             return true;
         };
-        live.AKc(take);
-        live.zKc(take);
+        live.PMc(take);
+        live.OMc(take);
     };
     var letGo = function () {
         var token = held;
@@ -7131,8 +7133,8 @@ function setupGameNotes() {
             return;
         }
         held = null;
-        token.live.AKc(null);
-        token.live.zKc(null);
+        token.live.PMc(null);
+        token.live.OMc(null);
     };
     var linkKeys = function (event) {
         return event.ctrlKey || event.metaKey || event.shiftKey;
@@ -7154,8 +7156,8 @@ function setupGameNotes() {
             return;
         }
         picking = null;
-        token.live.AKc(null);
-        token.live.zKc(null);
+        token.live.PMc(null);
+        token.live.OMc(null);
         $("#tuydGameNotes .tuydGameNotesLink").removeClass("tuydLinking");
         $("#tuydGameNotes .tuydGameNotesSaved").text("");
     };
