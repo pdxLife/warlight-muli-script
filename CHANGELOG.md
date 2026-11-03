@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.1
+
+- **The Seasonal Ladder badge on My Games is green**, so it stands apart from the blue badges of the other community events.
+
 ## 3.63.0
 
 - **Seasonal Ladder games have a badge on My Games.** War.app's "Season LXXII: A vs B" games get a blue "Seasonal Ladder" badge that opens the season on custom.wl-stats.com.

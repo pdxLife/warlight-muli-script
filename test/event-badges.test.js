@@ -138,5 +138,7 @@ test("war.app's Seasonal Ladder games get a badge from their name, linking to th
     const badge = $("tr[gameid='45700001'] .tuydEventBadge");
     assert.equal(badge.attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/72");
     assert.equal(badge.attr("title"), "Seasonal Ladder · Season LXXII");
+    assert.ok(badge.hasClass("tuydEventBadgeSeasonal"), "green, not the other series' blue");
+    assert.ok(!$("tr[gameid='45419715'] .tuydEventBadge").hasClass("tuydEventBadgeSeasonal"));
     assert.equal($("tr[gameid='45700002'] .tuydEventBadge").attr("href"), "https://custom.wl-stats.com/series/seasonal-ladder/seasons/49");
 });
