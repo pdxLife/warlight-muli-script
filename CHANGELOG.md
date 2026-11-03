@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.3
+
+- **The Seasonal Ladder badge is darker**, the green war.app's ladder buttons actually show.
+
 ## 3.63.2
 
 - **The Seasonal Ladder badge is war.app's own ladder green**, the green of the 1v1, Seasonal, 2v2 and 3v3 buttons on the Ladders page.
