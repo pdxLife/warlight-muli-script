@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.2
+
+- **The Seasonal Ladder badge is war.app's own ladder green**, the green of the 1v1, Seasonal, 2v2 and 3v3 buttons on the Ladders page.
+
 ## 3.63.1
 
 - **The Seasonal Ladder badge on My Games is green**, so it stands apart from the blue badges of the other community events.
