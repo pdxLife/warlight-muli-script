@@ -128,7 +128,7 @@ function quickmatchRecordText(entry) {
     return entry.wins + " W – " + entry.losses + " L (" + quickmatchRateText(entry) + ")";
 }
 
-// A Quickmatch game's settings, in war.app's data for the game (UJS_Hooks.za), are the object that holds the
+// A Quickmatch game's settings, in war.app's data for the game (ujsGameData()), are the object that holds the
 // game's name. Next to it they hold war.app's "This game was created by the Quickmatch…" message, the
 // template's name and its ID. The field names are minified, so they're found by value: the message, the one
 // other text, and the one optional number ({ val }) big enough to be a template ID. Returns null until the
@@ -657,8 +657,8 @@ function setupQuickmatchStats() {
         reading.timer = setInterval(function () {
             var template = null;
             try {
-                var hooks = frame[0].contentWindow.UJS_Hooks;
-                template = hooks && hooks.za ? gameTemplateFromData(hooks.za, game.name) : null;
+                var data = ujsGameData(frame[0].contentWindow.UJS_Hooks);
+                template = data ? gameTemplateFromData(data, game.name) : null;
             } catch (e) {
                 template = null;
             }

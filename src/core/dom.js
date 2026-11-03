@@ -8,6 +8,19 @@ function ujsElement(name, suffix) {
     return matches.length ? matches[matches.length - 1] : null;
 }
 
+// war.app's data for the game in a game or lobby (window.UJS_Hooks). The hooks' field names are minified
+// and change with war.app updates (za until 6.07, ya since), so the data is the one with a Map field.
+function ujsGameData(hooks) {
+    var values = hooks && typeof hooks === "object" ? Object.keys(hooks).map(function (key) {
+        return hooks[key];
+    }).filter(function (value) {
+        return value && typeof value === "object";
+    }) : [];
+    return values.filter(function (value) {
+        return "Map" in value;
+    })[0] || values[0] || null;
+}
+
 function shownUjsElement(element) {
     var body = element && element.ownerDocument ? element.ownerDocument.body : document.body;
     for (; element && element !== body; element = element.parentElement) {

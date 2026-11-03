@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.63.3
+// @version 3.63.4
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -341,6 +341,19 @@ function ujsElement(name, suffix) {
         return pattern.test(this.id);
     });
     return matches.length ? matches[matches.length - 1] : null;
+}
+
+// war.app's data for the game in a game or lobby (window.UJS_Hooks). The hooks' field names are minified
+// and change with war.app updates (za until 6.07, ya since), so the data is the one with a Map field.
+function ujsGameData(hooks) {
+    var values = hooks && typeof hooks === "object" ? Object.keys(hooks).map(function (key) {
+        return hooks[key];
+    }).filter(function (value) {
+        return value && typeof value === "object";
+    }) : [];
+    return values.filter(function (value) {
+        return "Map" in value;
+    })[0] || values[0] || null;
 }
 
 function shownUjsElement(element) {
@@ -9888,8 +9901,8 @@ function setupLobbyPace() {
         var unknown = names.filter(function (name) {
             return !paces[name] && !pending[name];
         });
-        if (unknown.length && window.UJS_Hooks && window.UJS_Hooks.za) {
-            var candidates = lobbyProfileCandidates(window.UJS_Hooks.za, unknown);
+        if (unknown.length && ujsGameData(window.UJS_Hooks)) {
+            var candidates = lobbyProfileCandidates(ujsGameData(window.UJS_Hooks), unknown);
             unknown.forEach(function (name) {
                 if (candidates[name] && candidates[name].length) {
                     profile(name, candidates[name]);
@@ -13630,7 +13643,7 @@ function quickmatchRecordText(entry) {
     return entry.wins + " W – " + entry.losses + " L (" + quickmatchRateText(entry) + ")";
 }
 
-// A Quickmatch game's settings, in war.app's data for the game (UJS_Hooks.za), are the object that holds the
+// A Quickmatch game's settings, in war.app's data for the game (ujsGameData()), are the object that holds the
 // game's name. Next to it they hold war.app's "This game was created by the Quickmatch…" message, the
 // template's name and its ID. The field names are minified, so they're found by value: the message, the one
 // other text, and the one optional number ({ val }) big enough to be a template ID. Returns null until the
@@ -14159,8 +14172,8 @@ function setupQuickmatchStats() {
         reading.timer = setInterval(function () {
             var template = null;
             try {
-                var hooks = frame[0].contentWindow.UJS_Hooks;
-                template = hooks && hooks.za ? gameTemplateFromData(hooks.za, game.name) : null;
+                var data = ujsGameData(frame[0].contentWindow.UJS_Hooks);
+                template = data ? gameTemplateFromData(data, game.name) : null;
             } catch (e) {
                 template = null;
             }
