@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.6
+
+- **Open Games: the Multi-Day, Real-Time and Both buttons no longer flicker on hover.** Hover made the text bold, and the wider buttons jumped off the line and back; now only the colour changes.
+
 ## 3.63.5
 
 - **Game notes: territory and bonus buttons are back**, and so is 🔗 (with Ctrl/Cmd/Shift+click) for putting a clicked territory or bonus in your notes. War.app's update 6.07 renamed what they use.

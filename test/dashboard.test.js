@@ -133,3 +133,12 @@ test("refresh still works where war.app's dashboard init is missing", async () =
     assert.equal($("#ShowMoreOpenGamesLink").length, 0);
     assert.ok(!logs.some((l) => l.includes("Error re-running")));
 });
+
+test("hovering an Open Games speed button doesn't make its text bold, so the buttons don't change width", () => {
+    const rules = [];
+    const ctx = load(["setupBasicDashboardStyles"], { createSelector: (selector, rule) => rules.push([selector, rule]), addCSS: () => {} });
+    ctx.setupBasicDashboardStyles();
+    const hover = rules.find(([selector]) => selector === "#OpenGamesTable label[id$='Radio']:hover");
+    assert.ok(hover, "the hover style is still there");
+    assert.doesNotMatch(hover[1], /font-weight/);
+});
