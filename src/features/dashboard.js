@@ -98,7 +98,8 @@ function setupBasicDashboardStyles() {
     createSelector(".GameRow:hover", "background-color:rgb(50, 50, 50);cursor:pointer;");
     createSelector(".GameRow a:hover", "text-decoration:none;");
     createSelector(".ui-buttonset label", "font-size:11px;");
-    createSelector("#OpenGamesTable label[id$='Radio']:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;font-weight: bold;color: #ffffff;");
+    // No bold here: the wider text pushed the buttons off the header line, out from under the mouse and back.
+    createSelector("#OpenGamesTable label[id$='Radio']:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;color: #ffffff;");
     createSelector("img", "position: relative;z-index:50;");
     createSelector("input", "z-index: 98;position: relative;");
     createSelector(".ui-tooltip", "background: #EBEBEB;padding: 4px;font-style: italic;");

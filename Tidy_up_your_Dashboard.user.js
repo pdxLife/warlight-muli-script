@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.63.5
+// @version 3.63.6
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.5';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.6';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5824,7 +5824,8 @@ function setupBasicDashboardStyles() {
     createSelector(".GameRow:hover", "background-color:rgb(50, 50, 50);cursor:pointer;");
     createSelector(".GameRow a:hover", "text-decoration:none;");
     createSelector(".ui-buttonset label", "font-size:11px;");
-    createSelector("#OpenGamesTable label[id$='Radio']:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;font-weight: bold;color: #ffffff;");
+    // No bold here: the wider text pushed the buttons off the header line, out from under the mouse and back.
+    createSelector("#OpenGamesTable label[id$='Radio']:hover", " border: 1px solid #59b4d4;background: #0078a3 50% 50% repeat-x;color: #ffffff;");
     createSelector("img", "position: relative;z-index:50;");
     createSelector("input", "z-index: 98;position: relative;");
     createSelector(".ui-tooltip", "background: #EBEBEB;padding: 4px;font-style: italic;");
