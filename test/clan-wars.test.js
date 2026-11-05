@@ -287,9 +287,9 @@ test("clanWarProgress works out your clan's place, rewards, wins, territories, s
         { clan: 33, at: Date.UTC(2026, 9, 20) }, { clan: 33, at: Date.UTC(2026, 9, 26) },
         { clan: 7, at: Date.UTC(2026, 9, 28) }, { clan: 7, at: Date.UTC(2026, 9, 29) }, { clan: 9, at: Date.UTC(2026, 9, 29) }
     ] };
-    const p = plain(clanWarProgress({ war: WAR, clan: 33, playerId: "11", games: GAMES, map, mapTerritories: 17 }));
+    const p = plain(clanWarProgress({ war: WAR, clan: 33, playerId: "11", games: GAMES, map, mapTerritories: 17, history: { summary: { seasons_played: 37, best_place: 11 } } }));
     assert.deepEqual(p, {
-        season: 88, finished: null, clan: 33, clanName: "Turtles", place: 3, clans: 4, points: 14.8, pointsToday: 1.6,
+        season: 88, finished: null, clan: 33, clanName: "Turtles", place: 3, clans: 4, points: 14.8, pointsToday: 1.6, history: { seasons_played: 37, best_place: 11 },
         bracket: { places: "2nd–3rd", texts: ["4000 coins"], belowPlace: 4, lead: 14.8 - 9.5 },
         better: { places: "1st", texts: ["9000 coins"], place: 1, gap: 40 - 14.8 },
         wins: { total: 3, today: 2, next: { wins: 5, text: "100 coins" }, count: 2 },
@@ -338,12 +338,12 @@ test("clanWarRecords counts played games by template, for you and the clan, and 
     const { clanWarRecords, clanWarRecordText, clanWarTemplateNote } = helpers();
     const records = plain(clanWarRecords(GAMES, 33, 11));
     assert.deepEqual(records.templates, [
-        { name: "Small Earth", won: 2, lost: 0, you: { won: 2, lost: 0 } },
-        { name: "Biomes", won: 0, lost: 1, you: { won: 0, lost: 0 } }
+        { id: 9, name: "Small Earth", won: 2, lost: 0, you: { won: 2, lost: 0 } },
+        { id: 10, name: "Biomes", won: 0, lost: 1, you: { won: 0, lost: 0 } }
     ]);
     assert.deepEqual(records.opponents, [
-        { name: "Owls", won: 1, lost: 1 },
-        { name: "Hares", won: 1, lost: 0 }
+        { id: 9, name: "Owls", won: 1, lost: 1 },
+        { id: 7, name: "Hares", won: 1, lost: 0 }
     ]);
     assert.equal(clanWarRecordText({ won: 2, lost: 1 }), "2–1 (67%)");
     assert.equal(clanWarRecordText({ won: 0, lost: 0 }), "0–0");
