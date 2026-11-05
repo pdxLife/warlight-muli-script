@@ -32,6 +32,8 @@ Each one has its own switch in the settings menu, under Clans (the countdown is 
 [*][b]Notes in Quickmatch games[/b]: war.app opens these games without loading a new page, and the Notes button now shows up there too.
 [/list]
 Inspired by Johnny Silverhand's Quickmatch Stats extension for Chrome. Settings menu → Ladders & community → "Your Quickmatch record and stats".
+[img]https://pdxlife.github.io/warlight-muli-script/media/quickmatch-stats.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/quickmatch-templates.png[/img]
 
 [hr]
 [b]Open Games[/b]
