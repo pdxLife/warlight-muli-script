@@ -1,0 +1,58 @@
+[b]Update: Clan Wars, Quickmatch and Open Games[/b]
+
+The script went from 3.39.1 to 3.63.6 since the last update. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). This post is about three areas: Clan Wars, Quickmatch and Open Games. The rest is in the full list of changes at the end, and how to use each feature is in the guide: https://pdxlife.github.io/warlight-muli-script/guide.html
+
+[hr]
+[b]Clan Wars[/b]
+War.app lists the rewards, but never says how close your clan is to them. Now the script does.
+[list]
+[*][b]Your clan's progress[/b]: on Community → Clan War, a "Your clan in Season N" box below About Clan Wars. It shows your clan's place and points, the rank rewards it's on course for, and how far ahead it is of the next clan down. It also shows how many points it is short of better rewards, its wins and the next win reward, and its territories and the points to the next one.
+[*][b]When the season should end[/b]: the same box counts the territories still left on the map and, at the pace of the last three days, says about when the season ends.
+[*][b]Who played today[/b]: the box lists your clanmates who played a Clan War game today and how it went. On a clan's players list (View Players), each player gets their win rate this season and today's result.
+[*][b]Your record in timeslots[/b]: next to each template in a timeslot, your record and your clan's on it this season ("This season: you 2–1, clan 7–4"), to help you pick one.
+[*][b]Season records[/b]: a clan's Clan War page gets its wins and losses this season by template and by opponent clan.
+[*][b]Countdown on the dashboard[/b]: next to My Games, the time to the next timeslot, "timeslot open", or "played today ✓". It shows up once you've opened the Clan War page.
+[/list]
+Each one has its own switch in the settings menu, under Clans (the countdown is under Dashboard).
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-war-progress.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-war-timeslot-note.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-war-players.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-war-records.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/guide-clan-war-countdown.png[/img]
+
+[hr]
+[b]Quickmatch[/b]
+[list]
+[*][b]Your record on the Quickmatch screen[/b]: "559 W – 117 L (82.7%)" in the Settings dialog's header. On the Templates screen, each template you've played shows your record on it, next to "Your rating".
+[*][b]Stats[/b]: a Stats button opens a dialog with three tabs. [b]Templates[/b] and [b]Opponents[/b] show games, won, lost, win % and average turns; sort them, search them, or click a row for its games. [b]Last 20 games[/b] shows the date, template, opponents, result and turns, with a link to each game.
+[*][b]Copy and CSV[/b]: Copy copies your record and your top 5 templates and opponents as text, ready for a forum post; CSV downloads every game for a spreadsheet. Boot losses count only if you tick Count boot losses.
+[*][b]A game just played counts at once[/b]: each visit to Quickmatch reads your newest games. Reading your whole history (about 8 seconds for 5,000 games) happens only when you click [b]Rescan[/b]. Until you do, the stats cover your newest 200 games.
+[*][b]Templates[/b]: war.app's game list doesn't say which template a game used, so [b]Read them[/b] opens each game once in the background, about a second and a half a game, and remembers its template for good.
+[*][b]Your record on your profile[/b], under war.app's Quickmatch ratings: "Record: 559 W – 117 L (82.7%) in 676 games".
+[*][b]Notes in Quickmatch games[/b]: war.app opens these games without loading a new page, and the Notes button now shows up there too.
+[/list]
+Inspired by Johnny Silverhand's Quickmatch Stats extension for Chrome. Settings menu → Ladders & community → "Your Quickmatch record and stats".
+[img]https://pdxlife.github.io/warlight-muli-script/media/quickmatch-stats.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/quickmatch-templates.png[/img]
+
+[hr]
+[b]Open Games[/b]
+[list]
+[*][b]Refreshes by itself[/b] every 5 minutes while it's on screen, so new games show up without pressing R. It waits while your pointer is over the list or the Filter panel is open, so the list doesn't change under you. Change the minutes (0 = off) at the bottom of the Filter panel.
+[*][b]Game type[/b] in the filter ("add more open games filters"): show only or hide 1 v 1, FFA or team games. A 1v1 set up as a team game, to keep its chat, counts as a 1 v 1.
+[*][b]Team size[/b]: only teams of 2, of 3, or of 4 or more.
+[*][b]Boot time[/b] under or over a limit, each in minutes, hours or days. Real-time players can hide 1-minute games; others can keep only games that boot within a day.
+[*][b]Open seats left[/b], from–to: "1 to 1" leaves games about to start, and "from 3" leaves room to join with friends.
+[*][b]Hide maps[/b] whose name contains your words ("earth, europe").
+[*][b]Hide games with a player you muted[/b].
+[*][b]More settings to hide[/b]: fog lighter or heavier than normal, changed luck, kill rates or minimum armies, army cap, commanders, multi-attack, mods, custom scenarios and practice games.
+[*][b]Cards to hide[/b]: each of war.app's 13 cards on its own.
+[*]The Multi-Day, Real-Time and Both buttons no longer flicker under the mouse.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/open-games-filter-more.png[/img]
+
+[b]In a lobby[/b] ("Additional filters for joining open games"): the pace line beside each player now flags players who are booted often, not just slow ones. The limits at the top read "Flag: avg turn > 24 h · booted > 10 %", and a player over either one gets the red ⚠. War.app's update 6.07 broke the pace lines and the reading of Quickmatch templates; both work again since 3.63.4.
+[img]https://pdxlife.github.io/warlight-muli-script/media/lobby-pace.png[/img]
+
+[hr]
+Something broken? Tell me (KKND), the script's maintainer, here or on Discord: https://discord.gg/sc99xHNuE. Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
