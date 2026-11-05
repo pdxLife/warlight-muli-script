@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.63.6
+// @version 3.63.7
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.6';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.63.7';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -5302,8 +5302,10 @@ var GAME_CHAT_RECENT = 20;
 
 // The newest `limit` messages, and a note when there are more, in the game or not yet loaded from it.
 function renderGameChatMessages(messages, muted, limit, hasOlder) {
+    // war.app can show none of a game's messages yet and keep them all behind "Load Older Messages".
     if (!messages.length) {
-        return '<div class="tuydGameChatNote">No messages yet.</div>';
+        return hasOlder ? '<div class="tuydGameChatMore">No recent messages. <a href="#" class="tuydGameChatShowAll">Show all</a></div>'
+            : '<div class="tuydGameChatNote">No messages yet.</div>';
     }
     var hidden = Math.max(0, messages.length - limit);
     var more = hidden || hasOlder ? '<div class="tuydGameChatMore">Showing the last ' + Math.min(limit, messages.length) + " messages"

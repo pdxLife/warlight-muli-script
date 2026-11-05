@@ -69,8 +69,10 @@ var GAME_CHAT_RECENT = 20;
 
 // The newest `limit` messages, and a note when there are more, in the game or not yet loaded from it.
 function renderGameChatMessages(messages, muted, limit, hasOlder) {
+    // war.app can show none of a game's messages yet and keep them all behind "Load Older Messages".
     if (!messages.length) {
-        return '<div class="tuydGameChatNote">No messages yet.</div>';
+        return hasOlder ? '<div class="tuydGameChatMore">No recent messages. <a href="#" class="tuydGameChatShowAll">Show all</a></div>'
+            : '<div class="tuydGameChatNote">No messages yet.</div>';
     }
     var hidden = Math.max(0, messages.length - limit);
     var more = hidden || hasOlder ? '<div class="tuydGameChatMore">Showing the last ' + Math.min(limit, messages.length) + " messages"
