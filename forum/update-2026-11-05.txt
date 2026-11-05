@@ -1,6 +1,6 @@
 [b]Update: Clan Wars, Quickmatch and Open Games[/b]
 
-The script went from 3.39.1 to 3.63.6 since the last update. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). This post is about three areas: Clan Wars, Quickmatch and Open Games. The rest is in the full list of changes at the end, and how to use each feature is in the guide: https://pdxlife.github.io/warlight-muli-script/guide.html
+The script went from 3.39.1 to 3.63.6 since the last update. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). This post is mostly about three areas: Clan Wars, Quickmatch and Open Games. The rest is in brief at the end, and how to use each feature is in the guide: https://pdxlife.github.io/warlight-muli-script/guide.html
 
 [hr]
 [b]Clan Wars[/b]
@@ -53,6 +53,23 @@ Inspired by Johnny Silverhand's Quickmatch Stats extension for Chrome. Settings 
 
 [b]In a lobby[/b] ("Additional filters for joining open games"): the pace line beside each player now flags players who are booted often, not just slow ones. The limits at the top read "Flag: avg turn > 24 h · booted > 10 %", and a player over either one gets the red ⚠. War.app's update 6.07 broke the pace lines and the reading of Quickmatch templates; both work again since 3.63.4.
 [img]https://pdxlife.github.io/warlight-muli-script/media/lobby-pace.png[/img]
+
+[hr]
+[b]Also new since 3.39.1[/b]
+[list]
+[*][b]Past Games[/b]: the filters search your whole history, not just the page on screen, with new filters for your result and the kind of game (Quickmatch, tournament, Seasonal Ladder, MTL, Clan War and more).
+[*][b]Tournaments[/b]: search all your Past Tournaments by name, series, creator, kind, state and more, with a CSV download. Filters on Open Tournaments, and Search on the Tournaments page, where "You're still in" lists the tournaments you haven't been knocked out of.
+[*][b]My Games[/b]: "boots in 2d 23h" on your-turn games, which are sorted by the time left before boot. Seasonal Ladder games get a green badge.
+[*][b]Game notes[/b]: put a territory or bonus in your notes with 🔗 or Ctrl/Cmd/Shift+click, then click its name to find it on the map.
+[*][b]Sound[/b]: separate volumes for the chat ding and the turn sound, from the 🔔 next to war.app's speaker.
+[*][b]Ladders[/b]: the Multi-Template Ladder in the community panel, which you can now search, and war.app's four ladders in two rows on a wide window. The Seasonal Ladder links to custom.wl-stats.com, with each player's record across seasons.
+[*][b]Profiles[/b]: MTL and Seasonal Ladder rows in the Ladders table.
+[*][b]Community page[/b]: what's on in the community events, and the MTL top 10, also in MTL threads. Neither needs maak.ch any more.
+[*][b]Ladder teams[/b]: search your friends when you propose a 2v2 or 3v3 team.
+[*][b]Bookmarks[/b]: reorder them with ▲ ▼ or by dragging.
+[*][b]War.app 6.07[/b]: the Idle helpers, game notes and lobby pace lines work again after war.app's update.
+[/list]
+[b]Gone[/b]: "the whole chat at once", because it opened war.app's chat dialog over the game, and the private chat list, which war.app now sorts itself.
 
 [hr]
 Something broken? Tell me (KKND), the script's maintainer, here or on Discord: https://discord.gg/sc99xHNuE. Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
