@@ -133,6 +133,7 @@ The script's thread is https://war.app/Forum/897130-mulis-userscript-update, and
 | First post: install and features up to Idle | `forum/first-post.txt` |
 | Second post (reply 1, kept as a spare): forum, mail and more, settings, privacy, feedback | `forum/second-post.txt` |
 | Update since October 14 (reply 6) | `forum/update-2026-10-19.txt` |
+| Update: Clan Wars, Quickmatch and Open Games, 3.39.1 to 3.63.6 (not posted yet) | `forum/update-2026-11-05.txt` |
 | Feature Requests the script delivers, with links (to post or link from the posts) | `forum/delivered-requests.txt` |
 
 **A forum post holds at most 9,000 characters**, counted on the text with its BBCode tags and image URLs. The 10,900-character first post didn't fit, so it was split at "Forum, mail and more" and the rest went into the spare second post. Check the length before posting the way a browser counts it (an emoji is two), with each line break counted twice in case it's sent as CR LF:
