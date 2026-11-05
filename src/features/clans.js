@@ -105,7 +105,7 @@ function setupClanStandings() {
 function placeBelowColumn(panel, dialog, scene) {
     var box = dialog[0].getBoundingClientRect();
     var lowest = box.bottom;
-    $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").each(function () {
+    $(scene).find("[id^='ujs_DialogBackgroundForDropShadow'][id$='_img']").add(panel.prevAll(".tuydCommunityPanel")).each(function () {
         var other = this.getBoundingClientRect();
         if (this !== dialog[0] && other.height && other.top >= box.bottom - 1 && other.left < box.right && other.right > box.left) {
             lowest = Math.max(lowest, other.bottom);

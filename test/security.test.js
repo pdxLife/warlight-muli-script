@@ -329,3 +329,24 @@ test("the Clan War records box escapes template and clan names", () => {
     assert.equal(container.querySelectorAll(".tuydCwRecordRow").length, 2);
     assert.ok(container.textContent.includes(PAYLOAD));
 });
+
+test("Clan Wars history from custom.wl-stats.com escapes API data", () => {
+    const ctx = load(["renderClanWarsHistory", "renderClanWarsStats", "renderClanWarRecords", "renderClanWarProgress", "clanWarRecordText", "clanWarDuration", "clanWarResultText",
+        "clanWarsWonLost", "clanWarsPercent", "findClanWarsTemplate", "clanWarsRatingText", "clanWarsPoints", "getRankText", "htmlEscape", "safeUrl"]);
+    const summary = { seasons_played: PAYLOAD, seasons_won: PAYLOAD, best_place: PAYLOAD, best_place_season: PAYLOAD, wins: PAYLOAD, played: PAYLOAD, free_wins: PAYLOAD,
+        seasons: PAYLOAD, days: PAYLOAD, rating: PAYLOAD, rating_deviation: PAYLOAD, rank: PAYLOAD, ranked: PAYLOAD };
+    const named = { id: PAYLOAD, name: PAYLOAD, games: PAYLOAD, won: PAYLOAD, rating: PAYLOAD, rank: PAYLOAD };
+    const clan = { clan: { id: PAYLOAD, name: PAYLOAD, url: "javascript:alert(1)" }, summary,
+        seasons: [{ season: PAYLOAD, in_play: true, place: PAYLOAD, clans: PAYLOAD, points: PAYLOAD, wins: PAYLOAD, played: PAYLOAD }],
+        opponents: [named], templates: [named] };
+    const player = { player: { name: PAYLOAD, url: "javascript:alert(1)" }, summary,
+        clans: [{ id: PAYLOAD, name: PAYLOAD, first_season: PAYLOAD, last_season: 2 }, { id: PAYLOAD, name: null, first_season: PAYLOAD, last_season: PAYLOAD }], templates: [named, { ...named, name: null }] };
+    const records = { templates: [{ id: PAYLOAD, name: PAYLOAD, won: 1, lost: 0 }], opponents: [{ id: PAYLOAD, name: PAYLOAD, won: 1, lost: 0 }] };
+    const progress = { season: 88, clanName: "x", place: 1, clans: 2, points: 1, pointsToday: 0, history: summary, territories: { held: 1, nextAt: null } };
+    for (const html of [ctx.renderClanWarsHistory(clan), ctx.renderClanWarsStats(player), ctx.renderClanWarRecords(records, 88, clan), ctx.renderClanWarProgress(progress, 0)]) {
+        const container = render(html);
+        assertInert(container);
+        assert.ok(container.textContent.includes(PAYLOAD));
+        container.querySelectorAll("a").forEach((a) => assert.doesNotMatch(a.getAttribute("href"), /^javascript:/i));
+    }
+});

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.64.0
+
+All-time Clan Wars from custom.wl-stats.com, next to war.app's current season.
+
+- **Clan Wars history on clan pages.** Below Clan Wars, above Community events: seasons played and won, the best finish, the clan's all-time record, and its last five seasons with place, points and record.
+- **Clan Wars on profiles**, with the other stat boxes: the player's Clan Wars rating and place, games (free wins counted apart), seasons, the clans they played for, and their three most played templates with record and rating. Settings menu → Profile → "Clan Wars stats".
+- **All time on the Clan War page.** "Your clan in Season N" adds the clan's best finish and seasons played. In a timeslot, each template also shows "All time: you 290–120, rating 2039 (1st); clan 220–110". A clan's season records show each template's and opponent's all-time record beside this season's.
+
 ## 3.63.7
 
 - **Dashboard game chat: Show all for a chat with only older messages.** When war.app showed none of a game's messages yet and kept them all behind its "Load Older Messages", the panel said "No messages yet." with no way to load them. It now reads "No recent messages. Show all", and Show all loads them as it does elsewhere.

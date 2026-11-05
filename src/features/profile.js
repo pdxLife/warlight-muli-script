@@ -144,7 +144,7 @@ function setupAwpProfileStats() {
 
 // The boxes from other sites keep this order below the feedback area, whichever answers first.
 function placeProfileBox(id, html) {
-    var order = ["privateNotes", "awpStats", "customStats"];
+    var order = ["privateNotes", "awpStats", "customStats", "clanWarsStats"];
     var above = order.slice(0, order.indexOf(id)).map(function (other) {
         return $("#" + other);
     }).filter(function (box) {
