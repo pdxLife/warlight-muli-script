@@ -72,4 +72,5 @@ Inspired by Johnny Silverhand's Quickmatch Stats extension for Chrome. Settings 
 [b]Gone[/b]: "the whole chat at once", because it opened war.app's chat dialog over the game, and the private chat list, which war.app now sorts itself.
 
 [hr]
-Something broken? Tell me (KKND), the script's maintainer, here or on Discord: https://discord.gg/sc99xHNuE. Many of these came from your Feature Requests. Thanks for the ideas, and keep them coming here. The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
+Let me know if something is broken - here or on Discord: https://discord.gg/sc99xHNuE.
+The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
