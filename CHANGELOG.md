@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.63.7
+
+- **Dashboard game chat: Show all for a chat with only older messages.** When war.app showed none of a game's messages yet and kept them all behind its "Load Older Messages", the panel said "No messages yet." with no way to load them. It now reads "No recent messages. Show all", and Show all loads them as it does elsewhere.
+
 ## 3.63.6
 
 - **Open Games: the Multi-Day, Real-Time and Both buttons no longer flicker on hover.** Hover made the text bold, and the wider buttons jumped off the line and back; now only the colour changes.

@@ -107,6 +107,13 @@ test("muted players' messages become a faint line, and an empty chat says so", (
     assert.match(ctx.renderGameChatMessages([], [], 20, false), /No messages yet/);
 });
 
+test("a chat with only older messages, behind war.app's Load Older Messages, offers to show them", () => {
+    const ctx = load(["renderGameChatMessages", "htmlEscape"]);
+    const html = ctx.renderGameChatMessages([], [], 20, true);
+    assert.doesNotMatch(html, /No messages yet/);
+    assert.match(html, /No recent messages\. <a href="#" class="tuydGameChatShowAll">Show all/);
+});
+
 test("the script knows when it runs inside the dashboard's hidden game, and does nothing there", () => {
     const framed = load(["inScriptFrame"], { GAME_CHAT_FRAME_ID: "tuydGameChatFrame", GAME_TEMPLATE_FRAME_ID: "tuydGameTemplateFrame", frameElement: { id: "tuydGameChatFrame" } });
     assert.equal(framed.inScriptFrame(), true);
