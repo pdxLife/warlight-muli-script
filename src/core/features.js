@@ -86,6 +86,7 @@ function mainFeatures() {
         { name: "Search all your past tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupPastTournamentsSearch },
         { name: "Filters on Open Tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupOpenTournamentsFilter },
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
+        { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },

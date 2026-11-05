@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.65.0
+
+- **Copy a teammate's picks.** In a team game's picking stage, once a teammate has committed, a "Copy *name*'s picks" button left of the Orders panel puts their picks, in their order, in place of yours. It asks first if you'd already picked something else, and never commits: check the list, then commit yourself. Settings menu → Games → "Copy a teammate's picks".
+
 ## 3.64.0
 
 All-time Clan Wars from custom.wl-stats.com, next to war.app's current season.
