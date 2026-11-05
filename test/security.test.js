@@ -350,3 +350,11 @@ test("Clan Wars history from custom.wl-stats.com escapes API data", () => {
         container.querySelectorAll("a").forEach((a) => assert.doesNotMatch(a.getAttribute("href"), /^javascript:/i));
     }
 });
+
+test("the Copy picks buttons escape player names", () => {
+    const { teamPicksHtml } = load(["teamPicksHtml", "htmlEscape"]);
+    const container = render(teamPicksHtml([{ id: PAYLOAD, name: PAYLOAD, picks: [1, 2] }]));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.equal(container.querySelector("a").getAttribute("data-player"), PAYLOAD);
+});
