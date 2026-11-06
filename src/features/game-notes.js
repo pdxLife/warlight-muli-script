@@ -158,7 +158,7 @@ function notesPlaces(text, places) {
 
 // Highlights a territory or bonus on war.app's map and moves the map to it, as a chat link does, through
 // war.app's own game object (UJS_Hooks.Od.ta). Its names are minified and change with war.app updates
-// (6.07 renamed them all); false then, and nothing happens.
+// (6.07 renamed them all, and November 2026's update xh to yh); false then, and nothing happens.
 function highlightPlace(hooks, place) {
     var game = hooks && hooks.Od && hooks.Od.ta;
     var data = ujsGameData(hooks);
@@ -168,7 +168,7 @@ function highlightPlace(hooks, place) {
         if (place.kind === "territory" && game && typeof game.vv === "function" && view && typeof view.CI === "function") {
             var territory = map.Ia.Aa(place.id);
             game.vv(place.id);
-            view.CI(territory.xh());
+            view.CI(territory.yh());
             return true;
         }
         if (place.kind === "bonus" && game && typeof game.Iu === "function" && view && typeof view.GRa === "function") {
@@ -184,11 +184,33 @@ function highlightPlace(hooks, place) {
 }
 
 // war.app's Live object (UJS_Hooks.Od.ta.Ih) can hand the next territory click on the map, or the next
-// bonus link click, to a callback instead of acting on it ("InterceptNextTerritoryClick", PMc, and
-// "InterceptNextBonusLinkClick", OMc). null when those minified names aren't there.
+// bonus link click, to a callback instead of acting on it. Updates rename those two methods, so they're
+// found by the line each logs, "InterceptNextTerritoryClick" and "InterceptNextBonusLinkClick". null
+// when either is missing.
 function gameLive(hooks) {
     var live = hooks && hooks.Od && hooks.Od.ta && hooks.Od.ta.Ih;
-    return live && typeof live.PMc === "function" && typeof live.OMc === "function" ? live : null;
+    if (!live || typeof live !== "object") {
+        return null;
+    }
+    if (gameLive.cached && gameLive.cached.live === live) {
+        return gameLive.cached.result;
+    }
+    var find = function (logged) {
+        for (var key in live) {
+            var method = live[key];
+            if (typeof method === "function" && Function.prototype.toString.call(method).indexOf('"' + logged + '"') !== -1) {
+                return function (callback) {
+                    method.call(live, callback);
+                };
+            }
+        }
+        return null;
+    };
+    var territory = find("InterceptNextTerritoryClick");
+    var bonus = find("InterceptNextBonusLinkClick");
+    var result = territory && bonus ? { territory: territory, bonus: bonus } : null;
+    gameLive.cached = { live: live, result: result };
+    return result;
 }
 
 function canHighlightPlaces(hooks) {
@@ -590,14 +612,14 @@ function setupGameNotes() {
                 return false;
             }
             picking = null;
-            live.PMc(null);
-            live.OMc(null);
+            live.territory(null);
+            live.bonus(null);
             $("#tuydGameNotes .tuydGameNotesSaved").text("");
             putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
             return true;
         };
-        live.PMc(take);
-        live.OMc(take);
+        live.territory(take);
+        live.bonus(take);
     };
     // war.app's own shortcut: with its chat open, Ctrl/Cmd+click or Shift+click on a territory puts its link
     // in the chat. With the notes open the same click puts the name in the notes, chat open or not: while
@@ -615,13 +637,13 @@ function setupGameNotes() {
             }
             putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
             held = null;
-            live.PMc(null);
-            live.OMc(null);
+            live.territory(null);
+            live.bonus(null);
             holdForNotes();
             return true;
         };
-        live.PMc(take);
-        live.OMc(take);
+        live.territory(take);
+        live.bonus(take);
     };
     var letGo = function () {
         var token = held;
@@ -629,8 +651,8 @@ function setupGameNotes() {
             return;
         }
         held = null;
-        token.live.PMc(null);
-        token.live.OMc(null);
+        token.live.territory(null);
+        token.live.bonus(null);
     };
     var linkKeys = function (event) {
         return event.ctrlKey || event.metaKey || event.shiftKey;
@@ -652,8 +674,8 @@ function setupGameNotes() {
             return;
         }
         picking = null;
-        token.live.PMc(null);
-        token.live.OMc(null);
+        token.live.territory(null);
+        token.live.bonus(null);
         $("#tuydGameNotes .tuydGameNotesLink").removeClass("tuydLinking");
         $("#tuydGameNotes .tuydGameNotesSaved").text("");
     };

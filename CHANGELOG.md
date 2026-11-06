@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.65.1
+
+- **Game notes: 🔗 and Ctrl/Cmd/Shift+click put territories and bonuses in your notes again,** and the buttons under the notes move the map to a territory again. War.app's latest update renamed what they use. The 🔗 now finds war.app's click hooks by what they do rather than by name, so the next rename shouldn't break it.
+
 ## 3.65.0
 
 - **Copy a teammate's picks.** In a team game's picking stage, once a teammate has committed, a "Copy *name*'s picks" button left of the Orders panel puts their picks, in their order, in place of yours. It asks first if you'd already picked something else, and never commits: check the list, then commit yourself. Settings menu → Games → "Copy a teammate's picks".
