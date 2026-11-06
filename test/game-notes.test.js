@@ -285,7 +285,7 @@ test("without war.app's chat, the notes' link button says what to do", () => {
 // Shaped like war.app's game data and game object on a game page (window.UJS_Hooks), with invented places.
 function fakeHooks(calls) {
     const dict = (entries) => ({ keys: Object.keys(entries).map(Number), Aa: (id) => entries[id] });
-    const territory = (name) => ({ Wa: name, xh: () => ({ x: 1, y: 2, name }) });
+    const territory = (name) => ({ Wa: name, yh: () => ({ x: 1, y: 2, name }) });
     return {
         ya: { Map: {
             Ia: dict({ 1: territory("Sudan"), 2: territory("South Sudan"), 3: territory("Elos"), 4: territory("Western Sahara") }),
@@ -341,7 +341,7 @@ test("place names from war.app's game data stay text in their buttons", () => {
     const PAYLOAD = `"><img src=x onerror="alert(1)">`;
     const { ctx, $ } = setup({ text: "Go " + PAYLOAD, firstMove: "", players: {} });
     const hooks = fakeHooks([]);
-    hooks.ya.Map.Ia = { keys: [9], Aa: () => ({ Wa: PAYLOAD, xh: () => ({}) }) };
+    hooks.ya.Map.Ia = { keys: [9], Aa: () => ({ Wa: PAYLOAD, yh: () => ({}) }) };
     ctx.UJS_Hooks = hooks;
     $("#tuydGameNotesBtn").trigger("click");
     const button = $("#tuydGameNotes .tuydNotesPlace");
@@ -350,13 +350,16 @@ test("place names from war.app's game data stay text in their buttons", () => {
     assert.equal($("#tuydGameNotes img").length, 0);
 });
 
-// Mirrors war.app's Live object: PMc / OMc set the one-shot callback for the next territory click or bonus
-// link click, first calling the one they replace with null; a click hands the callback the place.
+// Mirrors war.app's Live object: two methods set the one-shot callback for the next territory click or bonus
+// link click, first calling the one they replace with null; a click hands the callback the place. Their
+// names change with war.app updates (QMc and PMc since November 2026, PMc and OMc before); the log line stays.
+const Log = () => { };
 function fakeLive() {
     const live = {
         c$: null, b$: null,
-        PMc(cb) { const old = this.c$; this.c$ = null; if (old) old(null); this.c$ = cb; },
-        OMc(cb) { const old = this.b$; this.b$ = null; if (old) old(null); this.b$ = cb; },
+        OMc() { },
+        QMc(cb) { Log("Live", "InterceptNextTerritoryClick"); const old = this.c$; this.c$ = null; if (old) old(null); this.c$ = cb; },
+        PMc(cb) { Log("Live", "InterceptNextBonusLinkClick"); const old = this.b$; this.b$ = null; if (old) old(null); this.b$ = cb; },
         clickTerritory(name) { const cb = this.c$; this.c$ = null; return cb ? !!cb({ Wa: name }) : false; },
         clickBonus(name) { const cb = this.b$; this.b$ = null; return cb ? !!cb({ Wa: name }) : false; }
     };
