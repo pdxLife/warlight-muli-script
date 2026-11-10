@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.65.1
+// @version 3.66.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.65.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.66.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -635,6 +635,7 @@ function mainFeatures() {
         { name: "Filters on Past Games", section: "Games", match: pageIsPastGames, run: setupPastGamesFilter },
         { name: "Search all your past tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupPastTournamentsSearch },
         { name: "Filters on Open Tournaments", section: "Tournaments", match: pageHasUjsScenes, run: setupOpenTournamentsFilter },
+        { name: "Highlight tournament invitations", section: "Tournaments", match: pageHasUjsScenes, run: setupTournamentInviteHighlight },
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
@@ -16343,6 +16344,37 @@ function addTournamentButtonStyles() {
             border-image: var(--tuyd-button, none) 15 15 13 fill / 3px 4px stretch; }
         .tuydPtButton:hover, .tuydPtButton:focus { color: #fff; text-decoration: none; filter: brightness(1.15); }
     `);
+}
+
+function isTournamentInviteText(text) {
+    return /^Waiting for you to join or decline\.?$/i.test(String(text || "").replace(/\s+/g, " ").trim());
+}
+
+// war.app writes the invitation in a card's YourTurnLabel as a span of its own, which "Unread public chat
+// messages." may follow on the next line, so only that span becomes the badge.
+function markTournamentInvites(root) {
+    $(root).find("[id^='ujs_TournamentInfoControl']").filter(function () {
+        return /^ujs_TournamentInfoControl(_\d+)?$/.test(this.id);
+    }).each(function () {
+        var spans = $(this).find("[id^='ujs_YourTurnLabel'][id$='_tmp'] span").filter(function () {
+            return !$(this).children("span").length && isTournamentInviteText($(this).text());
+        });
+        $(this).find(".tuydTournamentInviteBadge").not(spans).removeClass("tuydTournamentInviteBadge");
+        spans.addClass("tuydTournamentInviteBadge");
+        $(this).toggleClass("tuydTournamentInvite", spans.length > 0);
+    });
+}
+
+function setupTournamentInviteHighlight() {
+    addCSS(`
+        .tuydTournamentInvite > .ujsImgInner { box-shadow: 0 0 0 2px #f2c250, 0 0 12px rgba(242, 194, 80, 0.55); border-radius: 6px; }
+        .tuydTournamentInviteBadge { background: #f2c250; color: #1a1a1a !important; font-weight: bold; padding: 1px 7px; border-radius: 3px; }
+    `);
+    var check = function () {
+        markTournamentInvites(document.body);
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
 }
 function checkVersion() {
     Database.readIndex(Database.Table.Settings, Database.Row.Settings.Name, "version", function (v) {
