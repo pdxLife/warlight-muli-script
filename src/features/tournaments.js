@@ -250,3 +250,34 @@ function addTournamentButtonStyles() {
         .tuydPtButton:hover, .tuydPtButton:focus { color: #fff; text-decoration: none; filter: brightness(1.15); }
     `);
 }
+
+function isTournamentInviteText(text) {
+    return /^Waiting for you to join or decline\.?$/i.test(String(text || "").replace(/\s+/g, " ").trim());
+}
+
+// war.app writes the invitation in a card's YourTurnLabel as a span of its own, which "Unread public chat
+// messages." may follow on the next line, so only that span becomes the badge.
+function markTournamentInvites(root) {
+    $(root).find("[id^='ujs_TournamentInfoControl']").filter(function () {
+        return /^ujs_TournamentInfoControl(_\d+)?$/.test(this.id);
+    }).each(function () {
+        var spans = $(this).find("[id^='ujs_YourTurnLabel'][id$='_tmp'] span").filter(function () {
+            return !$(this).children("span").length && isTournamentInviteText($(this).text());
+        });
+        $(this).find(".tuydTournamentInviteBadge").not(spans).removeClass("tuydTournamentInviteBadge");
+        spans.addClass("tuydTournamentInviteBadge");
+        $(this).toggleClass("tuydTournamentInvite", spans.length > 0);
+    });
+}
+
+function setupTournamentInviteHighlight() {
+    addCSS(`
+        .tuydTournamentInvite > .ujsImgInner { box-shadow: 0 0 0 2px #f2c250, 0 0 12px rgba(242, 194, 80, 0.55); border-radius: 6px; }
+        .tuydTournamentInviteBadge { background: #f2c250; color: #1a1a1a !important; font-weight: bold; padding: 1px 7px; border-radius: 3px; }
+    `);
+    var check = function () {
+        markTournamentInvites(document.body);
+    };
+    check();
+    new MutationObserver(check).observe(document.body, { childList: true, subtree: true });
+}

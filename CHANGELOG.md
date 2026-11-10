@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.66.0
+
+- **Tournament invitations stand out.** On the Tournaments page, a tournament you're invited to gets a gold outline in My Tournaments (and in Past Tournaments, which lists it too), and its "Waiting for you to join or decline." line becomes a gold badge, so it no longer blends in with the gold entry fee, prize and chat lines. Settings menu → Tournaments → "Highlight tournament invitations".
+
 ## 3.65.1
 
 - **Game notes: 🔗 and Ctrl/Cmd/Shift+click put territories and bonuses in your notes again,** and the buttons under the notes move the map to a territory again. War.app's latest update renamed what they use. The 🔗 now finds war.app's click hooks by what they do rather than by name, so the next rename shouldn't break it.
