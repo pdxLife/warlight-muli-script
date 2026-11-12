@@ -1063,3 +1063,14 @@ function setupIdlePopupLog() {
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     check();
 }
+
+// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens,
+// and war.app enables Claim on its own timer (8 seconds after opening, or 4 after rubbing off half).
+function setupIdleArtifactReveal() {
+    addCSS(`
+        [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwaySand"],
+        [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwayInstructionsContainer"] {
+            display: none !important;
+        }
+    `);
+}
