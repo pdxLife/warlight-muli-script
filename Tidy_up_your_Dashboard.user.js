@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.66.0
+// @version 3.67.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.66.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.67.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -601,6 +601,7 @@ function pageFeatures() {
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
+        { name: "Show dug-up artifacts without rubbing off the sand in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactReveal },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
         { name: "Best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
         { name: "What a tech is missing and its market cost in Idle", section: "Idle", match: pageIsIdle, run: setupIdleTechCost },
@@ -8941,6 +8942,17 @@ function setupIdlePopupLog() {
         }
     }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     check();
+}
+
+// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens,
+// and war.app enables Claim on its own timer (8 seconds after opening, or 4 after rubbing off half).
+function setupIdleArtifactReveal() {
+    addCSS(`
+        [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwaySand"],
+        [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwayInstructionsContainer"] {
+            display: none !important;
+        }
+    `);
 }
 // war.app draws the Ladders page client-side, in a 600px viewport that clips what overflows it. The
 // panel sits in the full-width area around that viewport instead, below the ladders dialog, so on a

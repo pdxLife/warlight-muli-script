@@ -350,3 +350,23 @@ test("Idle's pop-ups are listed, newest first, kept for the tab, and cleared on 
     assert.deepEqual(entries(), []);
     assert.match($("#idleLog").text(), /will be listed here/);
 });
+
+// Mirrors the window that opens after Claim Artifact! on a finished dig (recorded November 2026), sand still on.
+const artifactRevealDialog = `<div id="ujs_WziArtifactInfoDialog"><div id="ujs_Content_7"><div id="ujs_CardContainer_2">${artifactCardHtml(1, "Idle Time", "Rare")}</div>`
+    + `<div id="ujs_DescriptionLabel_2"><div id="ujs_DescriptionLabel_2_tmp">Passive</div></div>`
+    + `<div id="ujs_SwipeAwaySand" style="display: block"><canvas></canvas><div id="ujs_Hitbox_2"></div></div>`
+    + `<div id="ujs_SwipeAwayInstructionsContainer" style="display: block"><div id="ujs_Text_41"><div id="ujs_Text_41_tmp">Swipe away sand</div></div></div></div>`
+    + `<div id="ujs_CloseBtn_2" class="ujsBtn ujsDisabledBtn"><a class="btn ujsInner ujsBtnInner" id="ujs_CloseBtn_2_btn" href="#"></a><div>Claim</div></div></div>`;
+
+test("a dug-up artifact shows without its sand or the swipe hint, and the rest of the window stays", () => {
+    const { dom, $ } = createDom(artifactRevealDialog + `<div id="ujs_SwipeAwaySand_3"></div>`, "https://war.app/Idle/Play");
+    const ctx = load(["addCSS", "setupIdleArtifactReveal"], domGlobals(dom, $));
+    const shown = (id) => dom.window.getComputedStyle(dom.window.document.getElementById(id)).display !== "none";
+    assert.ok(shown("ujs_SwipeAwaySand") && shown("ujs_SwipeAwayInstructionsContainer"));
+    ctx.setupIdleArtifactReveal();
+    assert.equal(shown("ujs_SwipeAwaySand"), false);
+    assert.equal(shown("ujs_SwipeAwayInstructionsContainer"), false);
+    assert.ok(shown("ujs_CardContainer_2") && shown("ujs_DescriptionLabel_2") && shown("ujs_CloseBtn_2"));
+    assert.ok(shown("ujs_SwipeAwaySand_3"), "only inside the artifact window");
+    assert.equal($("#ujs_CloseBtn_2_btn").length, 1);
+});

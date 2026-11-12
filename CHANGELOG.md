@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.67.0
+
+- **Idle: a dug-up artifact shows at once, without rubbing off the sand.** After you claim a finished dig, the artifact's window opens with the artifact already in view instead of under sand you had to rub away with the mouse. Claim becomes clickable after a few seconds, when war.app's own timer ends, as before. Settings menu → Idle → "Show dug-up artifacts without rubbing off the sand in Idle".
+
 ## 3.66.0
 
 - **Tournament invitations stand out.** On the Tournaments page, a tournament you're invited to gets a gold outline in My Tournaments (and in Past Tournaments, which lists it too), and its "Waiting for you to join or decline." line becomes a gold badge, so it no longer blends in with the gold entry fee, prize and chat lines. Settings menu → Tournaments → "Highlight tournament invitations".
