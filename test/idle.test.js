@@ -360,7 +360,7 @@ const artifactRevealDialog = `<div id="ujs_WziArtifactInfoDialog"><div id="ujs_C
 
 test("a dug-up artifact shows without its sand or the swipe hint, and the rest of the window stays", () => {
     const { dom, $ } = createDom(artifactRevealDialog + `<div id="ujs_SwipeAwaySand_3"></div>`, "https://war.app/Idle/Play");
-    const ctx = load(["addCSS", "setupIdleArtifactReveal"], domGlobals(dom, $));
+    const ctx = load(["addCSS", "setupIdleArtifactReveal", "idleRevealClaimButton", "idleClaimSecondsLeft"], { ...domGlobals(dom, $), IDLE_CLAIM_WAIT_MS: 8000, setInterval: () => { } });
     const shown = (id) => dom.window.getComputedStyle(dom.window.document.getElementById(id)).display !== "none";
     assert.ok(shown("ujs_SwipeAwaySand") && shown("ujs_SwipeAwayInstructionsContainer"));
     ctx.setupIdleArtifactReveal();
@@ -369,4 +369,45 @@ test("a dug-up artifact shows without its sand or the swipe hint, and the rest o
     assert.ok(shown("ujs_CardContainer_2") && shown("ujs_DescriptionLabel_2") && shown("ujs_CloseBtn_2"));
     assert.ok(shown("ujs_SwipeAwaySand_3"), "only inside the artifact window");
     assert.equal($("#ujs_CloseBtn_2_btn").length, 1);
+});
+
+test("the disabled Claim counts down war.app's wait, and the countdown goes once Claim works", () => {
+    const { dom, $ } = createDom(artifactRevealDialog, "https://war.app/Idle/Play");
+    let now = 1000000;
+    let tick = null;
+    const ctx = load(["addCSS", "setupIdleArtifactReveal", "idleRevealClaimButton", "idleClaimSecondsLeft"], {
+        ...domGlobals(dom, $),
+        IDLE_CLAIM_WAIT_MS: 8000,
+        WeakMap,
+        Date: { now: () => now },
+        setInterval: (fn) => { tick = fn; }
+    });
+    ctx.setupIdleArtifactReveal();
+    tick();
+    const countdown = () => $("#ujs_CloseBtn_2 .tuydClaimCountdown");
+    assert.equal(countdown().text(), "8s");
+    now += 2500;
+    tick();
+    assert.equal(countdown().text(), "6s");
+    assert.equal(countdown().length, 1);
+    now += 5600;
+    tick();
+    assert.equal(countdown().text(), "");
+    $("#ujs_CloseBtn_2").removeClass("ujsDisabledBtn");
+    $("#ujs_SwipeAwaySand")[0].style.display = "none";
+    tick();
+    assert.equal(countdown().length, 0);
+});
+
+test("an artifact opened from the collection gets no countdown", () => {
+    const { dom, $ } = createDom(artifactRevealDialog, "https://war.app/Idle/Play");
+    $("#ujs_SwipeAwaySand")[0].style.display = "none";
+    $("#ujs_CloseBtn_2").removeClass("ujsDisabledBtn");
+    let tick = null;
+    const ctx = load(["addCSS", "setupIdleArtifactReveal", "idleRevealClaimButton", "idleClaimSecondsLeft"], {
+        ...domGlobals(dom, $), IDLE_CLAIM_WAIT_MS: 8000, WeakMap, setInterval: (fn) => { tick = fn; }
+    });
+    ctx.setupIdleArtifactReveal();
+    tick();
+    assert.equal($(".tuydClaimCountdown").length, 0);
 });

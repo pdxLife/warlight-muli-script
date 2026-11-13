@@ -51,7 +51,6 @@ function pageFeatures() {
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
-        { name: "Show dug-up artifacts without rubbing off the sand in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactReveal },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
         { name: "Best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
         { name: "What a tech is missing and its market cost in Idle", section: "Idle", match: pageIsIdle, run: setupIdleTechCost },
@@ -96,6 +95,7 @@ function mainFeatures() {
         { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },
         { name: "Suggest names after @ in chat rooms", section: "Community", match: pageIsChatRoom, run: setupChatRoomMentionSuggest },
         { name: "Suggest names after @ in game chat", section: "Games", match: pageIsGame, run: setupGameMentionSuggest },
+        { name: "Idle artifact reveal", match: pageIsIdle, run: function () { ifSettingIsEnabled('idleArtifactReveal', setupIdleArtifactReveal); } },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }

@@ -112,6 +112,13 @@ window.userscriptSettings = [
         help: 'While Idle is open in a background tab, shows a desktop notification when it needs you: unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus or the coin wheel. Your browser asks for permission when you turn this on.'
     },
     {
+        id: 'idleArtifactReveal',
+        text: 'Idle: Show Dug-Up Artifacts Without Rubbing Off the Sand',
+        selected: false,
+        section: 'Idle',
+        help: 'When you claim a finished dig, the new artifact shows at once instead of under sand you rub away with the mouse. War.app keeps Claim disabled for 8 seconds either way (4 seconds after rubbing off half the sand), so the button counts them down.'
+    },
+    {
         id: 'mailPreviewSearch',
         text: 'Mail: Search the First 15 Words of Each Thread',
         selected: true,

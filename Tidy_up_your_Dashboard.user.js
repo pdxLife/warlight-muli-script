@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.67.0
+// @version 3.68.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.67.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.68.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -601,7 +601,6 @@ function pageFeatures() {
         { name: "Check big market purchases in Idle", section: "Idle", match: pageIsIdle, run: setupIdleMarketCheck },
         { name: "Confirm before using powers and artifacts in Idle", section: "Idle", match: pageIsIdle, run: setupIdleActionConfirm },
         { name: "Better artifact copies and an artifact list in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactHelpers },
-        { name: "Show dug-up artifacts without rubbing off the sand in Idle", section: "Idle", match: pageIsIdle, run: setupIdleArtifactReveal },
         { name: "Warn when Idle is open in another tab", section: "Idle", match: pageIsIdle, run: setupIdleTabWarning },
         { name: "Best army camp in Idle", section: "Idle", match: pageIsIdle, run: setupIdleUpgradeHints },
         { name: "What a tech is missing and its market cost in Idle", section: "Idle", match: pageIsIdle, run: setupIdleTechCost },
@@ -646,6 +645,7 @@ function mainFeatures() {
         { name: "Chat rooms: hide events, mute players, highlight mentions", section: "Community", match: pageIsChatRoom, run: setupChatRoomTools },
         { name: "Suggest names after @ in chat rooms", section: "Community", match: pageIsChatRoom, run: setupChatRoomMentionSuggest },
         { name: "Suggest names after @ in game chat", section: "Games", match: pageIsGame, run: setupGameMentionSuggest },
+        { name: "Idle artifact reveal", match: pageIsIdle, run: function () { ifSettingIsEnabled('idleArtifactReveal', setupIdleArtifactReveal); } },
         { name: "hide coins", match: function () { return !pageIsDashboard(); }, run: function () { ifSettingIsEnabled('hideCoinsGlobally', hideCoinsGlobally); } },
         { name: "maak.ch features", run: function () { ifSettingIsEnabled('useMaakServices', setupMaakFeatures); } },
         { name: "New version notice", section: "Other", run: setupUpdateNotice }
@@ -8944,15 +8944,61 @@ function setupIdlePopupLog() {
     check();
 }
 
-// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens,
-// and war.app enables Claim on its own timer (8 seconds after opening, or 4 after rubbing off half).
+var IDLE_CLAIM_WAIT_MS = 8000;
+
+// The artifact window's Claim while war.app still keeps it disabled for a new artifact, or null.
+// war.app shows the sand (inline display not "none") only for a new artifact, until Claim works.
+function idleRevealClaimButton(dialog) {
+    var sand = $(dialog).find("[id^='ujs_SwipeAwaySand']")[0];
+    var button = $(dialog).find("[id^='ujs_CloseBtn']").filter(".ujsDisabledBtn")[0];
+    return sand && button && sand.style.display !== "none" ? button : null;
+}
+
+function idleClaimSecondsLeft(openedAt, now) {
+    return Math.max(0, Math.ceil((openedAt + IDLE_CLAIM_WAIT_MS - now) / 1000));
+}
+
+// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens.
+// war.app enables Claim on its own timer, out of the script's reach: 8 seconds after the window opens,
+// or 4 after rubbing off half the sand, so Claim gets a countdown instead.
 function setupIdleArtifactReveal() {
     addCSS(`
         [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwaySand"],
         [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwayInstructionsContainer"] {
             display: none !important;
         }
+        .tuydClaimCountdown {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #e0c060;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1;
+        }
     `);
+    var opened = new WeakMap();
+    setInterval(function () {
+        $("[id^='ujs_WziArtifactInfoDialog']").each(function () {
+            var button = idleRevealClaimButton(this);
+            var label = $(this).find(".tuydClaimCountdown");
+            if (!button) {
+                opened.delete(this);
+                label.remove();
+                return;
+            }
+            if (!opened.has(this)) {
+                opened.set(this, Date.now());
+            }
+            if (!label.length) {
+                label = $('<span class="tuydClaimCountdown" title="Claim works when war.app\'s own wait ends"></span>').appendTo(button);
+            }
+            var left = idleClaimSecondsLeft(opened.get(this), Date.now());
+            label.text(left ? left + "s" : "");
+        });
+    }, 250);
 }
 // war.app draws the Ladders page client-side, in a 600px viewport that clips what overflows it. The
 // panel sits in the full-width area around that viewport instead, below the ladders dialog, so on a
@@ -15023,6 +15069,13 @@ window.userscriptSettings = [
         selected: false,
         section: 'Idle',
         help: 'While Idle is open in a background tab, shows a desktop notification when it needs you: unclaimed powers, an artifact to claim, a tank ready to move, a battle, the daily bonus or the coin wheel. Your browser asks for permission when you turn this on.'
+    },
+    {
+        id: 'idleArtifactReveal',
+        text: 'Idle: Show Dug-Up Artifacts Without Rubbing Off the Sand',
+        selected: false,
+        section: 'Idle',
+        help: 'When you claim a finished dig, the new artifact shows at once instead of under sand you rub away with the mouse. War.app keeps Claim disabled for 8 seconds either way (4 seconds after rubbing off half the sand), so the button counts them down.'
     },
     {
         id: 'mailPreviewSearch',
