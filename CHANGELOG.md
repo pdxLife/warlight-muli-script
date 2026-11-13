@@ -2,7 +2,8 @@
 
 ## 3.68.0
 
-- **Idle: a countdown on Claim for a dug-up artifact.** War.app keeps the new artifact's Claim button disabled for 8 seconds after the window opens, and the script can't shorten that wait, so the button now counts down ("8s", "7s"…) until it works. Part of "Show dug-up artifacts without rubbing off the sand in Idle".
+- **Idle: rubbing the sand off a dug-up artifact is back by default.** Showing the artifact at once is now an option, off unless you turn it on: Settings menu → Idle → "Idle: Show Dug-Up Artifacts Without Rubbing Off the Sand". It replaces 3.67.0's switch, which was on for everyone.
+- **A countdown on Claim, with that option on.** War.app keeps the new artifact's Claim button disabled for 8 seconds after the window opens, and the script can't shorten that wait, so the button counts down ("8s", "7s"…) until it works.
 
 ## 3.67.0
 
