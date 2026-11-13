@@ -1064,13 +1064,59 @@ function setupIdlePopupLog() {
     check();
 }
 
-// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens,
-// and war.app enables Claim on its own timer (8 seconds after opening, or 4 after rubbing off half).
+var IDLE_CLAIM_WAIT_MS = 8000;
+
+// The artifact window's Claim while war.app still keeps it disabled for a new artifact, or null.
+// war.app shows the sand (inline display not "none") only for a new artifact, until Claim works.
+function idleRevealClaimButton(dialog) {
+    var sand = $(dialog).find("[id^='ujs_SwipeAwaySand']")[0];
+    var button = $(dialog).find("[id^='ujs_CloseBtn']").filter(".ujsDisabledBtn")[0];
+    return sand && button && sand.style.display !== "none" ? button : null;
+}
+
+function idleClaimSecondsLeft(openedAt, now) {
+    return Math.max(0, Math.ceil((openedAt + IDLE_CLAIM_WAIT_MS - now) / 1000));
+}
+
+// The sand over a dug-up artifact is only a picture: the artifact is claimed before the window opens.
+// war.app enables Claim on its own timer, out of the script's reach: 8 seconds after the window opens,
+// or 4 after rubbing off half the sand, so Claim gets a countdown instead.
 function setupIdleArtifactReveal() {
     addCSS(`
         [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwaySand"],
         [id^="ujs_WziArtifactInfoDialog"] [id^="ujs_SwipeAwayInstructionsContainer"] {
             display: none !important;
         }
+        .tuydClaimCountdown {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #e0c060;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1;
+        }
     `);
+    var opened = new WeakMap();
+    setInterval(function () {
+        $("[id^='ujs_WziArtifactInfoDialog']").each(function () {
+            var button = idleRevealClaimButton(this);
+            var label = $(this).find(".tuydClaimCountdown");
+            if (!button) {
+                opened.delete(this);
+                label.remove();
+                return;
+            }
+            if (!opened.has(this)) {
+                opened.set(this, Date.now());
+            }
+            if (!label.length) {
+                label = $('<span class="tuydClaimCountdown" title="Claim works when war.app\'s own wait ends"></span>').appendTo(button);
+            }
+            var left = idleClaimSecondsLeft(opened.get(this), Date.now());
+            label.text(left ? left + "s" : "");
+        });
+    }, 250);
 }
