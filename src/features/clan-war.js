@@ -17,6 +17,7 @@ function watchClanWarTraffic() {
     XMLHttpRequest.prototype.send = function (body) {
         var service = this.tuydClanWar;
         if (service && typeof body === "string") {
+            noteServiceOp(service, body);
             if (serviceRequestParts(body)) {
                 clanWarTraffic.request = body;
             }
@@ -206,18 +207,18 @@ function readServiceReply(hex, op, readBody, partial) {
 // The account record before the arguments ends with the email address, so a byte that can't end an email tells
 // the two shapes apart.
 var CLAN_WAR_ARGUMENT_BYTES = {
-    305: function (bytes) {
+    GetClanWar: function (bytes) {
         var n = bytes.length;
         return bytes[n - 5] === 1 && bytes[n - 2] === 0 && bytes[n - 1] === 0 ? 5 : 1;
     },
-    306: 4,
-    307: 8,
-    308: function (bytes) {
+    GetClanWarMap: 4,
+    GetClanWarClan: 8,
+    GetClanWarGames: function (bytes) {
         var n = bytes.length;
         return bytes[n - 13] === 1 && bytes[n - 14] === 0 ? 17 : 13;
     },
-    309: 12,
-    310: 4
+    GetClanWarTimeslots: 12,
+    GetClanWarTimeslot: 4
 };
 
 function serviceRequestParts(body) {
@@ -229,7 +230,7 @@ function serviceRequestParts(body) {
     var r = binaryReader(bytes);
     try {
         r.p = 10;
-        var argBytes = CLAN_WAR_ARGUMENT_BYTES[r.int()];
+        var argBytes = CLAN_WAR_ARGUMENT_BYTES[serviceName(r.int())];
         if (!argBytes) {
             return null;
         }
@@ -257,7 +258,7 @@ function serviceRequest(parts, op, args, withAccount) {
     return parts.head + littleEndianHex(op) + parts.extras + (withAccount ? parts.account : "") + args;
 }
 
-function fetchClanWarService(name, op, args, parse, withAccount) {
+function fetchClanWarService(name, args, parse, withAccount) {
     var seen = clanWarTraffic.answers[name];
     if (seen && String(seen.body).toUpperCase().slice(-args.length) === args) {
         var data = parse(seen.text);
@@ -273,6 +274,10 @@ function fetchClanWarService(name, op, args, parse, withAccount) {
     var parts = serviceRequestParts(clanWarTraffic.request);
     if (!parts) {
         return Promise.reject(new Error("war.app hasn't sent a Clan War request yet"));
+    }
+    var op = serviceOp(name);
+    if (!op) {
+        return Promise.reject(new Error("war.app has renumbered its messages, and " + name + "'s new number isn't known"));
     }
     // fetch, not XMLHttpRequest, so watchClanWarTraffic doesn't take the script's own requests for war.app's.
     var promise = fetch("/Services?m=" + name + "&js=1", {
@@ -300,15 +305,15 @@ function fetchClanWarService(name, op, args, parse, withAccount) {
 }
 
 function fetchClanWar(season) {
-    return fetchClanWarService("GetClanWar", 305, season ? "01" + littleEndianHex(season) : "00", parseClanWarReply);
+    return fetchClanWarService("GetClanWar", season ? "01" + littleEndianHex(season) : "00", parseClanWarReply);
 }
 
 function fetchClanWarGames(season, clan) {
-    return fetchClanWarService("GetClanWarGames", 308, littleEndianHex(season) + "01" + littleEndianHex(clan) + littleEndianHex(0) + littleEndianHex(2147483647), parseClanWarGamesReply);
+    return fetchClanWarService("GetClanWarGames", littleEndianHex(season) + "01" + littleEndianHex(clan) + littleEndianHex(0) + littleEndianHex(2147483647), parseClanWarGamesReply);
 }
 
 function fetchClanWarMap(season) {
-    return fetchClanWarService("GetClanWarMap", 306, littleEndianHex(season), parseClanWarMapReply);
+    return fetchClanWarService("GetClanWarMap", littleEndianHex(season), parseClanWarMapReply);
 }
 
 // A map's territory count only changes when its author edits it, so it's kept for good.
@@ -322,7 +327,7 @@ function fetchMapTerritoryCount(mapId) {
     if (known[mapId] > 0) {
         return Promise.resolve(known[mapId]);
     }
-    return fetchClanWarService("GetMapDetails", 73, littleEndianHex(mapId), function (hex) {
+    return fetchClanWarService("GetMapDetails", littleEndianHex(mapId), function (hex) {
         var map = parseMapDetailsSummary(hex);
         return map && map.id === mapId ? map.territories : null;
     }, false).then(function (count) {
@@ -518,7 +523,7 @@ function readClanWarParts(r) {
 }
 
 function parseClanWarReply(hex) {
-    return readServiceReply(hex, 305, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWar"), function (r) {
         var parts = readClanWarParts(r);
         var timeslot = r.optional(parts.timeslot);
         var standings = r.items(parts.standing);
@@ -546,7 +551,7 @@ function parseClanWarReply(hex) {
 
 // Today's games have no day yet.
 function parseClanWarGamesReply(hex) {
-    return readServiceReply(hex, 308, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWarGames"), function (r) {
         var parts = readClanWarParts(r);
         var days = r.items(parts.day);
         var games = r.items(parts.game);
@@ -558,7 +563,7 @@ function parseClanWarGamesReply(hex) {
 }
 
 function parseClanWarMapReply(hex) {
-    return readServiceReply(hex, 306, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWarMap"), function (r) {
         var parts = readClanWarParts(r);
         var clans = r.items(parts.clan);
         r.items(parts.standing);
@@ -578,7 +583,7 @@ function parseClanWarMapReply(hex) {
 
 // Only the territory count is wanted, and it comes after the bonuses, distributions and map family.
 function parseMapDetailsSummary(hex) {
-    return readServiceReply(hex, 73, function (r) {
+    return readServiceReply(hex, serviceOp("GetMapDetails"), function (r) {
         r.map(r.int, function () {
             return r.optional(function () {
                 r.int();

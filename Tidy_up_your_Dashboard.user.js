@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.68.0
+// @version 3.68.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.68.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.68.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -344,7 +344,7 @@ function ujsElement(name, suffix) {
 }
 
 // war.app's data for the game in a game or lobby (window.UJS_Hooks). The hooks' field names are minified
-// and change with war.app updates (za until 6.07, ya since), so the data is the one with a Map field.
+// and change with war.app updates (za until 6.07, then ya, xa since November 2026), so the data is the one with a Map field.
 function ujsGameData(hooks) {
     var values = hooks && typeof hooks === "object" ? Object.keys(hooks).map(function (key) {
         return hooks[key];
@@ -354,6 +354,48 @@ function ujsGameData(hooks) {
     return values.filter(function (value) {
         return "Map" in value;
     })[0] || values[0] || null;
+}
+
+// The turn being built in a game (UJS_Hooks.Rd since November 2026's second update, Od before) and the game's
+// own view of it, LiveVM (its ta).
+function ujsTurn(hooks) {
+    return ujsMember(hooks, "warlight.unity.live.livestates.buildingturn.BuildingTurnStateImplementation");
+}
+
+function ujsLiveGame(hooks) {
+    return ujsMember(ujsTurn(hooks), "warlight.unity.viewmodels.live.LiveVM");
+}
+
+// war.app's classes keep their full names (warlight.unity.live.Live) when minified, on the class itself and on
+// its prototype's va, so its objects are found by class, not by field names that change with each update.
+function ujsClassName(value) {
+    try {
+        if (typeof value === "function") {
+            return typeof value.aa === "string" ? value.aa : null;
+        }
+        var proto = value && typeof value === "object" ? Object.getPrototypeOf(value) : null;
+        return proto && proto.va && typeof proto.va.aa === "string" ? proto.va.aa : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function ujsMember(owner, className) {
+    if (!owner || typeof owner !== "object") {
+        return null;
+    }
+    for (var key in owner) {
+        var value;
+        try {
+            value = owner[key];
+        } catch (e) {
+            continue;
+        }
+        if (value && ujsClassName(value) === className) {
+            return value;
+        }
+    }
+    return null;
 }
 
 function shownUjsElement(element) {
@@ -1128,6 +1170,46 @@ function signedInPlayerId() {
         result.resolve(null);
     });
     return result.promise();
+}
+// war.app's Services calls carry a message number, and its updates renumber them (November 2026: GetClanWar
+// 305 → 311). These are the numbers in ujs.js v=639304508939095333; war.app's own requests replace them as
+// they're seen.
+var WARAPP_SERVICE_OPS = {
+    GetMapDetails: 75,
+    GetMyTournaments: 90,
+    GetClanWar: 311,
+    GetClanWarMap: 312,
+    GetClanWarClan: 313,
+    GetClanWarGames: 314,
+    GetClanWarTimeslots: 315,
+    GetClanWarTimeslot: 316
+};
+var seenServiceOps = {};
+
+function noteServiceOp(name, body) {
+    var hex = String(body || "").trim();
+    if (!/^(?:[0-9a-f]{2})+$/i.test(hex) || hex.length < 28 || hex.substr(4, 8).toUpperCase() !== "39F1475A") {
+        return;
+    }
+    seenServiceOps[name] = parseInt(hex.substr(26, 2) + hex.substr(24, 2) + hex.substr(22, 2) + hex.substr(20, 2), 16);
+}
+
+// Once war.app has sent a number that differs from the table, the table is out of date, and a number the
+// script hasn't seen war.app use could now mean another message, so there's none.
+function serviceOp(name) {
+    if (seenServiceOps[name]) {
+        return seenServiceOps[name];
+    }
+    var stale = Object.keys(seenServiceOps).some(function (seen) {
+        return seen in WARAPP_SERVICE_OPS && WARAPP_SERVICE_OPS[seen] !== seenServiceOps[seen];
+    });
+    return stale ? null : WARAPP_SERVICE_OPS[name] || null;
+}
+
+function serviceName(op) {
+    return Object.keys(WARAPP_SERVICE_OPS).filter(function (name) {
+        return serviceOp(name) === op;
+    })[0] || null;
 }
 function siteName() {
     var meta = document.querySelector("meta[property='og:site_name']");
@@ -2529,6 +2611,7 @@ function watchClanWarTraffic() {
     XMLHttpRequest.prototype.send = function (body) {
         var service = this.tuydClanWar;
         if (service && typeof body === "string") {
+            noteServiceOp(service, body);
             if (serviceRequestParts(body)) {
                 clanWarTraffic.request = body;
             }
@@ -2718,18 +2801,18 @@ function readServiceReply(hex, op, readBody, partial) {
 // The account record before the arguments ends with the email address, so a byte that can't end an email tells
 // the two shapes apart.
 var CLAN_WAR_ARGUMENT_BYTES = {
-    305: function (bytes) {
+    GetClanWar: function (bytes) {
         var n = bytes.length;
         return bytes[n - 5] === 1 && bytes[n - 2] === 0 && bytes[n - 1] === 0 ? 5 : 1;
     },
-    306: 4,
-    307: 8,
-    308: function (bytes) {
+    GetClanWarMap: 4,
+    GetClanWarClan: 8,
+    GetClanWarGames: function (bytes) {
         var n = bytes.length;
         return bytes[n - 13] === 1 && bytes[n - 14] === 0 ? 17 : 13;
     },
-    309: 12,
-    310: 4
+    GetClanWarTimeslots: 12,
+    GetClanWarTimeslot: 4
 };
 
 function serviceRequestParts(body) {
@@ -2741,7 +2824,7 @@ function serviceRequestParts(body) {
     var r = binaryReader(bytes);
     try {
         r.p = 10;
-        var argBytes = CLAN_WAR_ARGUMENT_BYTES[r.int()];
+        var argBytes = CLAN_WAR_ARGUMENT_BYTES[serviceName(r.int())];
         if (!argBytes) {
             return null;
         }
@@ -2769,7 +2852,7 @@ function serviceRequest(parts, op, args, withAccount) {
     return parts.head + littleEndianHex(op) + parts.extras + (withAccount ? parts.account : "") + args;
 }
 
-function fetchClanWarService(name, op, args, parse, withAccount) {
+function fetchClanWarService(name, args, parse, withAccount) {
     var seen = clanWarTraffic.answers[name];
     if (seen && String(seen.body).toUpperCase().slice(-args.length) === args) {
         var data = parse(seen.text);
@@ -2785,6 +2868,10 @@ function fetchClanWarService(name, op, args, parse, withAccount) {
     var parts = serviceRequestParts(clanWarTraffic.request);
     if (!parts) {
         return Promise.reject(new Error("war.app hasn't sent a Clan War request yet"));
+    }
+    var op = serviceOp(name);
+    if (!op) {
+        return Promise.reject(new Error("war.app has renumbered its messages, and " + name + "'s new number isn't known"));
     }
     // fetch, not XMLHttpRequest, so watchClanWarTraffic doesn't take the script's own requests for war.app's.
     var promise = fetch("/Services?m=" + name + "&js=1", {
@@ -2812,15 +2899,15 @@ function fetchClanWarService(name, op, args, parse, withAccount) {
 }
 
 function fetchClanWar(season) {
-    return fetchClanWarService("GetClanWar", 305, season ? "01" + littleEndianHex(season) : "00", parseClanWarReply);
+    return fetchClanWarService("GetClanWar", season ? "01" + littleEndianHex(season) : "00", parseClanWarReply);
 }
 
 function fetchClanWarGames(season, clan) {
-    return fetchClanWarService("GetClanWarGames", 308, littleEndianHex(season) + "01" + littleEndianHex(clan) + littleEndianHex(0) + littleEndianHex(2147483647), parseClanWarGamesReply);
+    return fetchClanWarService("GetClanWarGames", littleEndianHex(season) + "01" + littleEndianHex(clan) + littleEndianHex(0) + littleEndianHex(2147483647), parseClanWarGamesReply);
 }
 
 function fetchClanWarMap(season) {
-    return fetchClanWarService("GetClanWarMap", 306, littleEndianHex(season), parseClanWarMapReply);
+    return fetchClanWarService("GetClanWarMap", littleEndianHex(season), parseClanWarMapReply);
 }
 
 // A map's territory count only changes when its author edits it, so it's kept for good.
@@ -2834,7 +2921,7 @@ function fetchMapTerritoryCount(mapId) {
     if (known[mapId] > 0) {
         return Promise.resolve(known[mapId]);
     }
-    return fetchClanWarService("GetMapDetails", 73, littleEndianHex(mapId), function (hex) {
+    return fetchClanWarService("GetMapDetails", littleEndianHex(mapId), function (hex) {
         var map = parseMapDetailsSummary(hex);
         return map && map.id === mapId ? map.territories : null;
     }, false).then(function (count) {
@@ -3030,7 +3117,7 @@ function readClanWarParts(r) {
 }
 
 function parseClanWarReply(hex) {
-    return readServiceReply(hex, 305, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWar"), function (r) {
         var parts = readClanWarParts(r);
         var timeslot = r.optional(parts.timeslot);
         var standings = r.items(parts.standing);
@@ -3058,7 +3145,7 @@ function parseClanWarReply(hex) {
 
 // Today's games have no day yet.
 function parseClanWarGamesReply(hex) {
-    return readServiceReply(hex, 308, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWarGames"), function (r) {
         var parts = readClanWarParts(r);
         var days = r.items(parts.day);
         var games = r.items(parts.game);
@@ -3070,7 +3157,7 @@ function parseClanWarGamesReply(hex) {
 }
 
 function parseClanWarMapReply(hex) {
-    return readServiceReply(hex, 306, function (r) {
+    return readServiceReply(hex, serviceOp("GetClanWarMap"), function (r) {
         var parts = readClanWarParts(r);
         var clans = r.items(parts.clan);
         r.items(parts.standing);
@@ -3090,7 +3177,7 @@ function parseClanWarMapReply(hex) {
 
 // Only the territory count is wanted, and it comes after the bonuses, distributions and map family.
 function parseMapDetailsSummary(hex) {
-    return readServiceReply(hex, 73, function (r) {
+    return readServiceReply(hex, serviceOp("GetMapDetails"), function (r) {
         r.map(r.int, function () {
             return r.optional(function () {
                 r.int();
@@ -6814,14 +6901,14 @@ function gameMapPlaces(hooks) {
     var data = ujsGameData(hooks);
     var map = data && data.Map;
     var places = [];
-    [["territory", map && map.Ia], ["bonus", map && map.nd]].forEach(function (list) {
+    [["territory", map && map.Ia], ["bonus", map && map.qd]].forEach(function (list) {
         if (!list[1] || !Array.isArray(list[1].keys) || typeof list[1].Aa !== "function") {
             return;
         }
         list[1].keys.forEach(function (id) {
             var entry = list[1].Aa(id);
-            if (entry && typeof entry.Wa === "string" && entry.Wa.trim()) {
-                places.push({ kind: list[0], id: id, name: entry.Wa.trim() });
+            if (entry && typeof entry.Va === "string" && entry.Va.trim()) {
+                places.push({ kind: list[0], id: id, name: entry.Va.trim() });
             }
         });
     });
@@ -6863,24 +6950,25 @@ function notesPlaces(text, places) {
 }
 
 // Highlights a territory or bonus on war.app's map and moves the map to it, as a chat link does, through
-// war.app's own game object (UJS_Hooks.Od.ta). Its names are minified and change with war.app updates
-// (6.07 renamed them all, and November 2026's update xh to yh); false then, and nothing happens.
+// war.app's own game object (ujsLiveGame()). Its names are minified and change with war.app updates (the
+// chat's "Clicked territory" and "Clicked bonus" handlers in ujs.js show the current ones); false then, and
+// nothing happens.
 function highlightPlace(hooks, place) {
-    var game = hooks && hooks.Od && hooks.Od.ta;
+    var game = ujsLiveGame(hooks);
     var data = ujsGameData(hooks);
     var map = data && data.Map;
-    var view = game && game.Xb;
+    var view = game && game.Yb;
     try {
-        if (place.kind === "territory" && game && typeof game.vv === "function" && view && typeof view.CI === "function") {
+        if (place.kind === "territory" && game && typeof game.Cv === "function" && view && typeof view.ZI === "function") {
             var territory = map.Ia.Aa(place.id);
-            game.vv(place.id);
-            view.CI(territory.yh());
+            game.Cv(place.id);
+            view.ZI(territory.Ch());
             return true;
         }
-        if (place.kind === "bonus" && game && typeof game.Iu === "function" && view && typeof view.GRa === "function") {
-            var bonus = map.nd.Aa(place.id);
-            game.Iu(bonus);
-            view.GRa(bonus);
+        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.SSa === "function") {
+            var bonus = map.qd.Aa(place.id);
+            game.Ou(bonus);
+            view.SSa(bonus);
             return true;
         }
     } catch (e) {
@@ -6889,12 +6977,12 @@ function highlightPlace(hooks, place) {
     return false;
 }
 
-// war.app's Live object (UJS_Hooks.Od.ta.Ih) can hand the next territory click on the map, or the next
+// war.app's Live object can hand the next territory click on the map, or the next
 // bonus link click, to a callback instead of acting on it. Updates rename those two methods, so they're
 // found by the line each logs, "InterceptNextTerritoryClick" and "InterceptNextBonusLinkClick". null
 // when either is missing.
 function gameLive(hooks) {
-    var live = hooks && hooks.Od && hooks.Od.ta && hooks.Od.ta.Ih;
+    var live = ujsMember(ujsLiveGame(hooks), "warlight.unity.live.Live");
     if (!live || typeof live !== "object") {
         return null;
     }
@@ -6920,8 +7008,8 @@ function gameLive(hooks) {
 }
 
 function canHighlightPlaces(hooks) {
-    var game = hooks && hooks.Od && hooks.Od.ta;
-    return !!(game && typeof game.vv === "function" && typeof game.Iu === "function" && game.Xb && typeof game.Xb.CI === "function" && typeof game.Xb.GRa === "function");
+    var game = ujsLiveGame(hooks);
+    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.SSa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
@@ -7321,7 +7409,7 @@ function setupGameNotes() {
             live.territory(null);
             live.bonus(null);
             $("#tuydGameNotes .tuydGameNotesSaved").text("");
-            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Va || "").replace(/[<>]/g, ""));
             return true;
         };
         live.territory(take);
@@ -7341,7 +7429,7 @@ function setupGameNotes() {
             if (held !== token || !place) {
                 return false;
             }
-            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Va || "").replace(/[<>]/g, ""));
             held = null;
             live.territory(null);
             live.bonus(null);
@@ -12073,6 +12161,7 @@ function watchMyTournamentsRequests() {
     };
     XMLHttpRequest.prototype.send = function (body) {
         if (this.tuydMyTournaments && typeof body === "string") {
+            noteServiceOp("GetMyTournaments", body);
             lastMyTournamentsRequest = body;
             document.dispatchEvent(new Event("tuyd:myTournamentsRequest"));
         }
@@ -12091,7 +12180,7 @@ var PAST_TOURNAMENTS_YOU = ["Not answered", "Joined", "Declined"];
 // for any part of the same list by changing them in war.app's latest request. Returns null if the request isn't one.
 function myTournamentsRequest(template, filter, offset, count) {
     var hex = String(template || "").trim().toUpperCase();
-    if (!/^(?:[0-9A-F]{2})+$/.test(hex) || hex.length < 62 || hex.substr(4, 8) !== "39F1475A" || hex.substr(20, 8) !== "58000000"
+    if (!/^(?:[0-9A-F]{2})+$/.test(hex) || hex.length < 62 || hex.substr(4, 8) !== "39F1475A" || hex.substr(20, 8) !== littleEndianHex(serviceOp("GetMyTournaments"))
         || hex.substr(hex.length - 34, 2) !== "01") {
         return null;
     }
@@ -12308,7 +12397,7 @@ function parseMyTournamentsReply(hex) {
             return null;
         }
         int();
-        if (int() !== 88) {
+        if (int() !== serviceOp("GetMyTournaments")) {
             return null;
         }
         if (byte() === 1) {
@@ -15988,24 +16077,25 @@ function setupSoundSliders(setLevel, save, show) {
         speaker.after('<a href="#" id="tuydSoundBtn" title="Volume of the chat and turn sounds (Muli\'s Userscript)">🔔</a>');
     }
 }
-// war.app's game data (window.UJS_Hooks) holds the turn being built (Od), the game (ya) and its GameOrderPick
-// class (pxd); the other names are minified and change with war.app updates, and this is null then. A
-// teammate's picks reach you once they commit, as territory ids in their order (TeammateOrders.qqa).
+// war.app's game data (window.UJS_Hooks) holds the turn being built (ujsTurn()), the game (GameLinks) and its
+// GameOrderPick class, found by their class names; the other names are minified and change with war.app
+// updates, and this is null then. A teammate's picks reach you once they commit, as territory ids in their
+// order (TeammateOrders.pra, in LatestGameInfo.jm).
 function teamPicksState(hooks) {
     try {
-        var turn = hooks && hooks.Od;
-        var links = hooks && hooks.ya;
-        var Pick = hooks && hooks.pxd;
-        if (!turn || typeof turn.H0 !== "function" || typeof turn.nv !== "function" || typeof Pick !== "function"
+        var turn = ujsTurn(hooks);
+        var links = ujsMember(hooks, "warlight.unity.viewmodels.liveandlobby.GameLinks");
+        var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
+        if (!turn || typeof turn.o1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
             || !links || typeof links.kb !== "function" || typeof links.uc !== "function") {
             return null;
         }
         var game = links.kb();
         var us = links.uc();
-        var root = turn.ta;
-        var sent = links.zd && links.zd.em;
-        if (!game || game.Xa !== 5 || !us || us.lh || typeof us.eb !== "function"
-            || !root || typeof root.xf !== "function" || root.xf() !== turn || !sent || typeof sent.Ra !== "function") {
+        var root = ujsLiveGame(hooks);
+        var sent = links.ud && links.ud.jm;
+        if (!game || game.Wa !== 5 || !us || us.mh || typeof us.eb !== "function"
+            || !root || typeof root.Af !== "function" || root.Af() !== turn || !sent || typeof sent.Ra !== "function") {
             return null;
         }
         var self = us.eb();
@@ -16021,8 +16111,8 @@ function teamPicksState(hooks) {
             var player = game.qb && typeof game.qb.Aa === "function" ? game.qb.Aa(pair.Na) : null;
             return {
                 id: pair.Na,
-                name: player && typeof player.Wd === "function" ? String(player.Wd(null) || "") : "",
-                picks: Array.isArray(orders.qqa) ? orders.qqa.slice() : picksOf(orders.ac)
+                name: player && typeof player.Pd === "function" ? String(player.Pd(null) || "") : "",
+                picks: Array.isArray(orders.pra) ? orders.pra.slice() : picksOf(orders.ac)
             };
         }).filter(function (teammate) {
             return teammate.id !== self && teammate.picks.length > 0;
@@ -16033,7 +16123,7 @@ function teamPicksState(hooks) {
         return {
             self: self,
             own: picksOf((turn.ac || []).map(function (wrapped) {
-                return wrapped && wrapped.Pb;
+                return wrapped && wrapped.Qb;
             })),
             teammates: teammates
         };
@@ -16042,15 +16132,15 @@ function teamPicksState(hooks) {
     }
 }
 
-// Replaces your picks with the teammate's, in their order, the way war.app loads saved picks when a game
-// opens (LoadOrders, H0) and then tells itself the orders changed (nv), which saves them as unfinished
-// orders. Nothing is committed.
+// Replaces your picks with the teammate's, in their order, the way war.app's mod API sets orders: LoadOrders
+// (o1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
 function copyTeammatePicks(hooks, self, picks) {
-    var Pick = hooks.pxd;
-    hooks.Od.H0(picks.map(function (territory, index) {
+    var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
+    var turn = ujsTurn(hooks);
+    turn.o1(picks.map(function (territory, index) {
         return new Pick(self, territory, index);
     }));
-    hooks.Od.nv();
+    turn.vv();
 }
 
 function teamPicksReplaceQuestion(own, teammate) {

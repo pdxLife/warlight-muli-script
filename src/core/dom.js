@@ -9,7 +9,7 @@ function ujsElement(name, suffix) {
 }
 
 // war.app's data for the game in a game or lobby (window.UJS_Hooks). The hooks' field names are minified
-// and change with war.app updates (za until 6.07, ya since), so the data is the one with a Map field.
+// and change with war.app updates (za until 6.07, then ya, xa since November 2026), so the data is the one with a Map field.
 function ujsGameData(hooks) {
     var values = hooks && typeof hooks === "object" ? Object.keys(hooks).map(function (key) {
         return hooks[key];
@@ -19,6 +19,48 @@ function ujsGameData(hooks) {
     return values.filter(function (value) {
         return "Map" in value;
     })[0] || values[0] || null;
+}
+
+// The turn being built in a game (UJS_Hooks.Rd since November 2026's second update, Od before) and the game's
+// own view of it, LiveVM (its ta).
+function ujsTurn(hooks) {
+    return ujsMember(hooks, "warlight.unity.live.livestates.buildingturn.BuildingTurnStateImplementation");
+}
+
+function ujsLiveGame(hooks) {
+    return ujsMember(ujsTurn(hooks), "warlight.unity.viewmodels.live.LiveVM");
+}
+
+// war.app's classes keep their full names (warlight.unity.live.Live) when minified, on the class itself and on
+// its prototype's va, so its objects are found by class, not by field names that change with each update.
+function ujsClassName(value) {
+    try {
+        if (typeof value === "function") {
+            return typeof value.aa === "string" ? value.aa : null;
+        }
+        var proto = value && typeof value === "object" ? Object.getPrototypeOf(value) : null;
+        return proto && proto.va && typeof proto.va.aa === "string" ? proto.va.aa : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function ujsMember(owner, className) {
+    if (!owner || typeof owner !== "object") {
+        return null;
+    }
+    for (var key in owner) {
+        var value;
+        try {
+            value = owner[key];
+        } catch (e) {
+            continue;
+        }
+        if (value && ujsClassName(value) === className) {
+            return value;
+        }
+    }
+    return null;
 }
 
 function shownUjsElement(element) {
