@@ -11,6 +11,7 @@ function watchMyTournamentsRequests() {
     };
     XMLHttpRequest.prototype.send = function (body) {
         if (this.tuydMyTournaments && typeof body === "string") {
+            noteServiceOp("GetMyTournaments", body);
             lastMyTournamentsRequest = body;
             document.dispatchEvent(new Event("tuyd:myTournamentsRequest"));
         }
@@ -29,7 +30,7 @@ var PAST_TOURNAMENTS_YOU = ["Not answered", "Joined", "Declined"];
 // for any part of the same list by changing them in war.app's latest request. Returns null if the request isn't one.
 function myTournamentsRequest(template, filter, offset, count) {
     var hex = String(template || "").trim().toUpperCase();
-    if (!/^(?:[0-9A-F]{2})+$/.test(hex) || hex.length < 62 || hex.substr(4, 8) !== "39F1475A" || hex.substr(20, 8) !== "58000000"
+    if (!/^(?:[0-9A-F]{2})+$/.test(hex) || hex.length < 62 || hex.substr(4, 8) !== "39F1475A" || hex.substr(20, 8) !== littleEndianHex(serviceOp("GetMyTournaments"))
         || hex.substr(hex.length - 34, 2) !== "01") {
         return null;
     }
@@ -246,7 +247,7 @@ function parseMyTournamentsReply(hex) {
             return null;
         }
         int();
-        if (int() !== 88) {
+        if (int() !== serviceOp("GetMyTournaments")) {
             return null;
         }
         if (byte() === 1) {

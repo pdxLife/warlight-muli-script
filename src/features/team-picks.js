@@ -1,21 +1,22 @@
-// war.app's game data (window.UJS_Hooks) holds the turn being built (Od), the game (ya) and its GameOrderPick
-// class (pxd); the other names are minified and change with war.app updates, and this is null then. A
-// teammate's picks reach you once they commit, as territory ids in their order (TeammateOrders.qqa).
+// war.app's game data (window.UJS_Hooks) holds the turn being built (ujsTurn()), the game (GameLinks) and its
+// GameOrderPick class, found by their class names; the other names are minified and change with war.app
+// updates, and this is null then. A teammate's picks reach you once they commit, as territory ids in their
+// order (TeammateOrders.pra, in LatestGameInfo.jm).
 function teamPicksState(hooks) {
     try {
-        var turn = hooks && hooks.Od;
-        var links = hooks && hooks.ya;
-        var Pick = hooks && hooks.pxd;
-        if (!turn || typeof turn.H0 !== "function" || typeof turn.nv !== "function" || typeof Pick !== "function"
+        var turn = ujsTurn(hooks);
+        var links = ujsMember(hooks, "warlight.unity.viewmodels.liveandlobby.GameLinks");
+        var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
+        if (!turn || typeof turn.o1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
             || !links || typeof links.kb !== "function" || typeof links.uc !== "function") {
             return null;
         }
         var game = links.kb();
         var us = links.uc();
-        var root = turn.ta;
-        var sent = links.zd && links.zd.em;
-        if (!game || game.Xa !== 5 || !us || us.lh || typeof us.eb !== "function"
-            || !root || typeof root.xf !== "function" || root.xf() !== turn || !sent || typeof sent.Ra !== "function") {
+        var root = ujsLiveGame(hooks);
+        var sent = links.ud && links.ud.jm;
+        if (!game || game.Wa !== 5 || !us || us.mh || typeof us.eb !== "function"
+            || !root || typeof root.Af !== "function" || root.Af() !== turn || !sent || typeof sent.Ra !== "function") {
             return null;
         }
         var self = us.eb();
@@ -31,8 +32,8 @@ function teamPicksState(hooks) {
             var player = game.qb && typeof game.qb.Aa === "function" ? game.qb.Aa(pair.Na) : null;
             return {
                 id: pair.Na,
-                name: player && typeof player.Wd === "function" ? String(player.Wd(null) || "") : "",
-                picks: Array.isArray(orders.qqa) ? orders.qqa.slice() : picksOf(orders.ac)
+                name: player && typeof player.Pd === "function" ? String(player.Pd(null) || "") : "",
+                picks: Array.isArray(orders.pra) ? orders.pra.slice() : picksOf(orders.ac)
             };
         }).filter(function (teammate) {
             return teammate.id !== self && teammate.picks.length > 0;
@@ -43,7 +44,7 @@ function teamPicksState(hooks) {
         return {
             self: self,
             own: picksOf((turn.ac || []).map(function (wrapped) {
-                return wrapped && wrapped.Pb;
+                return wrapped && wrapped.Qb;
             })),
             teammates: teammates
         };
@@ -52,15 +53,15 @@ function teamPicksState(hooks) {
     }
 }
 
-// Replaces your picks with the teammate's, in their order, the way war.app loads saved picks when a game
-// opens (LoadOrders, H0) and then tells itself the orders changed (nv), which saves them as unfinished
-// orders. Nothing is committed.
+// Replaces your picks with the teammate's, in their order, the way war.app's mod API sets orders: LoadOrders
+// (o1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
 function copyTeammatePicks(hooks, self, picks) {
-    var Pick = hooks.pxd;
-    hooks.Od.H0(picks.map(function (territory, index) {
+    var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
+    var turn = ujsTurn(hooks);
+    turn.o1(picks.map(function (territory, index) {
         return new Pick(self, territory, index);
     }));
-    hooks.Od.nv();
+    turn.vv();
 }
 
 function teamPicksReplaceQuestion(own, teammate) {

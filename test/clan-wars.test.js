@@ -56,13 +56,18 @@ const SEASON = {
     settings: { MapID: 28543, PointsPerTerritory: [3, 5, 7], MinutesBetweenTimeslots: 240, MinutesTimeslotsTakeToStart: 10, Rewards: [{ RankMin: 1, RankMax: 1, Type: "FreeCoins", Value: 9000 }] }
 };
 
+function withServices(ctx) {
+    vm.runInContext(source.match(/^var WARAPP_SERVICE_OPS = \{[\s\S]*?^\};/m)[0] + "\nvar seenServiceOps = {};", ctx);
+    return ctx;
+}
+
 function parsers() {
-    return load(["hexBytes", "binaryReader", "readServiceReply", "readClanWarParts", "parseClanWarReply", "parseClanWarGamesReply", "parseClanWarMapReply", "parseMapDetailsSummary"],
-        { TextDecoder, Uint8Array, DataView });
+    return withServices(load(["hexBytes", "binaryReader", "readServiceReply", "readClanWarParts", "parseClanWarReply", "parseClanWarGamesReply", "parseClanWarMapReply", "parseMapDetailsSummary", "serviceOp"],
+        { TextDecoder, Uint8Array, DataView }));
 }
 
 test("parseClanWarReply reads the standings, clan names, timeslot times and season settings", () => {
-    const hex = answer(305, (w) => {
+    const hex = answer(311, (w) => {
         w.bool(false);
         w.items([{ clan: 33, pointsToday: 1.5, pointsBefore: 13.5, winsToday: 2, participantsToday: 3 }, { clan: 7, pointsToday: 0, pointsBefore: 40, rank: 1 }], writeStanding);
         w.items([{ id: 33, name: "Turtles" }, { id: 7, name: "Ünïcode ✓" }], writeClan);
@@ -80,7 +85,7 @@ test("parseClanWarReply reads the standings, clan names, timeslot times and seas
 });
 
 test("parseClanWarGamesReply reads each game's sides, day and winner, the players with their clans and the template names", () => {
-    const hex = answer(308, (w) => {
+    const hex = answer(314, (w) => {
         w.items([{ clan: 33 }], (w) => w.int(33).int(88).int(12).text(null).int(3).int(40).int(2).double(1.6).double(0));
         w.items([
             { gameId: 501, day: null, template: 9, winner: 33, sides: { 33: { Num: 57, Players: [11] }, 7: { Num: 30, Players: [22] } } },
@@ -104,7 +109,7 @@ test("parseClanWarGamesReply reads each game's sides, day and winner, the player
 });
 
 test("parseClanWarMapReply reads which clan took each territory and when", () => {
-    const hex = answer(306, (w) => {
+    const hex = answer(312, (w) => {
         w.items([{ id: 33, name: "Turtles" }], writeClan);
         w.items([], () => { });
         writePlayers(w, {});
@@ -118,7 +123,7 @@ test("parseClanWarMapReply reads which clan took each territory and when", () =>
 });
 
 test("parseMapDetailsSummary reads the map's id and territory count past its bonuses and distributions", () => {
-    const hex = answer(73, (w) => {
+    const hex = answer(75, (w) => {
         w.map([[1, null]], (w) => w.bool(true).int(5).bool(true).int(2).byte(9).byte(9).int(3).text("Bonus").bool(true).int(1).int(4));
         w.date(EPOCH).int(0);
         w.map([[1, 0], [2, 1]], (w, type) => {
@@ -136,12 +141,12 @@ test("parseMapDetailsSummary reads the map's id and territory count past its bon
 
 test("the Clan War parsers return null for an error, another answer, a cut-off answer or extra bytes", () => {
     const { parseClanWarMapReply } = parsers();
-    const good = answer(306, (w) => w.items([], () => { }).items([], () => { }).bool(false).items([], () => { }).bool(false));
+    const good = answer(312, (w) => w.items([], () => { }).items([], () => { }).bool(false).items([], () => { }).bool(false));
     assert.deepEqual(plain(parseClanWarMapReply(good)), { clans: [], territories: [], season: null });
     assert.equal(parseClanWarMapReply(good.slice(0, -2)), null);
     assert.equal(parseClanWarMapReply(good + "00"), null);
-    assert.equal(parseClanWarMapReply(good.replace(/^(.{20})32010000/, "$133010000")), null);
-    assert.equal(parseClanWarMapReply(writer().short(242 | 0x8000).int(1514664249).int(7).int(306).byte(0).byte(5).bool(false).hex()), null);
+    assert.equal(parseClanWarMapReply(good.replace(/^(.{20})38010000/, "$139010000")), null);
+    assert.equal(parseClanWarMapReply(writer().short(242 | 0x8000).int(1514664249).int(7).int(312).byte(0).byte(5).bool(false).hex()), null);
     assert.equal(parseClanWarMapReply("not hex"), null);
 });
 
@@ -151,21 +156,21 @@ const ACCOUNT = "01" + le(5) + "01" + "0E" + Buffer.from("me@example.com").toStr
 const request = (op, args) => "F200" + "39F1475A" + le(4) + le(op) + EXTRAS + ACCOUNT + args;
 
 test("serviceRequestParts finds war.app's account part before each Clan War request's arguments", () => {
-    const ctx = load(["serviceRequestParts", "serviceRequest", "hexBytes", "littleEndianHex", "binaryReader"], { TextDecoder, Uint8Array, DataView });
+    const ctx = withServices(load(["serviceRequestParts", "serviceRequest", "hexBytes", "littleEndianHex", "binaryReader", "serviceOp", "serviceName"], { TextDecoder, Uint8Array, DataView }));
     vm.runInContext(source.match(/^var CLAN_WAR_ARGUMENT_BYTES = \{[\s\S]*?^\};/m)[0], ctx);
     const { serviceRequestParts, serviceRequest } = ctx;
     const expected = { head: "F20039F1475A" + le(4), extras: EXTRAS, account: ACCOUNT };
-    assert.deepEqual(plain(serviceRequestParts(request(305, "00"))), expected);
-    assert.deepEqual(plain(serviceRequestParts(request(305, "01" + le(88)).toLowerCase())), expected);
-    assert.deepEqual(plain(serviceRequestParts(request(306, le(88)))), expected);
-    assert.deepEqual(plain(serviceRequestParts(request(308, le(1) + "00" + le(0) + le(25)))), expected);
-    assert.deepEqual(plain(serviceRequestParts(request(308, le(88) + "01" + le(33) + le(0) + le(2147483647)))), expected);
-    assert.equal(serviceRequestParts(request(73, le(1))), null);
-    assert.equal(serviceRequestParts(request(305, "00").replace("39F1475A", "39F1475B")), null);
-    assert.equal(serviceRequestParts(request(305, "00").replace(ACCOUNT, "00")), null);
+    assert.deepEqual(plain(serviceRequestParts(request(311, "00"))), expected);
+    assert.deepEqual(plain(serviceRequestParts(request(311, "01" + le(88)).toLowerCase())), expected);
+    assert.deepEqual(plain(serviceRequestParts(request(312, le(88)))), expected);
+    assert.deepEqual(plain(serviceRequestParts(request(314, le(1) + "00" + le(0) + le(25)))), expected);
+    assert.deepEqual(plain(serviceRequestParts(request(314, le(88) + "01" + le(33) + le(0) + le(2147483647)))), expected);
+    assert.equal(serviceRequestParts(request(75, le(1))), null);
+    assert.equal(serviceRequestParts(request(311, "00").replace("39F1475A", "39F1475B")), null);
+    assert.equal(serviceRequestParts(request(311, "00").replace(ACCOUNT, "00")), null);
     assert.equal(serviceRequestParts(null), null);
-    assert.equal(serviceRequest(expected, 308, "AB", true), "F20039F1475A" + le(4) + le(308) + EXTRAS + ACCOUNT + "AB");
-    assert.equal(serviceRequest(expected, 73, "AB", false), "F20039F1475A" + le(4) + le(73) + EXTRAS + "AB");
+    assert.equal(serviceRequest(expected, 314, "AB", true), "F20039F1475A" + le(4) + le(314) + EXTRAS + ACCOUNT + "AB");
+    assert.equal(serviceRequest(expected, 75, "AB", false), "F20039F1475A" + le(4) + le(75) + EXTRAS + "AB");
 });
 
 function helpers(extra = [], globals = {}) {

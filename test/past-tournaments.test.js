@@ -1,6 +1,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const vm = require("node:vm");
 const { source, createDom, load, domGlobals, flush } = require("./harness");
+
+const serviceGlobals = () => ({ WARAPP_SERVICE_OPS: vm.runInNewContext("(" + source.match(/^var WARAPP_SERVICE_OPS = (\{[\s\S]*?^\});/m)[1] + ")"), seenServiceOps: {} });
 
 // Writes war.app's GetMyTournaments answers the way ujs.js reads them (names and ids are invented).
 function writer() {
@@ -63,7 +66,7 @@ function writeTournament(w, t) {
 }
 
 function reply(total, tournaments, { extras = false, open = null } = {}) {
-    const w = writer().short(242 | 0x8000).int(1514664249).int(4).int(88);
+    const w = writer().short(242 | 0x8000).int(1514664249).int(4).int(90);
     if (extras) {
         w.byte(1).bool(true).int(1).int(3).text("x").bool(true).int(5).text("abc")
             .bool(true).text("a").text("b").int(1).bool(true).text("s").int(1).double(2).text("t").text("u").int(3)
@@ -81,11 +84,11 @@ function reply(total, tournaments, { extras = false, open = null } = {}) {
 }
 
 const le = (n) => { const b = Buffer.alloc(4); b.writeInt32LE(n); return b.toString("hex").toUpperCase(); };
-const TEMPLATE = "F200" + "39F1475A" + le(12) + "58000000" + "0A0B0C0D0E0F" + "01" + le(0) + le(30) + le(0) + le(30);
+const TEMPLATE = "F200" + "39F1475A" + le(12) + "5A000000" + "0A0B0C0D0E0F" + "01" + le(0) + le(30) + le(0) + le(30);
 const requestArgs = (body) => ({ filter: Buffer.from(body.slice(-32, -24), "hex").readInt32LE(), count: Buffer.from(body.slice(-24, -16), "hex").readInt32LE(), sort: Buffer.from(body.slice(-16, -8), "hex").readInt32LE(), offset: Buffer.from(body.slice(-8), "hex").readInt32LE() });
 
 function parse(hex) {
-    const { parseMyTournamentsReply } = load(["parseMyTournamentsReply"], { TextDecoder, Uint8Array, DataView });
+    const { parseMyTournamentsReply } = load(["parseMyTournamentsReply", "serviceOp"], { TextDecoder, Uint8Array, DataView, ...serviceGlobals() });
     return JSON.parse(JSON.stringify(parseMyTournamentsReply(hex)));
 }
 
@@ -108,18 +111,18 @@ test("parseMyTournamentsReply returns null for an error, another answer, a cut-o
     assert.equal(parse(good).tournaments.length, 1);
     assert.equal(parse(good.slice(0, -10)), null);
     assert.equal(parse(good + "00"), null);
-    assert.equal(parse(good.replace(/^(.{20})58000000/, "$159000000")), null);
-    assert.equal(parse(writer().short(242 | 0x8000).int(1514664249).int(4).int(88).byte(0).byte(5).bool(false).hex()), null);
+    assert.equal(parse(good.replace(/^(.{20})5A000000/, "$15B000000")), null);
+    assert.equal(parse(writer().short(242 | 0x8000).int(1514664249).int(4).int(90).byte(0).byte(5).bool(false).hex()), null);
     assert.equal(parse("not hex"), null);
     assert.equal(parse(""), null);
 });
 
 test("myTournamentsRequest asks for another part of the list in war.app's own request, and refuses anything else", () => {
-    const { myTournamentsRequest } = load(["myTournamentsRequest"]);
+    const { myTournamentsRequest } = load(["myTournamentsRequest", "serviceOp", "littleEndianHex"], serviceGlobals());
     const body = myTournamentsRequest(TEMPLATE.toLowerCase(), 0, 4000, 2000);
     assert.equal(body.slice(0, -34), TEMPLATE.slice(0, -34));
     assert.deepEqual(requestArgs(body), { filter: 0, count: 2000, sort: 0, offset: 4000 });
-    assert.equal(myTournamentsRequest(TEMPLATE.replace("58000000", "59000000"), 0, 0, 30), null);
+    assert.equal(myTournamentsRequest(TEMPLATE.replace("5A000000", "5B000000"), 0, 0, 30), null);
     assert.equal(myTournamentsRequest(TEMPLATE.replace("39F1475A", "39F1475B"), 0, 0, 30), null);
     assert.equal(myTournamentsRequest(TEMPLATE.slice(0, -34) + "00" + TEMPLATE.slice(-32), 0, 0, 30), null);
     assert.equal(myTournamentsRequest("F200", 0, 0, 30), null);
@@ -303,7 +306,7 @@ function screen({ setting = false, record = null, template = null, list = LIST, 
     };
     const ctx = load(["setupPastTournamentsSearch", "pastTournamentsKey", "normalizePastTournamentsFilter", "pastTournamentSeries", "pastTournamentOptions", "pastTournamentMatches",
         "pastTournamentDate", "pastTournamentsListHtml", "pastTournamentKindText", "pastTournamentCoinsText", "pastTournamentBootText", "readPastTournaments", "fetchMyTournaments",
-        "myTournamentsRequest", "parseMyTournamentsReply", "pastTournamentsCsv", "csvCell", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "addTournamentButtonStyles", "formatCount"], {
+        "myTournamentsRequest", "parseMyTournamentsReply", "serviceOp", "littleEndianHex", "pastTournamentsCsv", "csvCell", "htmlEscape", "ujsElement", "shownUjsElement", "warappArt", "addCommunityLaddersStyles", "addTournamentButtonStyles", "formatCount"], {
         ...domGlobals(dom, $),
         window: dom.window,
         Database,
@@ -312,7 +315,7 @@ function screen({ setting = false, record = null, template = null, list = LIST, 
         downloadText: (name, text, type) => downloads.push({ name, text, type }),
         addCSS: () => { },
         log: () => { },
-        Promise, TextDecoder, Uint8Array, DataView,
+        Promise, TextDecoder, Uint8Array, DataView, ...serviceGlobals(),
         setTimeout: (fn) => setTimeout(fn, 0),
         readSettingValue: (name, fallback, callback) => callback(name === "pastTournamentsSearch" ? setting : fallback),
         signedInPlayerId: () => $.Deferred().resolve("10712").promise(),
@@ -413,7 +416,7 @@ test("war.app's request is told apart from others, and the script's own requests
     XHR.prototype.send = function (body) { sent.push(body); };
     const events = [];
     dom.window.document.addEventListener("tuyd:myTournamentsRequest", () => events.push(1));
-    const ctx = load(["watchMyTournamentsRequests"], { XMLHttpRequest: XHR, document: dom.window.document, Event: dom.window.Event, lastMyTournamentsRequest: null });
+    const ctx = load(["watchMyTournamentsRequests", "noteServiceOp"], { ...serviceGlobals(), XMLHttpRequest: XHR, document: dom.window.document, Event: dom.window.Event, lastMyTournamentsRequest: null });
     ctx.watchMyTournamentsRequests();
     const other = new XHR();
     other.open("POST", "/Services?m=GetMyGames&js=1");
@@ -558,14 +561,14 @@ function openScreen({ cards = OPEN, saved = null, template = TEMPLATE, open = []
     };
     const ctx = load(["setupOpenTournamentsFilter", "openTournamentFromCard", "openTournamentCards", "normalizeOpenTournamentsFilter", "normalizePastTournamentsFilter",
         "openTournamentsFilterActive", "openTournamentMatches", "pastTournamentMatches", "pastTournamentDate", "layoutOpenTournaments", "fetchMyTournaments", "myTournamentsRequest",
-        "parseMyTournamentsReply", "addTournamentButtonStyles", "ujsElement", "shownUjsElement", "warappArt"], {
+        "parseMyTournamentsReply", "serviceOp", "littleEndianHex", "addTournamentButtonStyles", "ujsElement", "shownUjsElement", "warappArt"], {
         ...domGlobals(dom, $),
         window: dom.window,
         localStorage: storage,
         fetch,
         addCSS: () => { },
         log: () => { },
-        Promise, TextDecoder, Uint8Array, DataView,
+        Promise, TextDecoder, Uint8Array, DataView, ...serviceGlobals(),
         setTimeout: (fn) => setTimeout(fn, 0),
         lastMyTournamentsRequest: template,
         OPEN_TOURNAMENTS_FILTER_KEY: "tidyUpYourDashboard.openTournamentsFilter",

@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.68.1
+
+War.app's latest update renamed and renumbered what these features read, so they stopped working. They work again:
+
+- **Game notes:** names in your notes become map links again, and 🔗 and Ctrl/Cmd/Shift+click put territories and bonuses in your notes again.
+- **Copy a teammate's picks:** the button shows again in team games' picking stage.
+- **Clan War:** "Your clan in Season N", the players' win rates, the timeslot and clan records, and the dashboard's Clan War countdown.
+- **Tournaments:** Search all your past tournaments, and the Open Tournaments filter's check of which tournaments you're still in.
+
+The script now finds war.app's game objects by their class names, and follows the message numbers war.app's own requests use, so a future rename or renumbering should break less. When war.app's numbers no longer match the script's, it sends nothing it isn't sure of.
+
 ## 3.68.0
 
 - **Idle: rubbing the sand off a dug-up artifact is back by default.** Showing the artifact at once is now an option, off unless you turn it on: Settings menu → Idle → "Idle: Show Dug-Up Artifacts Without Rubbing Off the Sand". It replaces 3.67.0's switch, which was on for everyone.

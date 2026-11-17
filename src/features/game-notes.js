@@ -108,14 +108,14 @@ function gameMapPlaces(hooks) {
     var data = ujsGameData(hooks);
     var map = data && data.Map;
     var places = [];
-    [["territory", map && map.Ia], ["bonus", map && map.nd]].forEach(function (list) {
+    [["territory", map && map.Ia], ["bonus", map && map.qd]].forEach(function (list) {
         if (!list[1] || !Array.isArray(list[1].keys) || typeof list[1].Aa !== "function") {
             return;
         }
         list[1].keys.forEach(function (id) {
             var entry = list[1].Aa(id);
-            if (entry && typeof entry.Wa === "string" && entry.Wa.trim()) {
-                places.push({ kind: list[0], id: id, name: entry.Wa.trim() });
+            if (entry && typeof entry.Va === "string" && entry.Va.trim()) {
+                places.push({ kind: list[0], id: id, name: entry.Va.trim() });
             }
         });
     });
@@ -157,24 +157,25 @@ function notesPlaces(text, places) {
 }
 
 // Highlights a territory or bonus on war.app's map and moves the map to it, as a chat link does, through
-// war.app's own game object (UJS_Hooks.Od.ta). Its names are minified and change with war.app updates
-// (6.07 renamed them all, and November 2026's update xh to yh); false then, and nothing happens.
+// war.app's own game object (ujsLiveGame()). Its names are minified and change with war.app updates (the
+// chat's "Clicked territory" and "Clicked bonus" handlers in ujs.js show the current ones); false then, and
+// nothing happens.
 function highlightPlace(hooks, place) {
-    var game = hooks && hooks.Od && hooks.Od.ta;
+    var game = ujsLiveGame(hooks);
     var data = ujsGameData(hooks);
     var map = data && data.Map;
-    var view = game && game.Xb;
+    var view = game && game.Yb;
     try {
-        if (place.kind === "territory" && game && typeof game.vv === "function" && view && typeof view.CI === "function") {
+        if (place.kind === "territory" && game && typeof game.Cv === "function" && view && typeof view.ZI === "function") {
             var territory = map.Ia.Aa(place.id);
-            game.vv(place.id);
-            view.CI(territory.yh());
+            game.Cv(place.id);
+            view.ZI(territory.Ch());
             return true;
         }
-        if (place.kind === "bonus" && game && typeof game.Iu === "function" && view && typeof view.GRa === "function") {
-            var bonus = map.nd.Aa(place.id);
-            game.Iu(bonus);
-            view.GRa(bonus);
+        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.SSa === "function") {
+            var bonus = map.qd.Aa(place.id);
+            game.Ou(bonus);
+            view.SSa(bonus);
             return true;
         }
     } catch (e) {
@@ -183,12 +184,12 @@ function highlightPlace(hooks, place) {
     return false;
 }
 
-// war.app's Live object (UJS_Hooks.Od.ta.Ih) can hand the next territory click on the map, or the next
+// war.app's Live object can hand the next territory click on the map, or the next
 // bonus link click, to a callback instead of acting on it. Updates rename those two methods, so they're
 // found by the line each logs, "InterceptNextTerritoryClick" and "InterceptNextBonusLinkClick". null
 // when either is missing.
 function gameLive(hooks) {
-    var live = hooks && hooks.Od && hooks.Od.ta && hooks.Od.ta.Ih;
+    var live = ujsMember(ujsLiveGame(hooks), "warlight.unity.live.Live");
     if (!live || typeof live !== "object") {
         return null;
     }
@@ -214,8 +215,8 @@ function gameLive(hooks) {
 }
 
 function canHighlightPlaces(hooks) {
-    var game = hooks && hooks.Od && hooks.Od.ta;
-    return !!(game && typeof game.vv === "function" && typeof game.Iu === "function" && game.Xb && typeof game.Xb.CI === "function" && typeof game.Xb.GRa === "function");
+    var game = ujsLiveGame(hooks);
+    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.SSa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
@@ -615,7 +616,7 @@ function setupGameNotes() {
             live.territory(null);
             live.bonus(null);
             $("#tuydGameNotes .tuydGameNotesSaved").text("");
-            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Va || "").replace(/[<>]/g, ""));
             return true;
         };
         live.territory(take);
@@ -635,7 +636,7 @@ function setupGameNotes() {
             if (held !== token || !place) {
                 return false;
             }
-            putLinkInNotes(String(place.Wa || "").replace(/[<>]/g, ""));
+            putLinkInNotes(String(place.Va || "").replace(/[<>]/g, ""));
             held = null;
             live.territory(null);
             live.bonus(null);
