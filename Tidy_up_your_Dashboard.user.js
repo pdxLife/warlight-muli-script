@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.68.1
+// @version 3.69.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.68.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.69.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -608,6 +608,7 @@ function pageFeatures() {
         { name: "MTL top 10 in MTL threads", section: "Forum", match: isAnyForumThread, run: setupMtlForumTop },
         { name: "Bookmark link and player search", section: "Tournaments", run: setupTournamentPage },
         { name: "custom.wl-stats.com link", section: "Tournaments", run: setupCustomTournamentLink },
+        { name: "awp.wl-stats.com link", section: "Tournaments", run: setupAwpTournamentLink },
         { name: "Community ladders on the Ladders page", section: "Community", run: setupCommunityLadders },
         { name: "War.app's four ladders in two rows", section: "Community", match: pageHasUjsScenes, run: setupLaddersTwoRows },
         { name: "custom.wl-stats.com link and player record on the Seasonal Ladder", section: "Community", match: pageHasUjsScenes, run: setupSeasonalLadderCustom },
@@ -16438,24 +16439,32 @@ function setupTournamentPage() {
 }
 
 function setupCustomTournamentLink() {
+    setupWlStatsTournamentLink(CUSTOM_SITE, "customTournamentLink", renderCustomTournamentLink);
+}
+
+function setupAwpTournamentLink() {
+    setupWlStatsTournamentLink(AWP_SITE, "awpTournamentLink", renderAwpTournamentLink);
+}
+
+function setupWlStatsTournamentLink(site, className, render) {
     var tournaments = {};
     var show = function (tournamentId) {
         var tournament = tournaments[tournamentId];
         var slot = tournament && tournamentInfoSlot(tournamentId);
-        if (slot && slot.children(".customTournamentLink").length === 0) {
-            slot.append(renderCustomTournamentLink(tournament));
+        if (slot && slot.children("." + className).length === 0) {
+            slot.append(render(tournament));
         }
     };
     whileOnTournament(function (tournamentId) {
         if (!(tournamentId in tournaments)) {
             tournaments[tournamentId] = null;
-            fetchWlStats(CUSTOM_SITE + "/api/v1/warapp-tournaments/" + tournamentId).done(function (tournament) {
+            fetchWlStats(site + "/api/v1/warapp-tournaments/" + tournamentId).done(function (tournament) {
                 tournaments[tournamentId] = tournament;
                 if (currentTournamentId() === tournamentId) {
                     show(tournamentId);
                 }
             }).fail(function (xhr) {
-                log("Error loading the custom.wl-stats.com tournament: " + (xhr && xhr.statusText));
+                log("Error loading the " + site.replace(/^https?:\/\//, "") + " tournament: " + (xhr && xhr.statusText));
             });
         }
         show(tournamentId);
@@ -16468,6 +16477,15 @@ function renderCustomTournamentLink(tournament) {
         ? ' (<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.series.url)) + '">' + htmlEscape(tournament.series.name) + '</a>)'
         : "";
     return '<span class="customTournamentLink"> | ' + link + series + '</span>';
+}
+
+function renderAwpTournamentLink(tournament) {
+    var link = '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.url)) + '" title="' + htmlEscape(tournament.name) + '">awp.wl-stats.com</a>';
+    var tier = tournament.tier && tournament.tier.name ? htmlEscape(tournament.tier.name) : "";
+    if (tier && tournament.tier.url) {
+        tier = '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.tier.url)) + '">' + tier + '</a>';
+    }
+    return '<span class="awpTournamentLink"> | ' + link + (tier ? " (" + tier + ")" : "") + '</span>';
 }
 
 function addTournamentPlayerControls(tournamentId) {

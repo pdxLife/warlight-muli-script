@@ -188,24 +188,32 @@ function setupTournamentPage() {
 }
 
 function setupCustomTournamentLink() {
+    setupWlStatsTournamentLink(CUSTOM_SITE, "customTournamentLink", renderCustomTournamentLink);
+}
+
+function setupAwpTournamentLink() {
+    setupWlStatsTournamentLink(AWP_SITE, "awpTournamentLink", renderAwpTournamentLink);
+}
+
+function setupWlStatsTournamentLink(site, className, render) {
     var tournaments = {};
     var show = function (tournamentId) {
         var tournament = tournaments[tournamentId];
         var slot = tournament && tournamentInfoSlot(tournamentId);
-        if (slot && slot.children(".customTournamentLink").length === 0) {
-            slot.append(renderCustomTournamentLink(tournament));
+        if (slot && slot.children("." + className).length === 0) {
+            slot.append(render(tournament));
         }
     };
     whileOnTournament(function (tournamentId) {
         if (!(tournamentId in tournaments)) {
             tournaments[tournamentId] = null;
-            fetchWlStats(CUSTOM_SITE + "/api/v1/warapp-tournaments/" + tournamentId).done(function (tournament) {
+            fetchWlStats(site + "/api/v1/warapp-tournaments/" + tournamentId).done(function (tournament) {
                 tournaments[tournamentId] = tournament;
                 if (currentTournamentId() === tournamentId) {
                     show(tournamentId);
                 }
             }).fail(function (xhr) {
-                log("Error loading the custom.wl-stats.com tournament: " + (xhr && xhr.statusText));
+                log("Error loading the " + site.replace(/^https?:\/\//, "") + " tournament: " + (xhr && xhr.statusText));
             });
         }
         show(tournamentId);
@@ -218,6 +226,15 @@ function renderCustomTournamentLink(tournament) {
         ? ' (<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.series.url)) + '">' + htmlEscape(tournament.series.name) + '</a>)'
         : "";
     return '<span class="customTournamentLink"> | ' + link + series + '</span>';
+}
+
+function renderAwpTournamentLink(tournament) {
+    var link = '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.url)) + '" title="' + htmlEscape(tournament.name) + '">awp.wl-stats.com</a>';
+    var tier = tournament.tier && tournament.tier.name ? htmlEscape(tournament.tier.name) : "";
+    if (tier && tournament.tier.url) {
+        tier = '<a target="_blank" rel="noopener" href="' + htmlEscape(safeUrl(tournament.tier.url)) + '">' + tier + '</a>';
+    }
+    return '<span class="awpTournamentLink"> | ' + link + (tier ? " (" + tier + ")" : "") + '</span>';
 }
 
 function addTournamentPlayerControls(tournamentId) {

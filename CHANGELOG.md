@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.69.0
+
+- **AWP World Tour tournaments link to awp.wl-stats.com.** On an AWP tournament's war.app page, "awp.wl-stats.com (Masters 1000)" next to Bookmark opens the tournament there, the way community series already link to custom.wl-stats.com. Settings menu → Tournaments → "awp.wl-stats.com link".
+
 ## 3.68.1
 
 War.app's latest update renamed and renumbered what these features read, so they stopped working. They work again:

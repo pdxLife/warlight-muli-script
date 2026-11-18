@@ -19,6 +19,11 @@ const customTournament = {
     warapp_tournament_id: 66354, id: 812, name: "1st Titled Tuesday - MME", url: "https://custom.wl-stats.com/tournaments/812",
     status: "finished", imported: true, series: { name: "Titled Tuesday", url: "https://custom.wl-stats.com/series/titled-tuesday" }
 };
+// From awp.wl-stats.com's /api/v1/warapp-tournaments/66695, 18 November 2026.
+const awpTournament = {
+    warapp_tournament_id: 66695, id: 532, name: "Masters 1000 - Blitzkrieg Bork", url: "https://awp.wl-stats.com/tournaments/532",
+    status: "running", imported: true, tier: { key: "masters", name: "Masters 1000", url: null }
+};
 
 function fakeAjax($, responses, requests) {
     $.ajax = (options) => {
@@ -146,8 +151,8 @@ function tournamentApp(url, responses) {
     const requests = [];
     const logs = [];
     fakeAjax($, responses, requests);
-    const ctx = load(["setupCustomTournamentLink", "renderCustomTournamentLink", "fetchWlStats", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "ujsElement", "htmlEscape", "safeUrl"], {
-        ...domGlobals(dom, $), location: dom.window.location, log: (entry) => logs.push(entry), CUSTOM_SITE, WL_STATS_CACHE_MS
+    const ctx = load(["setupCustomTournamentLink", "setupAwpTournamentLink", "setupWlStatsTournamentLink", "renderCustomTournamentLink", "renderAwpTournamentLink", "fetchWlStats", "whileOnTournament", "tournamentInfoSlot", "currentTournamentId", "ujsElement", "htmlEscape", "safeUrl"], {
+        ...domGlobals(dom, $), location: dom.window.location, log: (entry) => logs.push(entry), CUSTOM_SITE, AWP_SITE, WL_STATS_CACHE_MS
     });
     const show = (path, creator = "Host") => {
         dom.window.history.pushState({}, "", path);
@@ -193,6 +198,36 @@ test("other tournaments and other pages get no link and no error", async () => {
     assert.deepEqual(requests, [lookupUrl(5)]);
     assert.equal($(".customTournamentLink").length, 0);
     assert.deepEqual(logs, []);
+});
+
+const awpLookupUrl = (id) => `${AWP_SITE}/api/v1/warapp-tournaments/${id}`;
+
+test("an AWP World Tour tournament links its page on awp.wl-stats.com and names its tier", async () => {
+    const { ctx, $, requests, logs, show } = tournamentApp("https://war.app/MultiPlayer/Tournaments/", { [awpLookupUrl(66695)]: awpTournament });
+    ctx.setupCustomTournamentLink();
+    ctx.setupAwpTournamentLink();
+    show("/MultiPlayer/Tournament?ID=66695");
+    await flush();
+    await flush();
+    assert.deepEqual(requests.slice().sort(), [awpLookupUrl(66695), lookupUrl(66695)]);
+    assert.equal($("#tournamentInfoSlot").text(), " | awp.wl-stats.com (Masters 1000)");
+    assert.deepEqual($("#tournamentInfoSlot a").map((i, a) => $(a).attr("href")).get(), ["https://awp.wl-stats.com/tournaments/532"]);
+    assert.equal($(".awpTournamentLink a").attr("title"), "Masters 1000 - Blitzkrieg Bork");
+    assert.equal($(".customTournamentLink").length, 0);
+
+    $("#ujs_Scene").append("<div>redraw</div>");
+    await flush();
+    assert.equal($(".awpTournamentLink").length, 1, "nothing is added twice");
+    assert.equal(requests.length, 2, "one request per site and tournament");
+    assert.deepEqual(logs, []);
+});
+
+test("an AWP tier with a page of its own links there too", () => {
+    const { renderAwpTournamentLink } = load(["renderAwpTournamentLink", "htmlEscape", "safeUrl"]);
+    const html = renderAwpTournamentLink({ ...awpTournament, tier: { ...awpTournament.tier, url: "https://awp.wl-stats.com/tiers/masters" } });
+    assert.deepEqual([...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]),
+        ["https://awp.wl-stats.com/tournaments/532", "https://awp.wl-stats.com/tiers/masters"]);
+    assert.doesNotMatch(renderAwpTournamentLink({ ...awpTournament, tier: null }), /\(/);
 });
 
 test("an answer that arrives after you've moved to another tournament isn't shown there", async () => {

@@ -134,6 +134,18 @@ test("custom.wl-stats.com tournament links escape API data", () => {
     assert.equal(container.querySelector("a").getAttribute("title"), PAYLOAD);
 });
 
+test("awp.wl-stats.com tournament links escape API data", () => {
+    const ctx = load(["renderAwpTournamentLink", "htmlEscape", "safeUrl"]);
+    const container = render(ctx.renderAwpTournamentLink({ name: PAYLOAD, url: "javascript:alert(1)", tier: { name: PAYLOAD, url: "data:text/html,x" } }));
+    assertInert(container);
+    assert.ok(container.textContent.includes(PAYLOAD));
+    assert.deepEqual([...container.querySelectorAll("a")].map((a) => a.getAttribute("href")), ["#", "#"]);
+    assert.equal(container.querySelector("a").getAttribute("title"), PAYLOAD);
+    const plain = render(ctx.renderAwpTournamentLink({ name: "x", url: "https://awp.wl-stats.com/tournaments/1", tier: { name: PAYLOAD, url: null } }));
+    assertInert(plain);
+    assert.ok(plain.textContent.includes(PAYLOAD));
+});
+
 test("the AWP World Tour row on the Ladders page escapes API data", () => {
     const ctx = load(["renderAwpLadderRow", "communityLadderRow", "awpStanding", "formatCount", "htmlEscape", "safeUrl"], { AWP_SITE: "https://awp.wl-stats.com" });
     const evil = { rank: PAYLOAD, player_id: PAYLOAD, player_name: PAYLOAD, points: PAYLOAD };
