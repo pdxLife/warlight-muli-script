@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.68.1  
+> **Version:** 3.69.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -66,6 +66,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Finding yourself in the bracket** is built into war.app now: use **Find...** and **>** on the Bracket tab.
 - **Bookmark link** — quick-save a tournament to your bookmarks.
 - **custom.wl-stats.com link** — on a tournament that [custom.wl-stats.com](https://custom.wl-stats.com) has read (Titled Tuesday, War Gaming Live and P/R League groups played as war.app tournaments), links its page there and its series, next to "Created by".
+- **awp.wl-stats.com link** — on an [AWP World Tour](https://awp.wl-stats.com) tournament, links its page there next to "Created by", with its tier: "awp.wl-stats.com (Masters 1000)".
 - **Filters on Open Tournaments** — with 6 or more open tournaments on the Tournaments page, a **Filter** button by "Open Tournaments" filters them by name or creator, kind, players or teams, real-time or multi-day, coins and number of players; war.app's cards that don't match are hidden and the rest move up. The filter is remembered; **Clear** shows them all.
 - **Search all your past tournaments** (setting **Past Tournaments: Search Your Whole List**, off by default) — a **Search** button on Past Tournaments, next to war.app's Filter and Sort, opens a panel that searches and filters every tournament you were invited to: name, creator or clan, series, whether you're still in (war.app's My Tournaments), joined, declined or never answered, state, kind, players or teams, speed, coins, number of players, start date and unread chat. **CSV** downloads the tournaments that match as a spreadsheet. The Tournaments page has the Search button too, by My Tournaments: "Search your tournaments", opening on the ones you're still in. While the setting is off, Search explains it and offers to turn it on. The script reads your whole list from war.app (about a second for each 1,000 tournaments), keeps it in this browser, and on each visit goes on until it has all of it, then adds new tournaments and updates running ones. Turning it off deletes the list.
 
@@ -204,13 +205,13 @@ Settings also include **Import / Export** (Base64-encoded backup of bookmarks, s
 
 - **IndexedDB** (`TidyUpYourDashboard_v3`) — bookmarks, settings (including notes in games, one row per game), hidden forum threads and, with Past Tournaments search on, your list of past tournaments (in the `TournamentData` store; not in Export).
 - **Cookies** — cached player profile data (~1 hour TTL).
-- **Session storage** — AWP World Tour stats and custom.wl-stats.com tournament links, kept for an hour.
+- **Session storage** — AWP World Tour stats and the awp.wl-stats.com and custom.wl-stats.com tournament links, kept for an hour.
 - **Local storage** — the Clan War schedule from your last visit to the Clan War page (for the dashboard countdown) and the territory count of Clan War maps.
 
 ## Other sites the script contacts
 
 - **GitHub** (raw.githubusercontent.com): once a day, the script reads its own file there to see whether a newer version is out. No player data is sent.
-- **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent.
+- **awp.wl-stats.com**: when you open a profile, the script asks it for that player's AWP World Tour stats, which sends the player's ID. On the Ladders page it loads the whole AWP ranking and finds your place in it on your side, so your ID isn't sent. When you open a tournament, the script asks whether it's an AWP World Tour tournament, which sends the tournament's ID.
 - **custom.wl-stats.com**: when you open a profile, the script asks it for that player's community tournament stats, which sends the player's ID. On the dashboard both wl-stats sites are asked which of your games belong to their events (your player ID, kept 5 minutes), and on a clan page it asks for that clan's series (the clan's name). When you open a tournament, the script asks whether that tournament has a page there, which sends the tournament's ID. On the Seasonal Ladder's pages it asks for the season on screen and, on a player's page, for that player's seasons, which sends the player's ID. On the Ladders, Community Events and Community pages it asks for the current series, with your player ID when you're signed in, so it can show your place; that answer is kept for 10 minutes.
 
 Both are plain data requests: no war.app cookies or login are sent, and nothing in the answer runs as code. Their switches are in Features (Dashboard, Profile, Tournaments, Clans and Community). maak.ch is contacted only if you turn on its setting.
