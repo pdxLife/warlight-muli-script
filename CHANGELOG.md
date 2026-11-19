@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.70.1
+
+- **"Automatically Hide War.app Idle Threads" works again.** War.app renamed its Idle forum's label on All Forum Posts from "War.app Idle" to "Idle", so the setting stopped hiding anything. It hides Idle threads again.
+
 ## 3.70.0
 
 - **Hide Feature Requests threads.** All Forum Posts can leave out the threads from the Feature Requests forum. Turning it off shows them again, and the Feature Requests forum itself still lists them. Settings menu → Forum → "Hide Feature Requests Threads" (off unless you turn it on).
