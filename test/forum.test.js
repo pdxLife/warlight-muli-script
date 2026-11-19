@@ -30,7 +30,8 @@ test("leaves a thread whose title mentions Feature Requests", () => {
 });
 
 // Mirrors a signed-in forum or mail thread: war.app opens its React pop-up from a click anywhere in the post.
-const post = (threadId, postId, body) => `<tr><td></td><td style="text-align:left">
+const post = (threadId, postId, body, report = true) => `<tr><td style="text-align: center"><a href="/Profile?p=1">name</a><br>Level 63
+    <div id="Voting_${postId}"></div>${report ? `<br><a href="/Report?p=1&amp;n=x" class="text-muted" style="font-size: 10px">Report</a>` : ""}</td><td style="text-align:left">
     <div class="DiscussionPostDiv" id="PostForDisplay_${postId}" onclick="ReactionPostClicked(event, ${threadId}, ${postId});">${body}</div>
     <div class="PostReactions" id="Reactions_${postId}" data-mine=""></div></td></tr>`;
 
@@ -51,11 +52,13 @@ test("clicking a post no longer opens the React pop-up", () => {
     assert.equal($(".DiscussionPostDiv[onclick]").length, 0);
 });
 
-test("a React link under each post opens war.app's pop-up for that post", () => {
+test("a React link at the bottom of each post's text opens war.app's pop-up for that post", () => {
     const { $, calls } = thread(post(901213, 0, "first") + post(901213, 1572740, "reply"));
-    const links = $(".tuydReact a");
+    const links = $("a.tuydReact");
     assert.equal(links.length, 2);
-    assert.equal(links.eq(1).closest(".tuydReact").prev().attr("id"), "Reactions_1572740");
+    const cell = $("#PostForDisplay_1572740").closest("td");
+    assert.ok(cell.hasClass("tuydReactCell"));
+    assert.equal(cell.children().last().text(), "React");
 
     links.eq(1).trigger("click");
     assert.equal(calls.length, 1);
