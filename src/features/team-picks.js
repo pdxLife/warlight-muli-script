@@ -1,13 +1,13 @@
 // war.app's game data (window.UJS_Hooks) holds the turn being built (ujsTurn()), the game (GameLinks) and its
 // GameOrderPick class, found by their class names; the other names are minified and change with war.app
 // updates, and this is null then. A teammate's picks reach you once they commit, as territory ids in their
-// order (TeammateOrders.pra, in LatestGameInfo.jm).
+// order (TeammateOrders.qra, in LatestGameInfo.jm).
 function teamPicksState(hooks) {
     try {
         var turn = ujsTurn(hooks);
         var links = ujsMember(hooks, "warlight.unity.viewmodels.liveandlobby.GameLinks");
         var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
-        if (!turn || typeof turn.o1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
+        if (!turn || typeof turn.n1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
             || !links || typeof links.kb !== "function" || typeof links.uc !== "function") {
             return null;
         }
@@ -33,7 +33,7 @@ function teamPicksState(hooks) {
             return {
                 id: pair.Na,
                 name: player && typeof player.Pd === "function" ? String(player.Pd(null) || "") : "",
-                picks: Array.isArray(orders.pra) ? orders.pra.slice() : picksOf(orders.ac)
+                picks: Array.isArray(orders.qra) ? orders.qra.slice() : picksOf(orders.ac)
             };
         }).filter(function (teammate) {
             return teammate.id !== self && teammate.picks.length > 0;
@@ -54,11 +54,11 @@ function teamPicksState(hooks) {
 }
 
 // Replaces your picks with the teammate's, in their order, the way war.app's mod API sets orders: LoadOrders
-// (o1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
+// (n1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
 function copyTeammatePicks(hooks, self, picks) {
     var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
     var turn = ujsTurn(hooks);
-    turn.o1(picks.map(function (territory, index) {
+    turn.n1(picks.map(function (territory, index) {
         return new Pick(self, territory, index);
     }));
     turn.vv();

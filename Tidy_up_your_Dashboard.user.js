@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.71.1
+// @version 3.71.2
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.1';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.2';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -7066,10 +7066,10 @@ function highlightPlace(hooks, place) {
             view.ZI(territory.Ch());
             return true;
         }
-        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.SSa === "function") {
+        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.TSa === "function") {
             var bonus = map.qd.Aa(place.id);
             game.Ou(bonus);
-            view.SSa(bonus);
+            view.TSa(bonus);
             return true;
         }
     } catch (e) {
@@ -7110,7 +7110,7 @@ function gameLive(hooks) {
 
 function canHighlightPlaces(hooks) {
     var game = ujsLiveGame(hooks);
-    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.SSa === "function");
+    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.TSa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
@@ -16202,13 +16202,13 @@ function setupSoundSliders(setLevel, save, show) {
 // war.app's game data (window.UJS_Hooks) holds the turn being built (ujsTurn()), the game (GameLinks) and its
 // GameOrderPick class, found by their class names; the other names are minified and change with war.app
 // updates, and this is null then. A teammate's picks reach you once they commit, as territory ids in their
-// order (TeammateOrders.pra, in LatestGameInfo.jm).
+// order (TeammateOrders.qra, in LatestGameInfo.jm).
 function teamPicksState(hooks) {
     try {
         var turn = ujsTurn(hooks);
         var links = ujsMember(hooks, "warlight.unity.viewmodels.liveandlobby.GameLinks");
         var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
-        if (!turn || typeof turn.o1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
+        if (!turn || typeof turn.n1 !== "function" || typeof turn.vv !== "function" || typeof Pick !== "function"
             || !links || typeof links.kb !== "function" || typeof links.uc !== "function") {
             return null;
         }
@@ -16234,7 +16234,7 @@ function teamPicksState(hooks) {
             return {
                 id: pair.Na,
                 name: player && typeof player.Pd === "function" ? String(player.Pd(null) || "") : "",
-                picks: Array.isArray(orders.pra) ? orders.pra.slice() : picksOf(orders.ac)
+                picks: Array.isArray(orders.qra) ? orders.qra.slice() : picksOf(orders.ac)
             };
         }).filter(function (teammate) {
             return teammate.id !== self && teammate.picks.length > 0;
@@ -16255,11 +16255,11 @@ function teamPicksState(hooks) {
 }
 
 // Replaces your picks with the teammate's, in their order, the way war.app's mod API sets orders: LoadOrders
-// (o1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
+// (n1), then the orders-changed refresh (vv), which saves them as unfinished orders. Nothing is committed.
 function copyTeammatePicks(hooks, self, picks) {
     var Pick = ujsMember(hooks, "warlight.unity.viewmodels.live.GameOrderPick");
     var turn = ujsTurn(hooks);
-    turn.o1(picks.map(function (territory, index) {
+    turn.n1(picks.map(function (territory, index) {
         return new Pick(self, territory, index);
     }));
     turn.vv();
