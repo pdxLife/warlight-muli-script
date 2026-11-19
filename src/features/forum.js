@@ -41,13 +41,13 @@ function setupReactButtons() {
     addCSS(`
         td.tuydReactCell {
             position: relative;
-            padding-bottom: 20px !important;
+            padding-bottom: 24px !important;
         }
         .tuydReact {
             position: absolute;
             left: 3px;
             bottom: 6px;
-            font-size: 10px;
+            font-size: 12px;
         }
     `);
     $(".DiscussionPostDiv[onclick*='ReactionPostClicked']").each(function () {
@@ -57,7 +57,7 @@ function setupReactButtons() {
             return;
         }
         post.removeAttribute("onclick");
-        $('<a href="#" class="tuydReact text-muted">React</a>').on("click", function (event) {
+        $('<a href="#" class="tuydReact">React</a>').on("click", function (event) {
             event.preventDefault();
             // A fake event targeting the post, since war.app ignores clicks that land on links.
             window.ReactionPostClicked({ target: post }, Number(ids[1]), Number(ids[2]));

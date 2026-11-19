@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.70.3
+
+- **The React link is a little larger and in war.app's teal link colour** instead of grey, so it's easier to see and click at the bottom of each post.
+
 ## 3.70.2
 
 - **"React With a Button Instead of Clicking a Post" is on by default**, so clicking a forum post or mail message no longer opens war.app's React pop-up unless you turn the setting off (Settings menu → Forum).
