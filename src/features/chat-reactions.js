@@ -20,8 +20,12 @@ function chatReactionBubble(target) {
 }
 
 function setupChatAltClickReact() {
+    altClickToReact(chatReactionBubble);
+}
+
+function altClickToReact(reactionTarget) {
     document.addEventListener("click", function (event) {
-        if (!chatReactionBubble(event.target)) {
+        if (!reactionTarget(event.target)) {
             return;
         }
         if (!event.altKey) {

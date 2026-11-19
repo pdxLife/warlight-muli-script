@@ -65,7 +65,7 @@ window.userscriptSettings = [
         text: 'React With a Button Instead of Clicking a Post',
         selected: true,
         section: 'Forum',
-        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link at the bottom of each post, level with its Report link, opens the same pop-up. Reactions stay visible. Turn this off to get war.app\'s click-anywhere back. Takes effect when a thread loads.'
+        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link at the bottom of each post, level with its Report link, opens the same pop-up. In Feature Requests threads, which war.app draws differently, there\'s no React link: Alt-click a post (Option-click on a Mac) to react. Reactions stay visible. Turn this off to get war.app\'s click-anywhere back. Takes effect when a thread loads.'
     },
     {
         id: 'disableHideThreadOnDashboard',

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.71.1
+
+- **Feature Requests threads no longer open React on every click.** War.app now draws Feature Requests threads itself, so "React With a Button Instead of Clicking a Post" didn't reach them, and any click in a post opened the React pop-up. With that setting on (the default), a plain click there now does nothing, and Alt-click (Option-click on a Mac) on a post opens the pop-up, as in chat. Links and vote buttons work as before.
+
 ## 3.71.0
 
 - **Alt-click a chat message to react.** War.app opens its React pop-up when you click a message in game chat or the chat rooms. Now a plain click does nothing, so you can click around and select text without it popping up, and Alt-click (Option-click on a Mac) opens it. Links in messages and player names still work with a plain click. Settings menu → Games → "Alt-Click a Chat Message to React" (on; turn it off for war.app's single click).
