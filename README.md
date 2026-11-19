@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.70.1  
+> **Version:** 3.70.2  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -107,7 +107,7 @@ The Clan War additions read war.app's own Clan War data, with war.app's own requ
 
 - **Auto-hide threads** — optionally hide Off-Topic and Idle category threads from forum listings.
 - **Hide Feature Requests threads** — optionally leave Feature Requests threads out of All Forum Posts; turning it off shows them again.
-- **React with a button** — optionally stop a click anywhere in a forum post or mail message from opening war.app's React pop-up; a React link under each post opens it instead.
+- **React with a button** — a click anywhere in a forum post or mail message no longer opens war.app's React pop-up; a React link at the bottom of each post, level with its Report link, opens it instead. It can be turned off.
 - **Spammers Be Gone** — per-thread hide button (eye icon) on forum overview pages.
 - **BBCode editor toolbar** — adds formatting buttons (bold, italic, code, image, quote, list, etc.) above reply textareas.
 - **Tab key support** — inserts a tab character in textareas instead of moving focus.
@@ -190,7 +190,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Off-Topic Threads | Off | Automatically hide Off-Topic forum threads |
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Hide Feature Requests Threads | Off | Leave Feature Requests threads out of All Forum Posts while it's on |
-| React With a Button Instead of Clicking a Post | Off | Clicking a forum post or mail message no longer opens the React pop-up; a React link under each post does |
+| React With a Button Instead of Clicking a Post | On | Clicking a forum post or mail message no longer opens the React pop-up; a React link at the bottom of each post does |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
 | Read New Chat Messages Aloud | Off | Reads new chat messages from other players aloud while a game or the chat rooms are open |

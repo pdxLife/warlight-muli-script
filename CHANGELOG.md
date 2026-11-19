@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.70.2
+
+- **"React With a Button Instead of Clicking a Post" is on by default**, so clicking a forum post or mail message no longer opens war.app's React pop-up unless you turn the setting off (Settings menu → Forum).
+- **The React link sits level with Report**, in small grey text at the bottom left of the post's text box, instead of right under the post's reactions. On a long post, it's below the last line.
+
 ## 3.70.1
 
 - **"Automatically Hide War.app Idle Threads" works again.** War.app renamed its Idle forum's label on All Forum Posts from "War.app Idle" to "Idle", so the setting stopped hiding anything. It hides Idle threads again.

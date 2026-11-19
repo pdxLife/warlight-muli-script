@@ -63,9 +63,9 @@ window.userscriptSettings = [
     {
         id: 'reactWithButton',
         text: 'React With a Button Instead of Clicking a Post',
-        selected: false,
+        selected: true,
         section: 'Forum',
-        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link under each post opens the same pop-up. Reactions stay visible. Takes effect when a thread loads.'
+        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link at the bottom of each post, level with its Report link, opens the same pop-up. Reactions stay visible. Turn this off to get war.app\'s click-anywhere back. Takes effect when a thread loads.'
     },
     {
         id: 'disableHideThreadOnDashboard',
