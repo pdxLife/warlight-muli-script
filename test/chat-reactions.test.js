@@ -21,7 +21,7 @@ const otherBubble = `<div class="ujsGameObject ujsPCH" id="ujs_RightCol_99"><a c
 
 function page() {
     const { dom, $ } = createDom(gameMessage(3) + gameMessage(4) + roomMessage(97) + otherBubble, "https://war.app/MultiPlayer?GameID=1");
-    const ctx = load(["chatReactionBubble", "setupChatAltClickReact"], domGlobals(dom, $));
+    const ctx = load(["chatReactionBubble", "setupChatAltClickReact", "altClickToReact"], domGlobals(dom, $));
     const el = (id) => dom.window.document.getElementById(id);
     return { dom, $, ctx, el };
 }
@@ -101,4 +101,69 @@ test("a plain click leaves a selection alone", () => {
     dom.window.getSelection().selectAllChildren(el("ujs_Message_97_tmp"));
     click(dom, el("ujs_Message_97_tmp"), false);
     assert.equal(dom.window.getSelection().isCollapsed, false);
+});
+
+// Mirrors a post in a thread war.app draws itself (ujs_DiscussionScene, used for Feature Requests threads), signed in:
+// war.app's ClickEventTrigger makes the post's body a .ujsPCH with a click-catcher, and its text opens React too.
+const forumPost = (n) => `<div class="ujsGameObject" id="ujs_DiscussionPostControl${n}">
+    <div class="ujsGameObject" id="ujs_ButtonsRow${n}"><div class="ujsGameObject ujsBtn" id="ujs_VoteUpBtn${n}"><a class="btn ujsInner ujsBtnInner" id="ujs_VoteUpBtn${n}_btn"></a></div></div>
+    <div class="ujsGameObject" id="ujs_NonEditContainer${n}">
+        <div class="ujsGameObject ujsPCH" id="ujs_PostBody${n}"><a class="btn ujsInner ujsBtnInner ujsPCHInner" id="ujs_PostBody${n}_pch"></a>
+            <div class="ujsGameObject ujsText" id="ujs_Text${n}"><div class="ujsInner ujsTextInner" id="ujs_Text${n}_tmp">Add a filter, see <u><span class="ujsTMPLink" id="postLink${n}">this thread</span></u> or <a href="https://war.app/Forum/901240-x" rel="nofollow" id="postUrl${n}">https://war.app/Forum/901240-x</a></div></div>
+        </div>
+        <div class="ujsGameObject" id="ujs_ReactionsRow${n}"><div class="ujsGameObject ujsPCH" id="ujs_Reaction${n}"><a class="btn ujsInner ujsBtnInner ujsPCHInner" id="ujs_Reaction${n}_pch"></a></div></div>
+    </div></div>`;
+const otherPostBody = `<div class="ujsGameObject ujsPCH" id="ujs_PostBody_9"><a class="btn ujsInner ujsBtnInner ujsPCHInner" id="ujs_PostBody_9_pch"></a></div>`;
+
+function forumPage() {
+    const { dom, $ } = createDom(forumPost("") + forumPost("_2") + otherPostBody, "https://war.app/Forum/901328-add-filter-tournament-game");
+    const ctx = load(["forumPostReactionBody", "setupForumAltClickReact", "altClickToReact"], domGlobals(dom, $));
+    const el = (id) => dom.window.document.getElementById(id);
+    return { dom, $, ctx, el };
+}
+
+test("a click on a drawn forum post's body or text is a reaction click", () => {
+    const { ctx, el } = forumPage();
+    assert.equal(ctx.forumPostReactionBody(el("ujs_PostBody_pch")), el("ujs_PostBody"));
+    assert.equal(ctx.forumPostReactionBody(el("ujs_Text_2_tmp")), el("ujs_PostBody_2"));
+});
+
+test("links, votes and reaction counts in a drawn forum post are left alone", () => {
+    const { ctx, el } = forumPage();
+    assert.equal(ctx.forumPostReactionBody(el("postLink")), null);
+    assert.equal(ctx.forumPostReactionBody(el("ujs_VoteUpBtn_btn")), null);
+    assert.equal(ctx.forumPostReactionBody(el("ujs_Reaction_2_pch")), null);
+    assert.equal(ctx.forumPostReactionBody(el("ujs_PostBody_9_pch")), null);
+});
+
+test("war.app's handler sees an Alt-click on a drawn forum post, not a plain click", () => {
+    const { dom, $, ctx, el } = forumPage();
+    let opened = 0, voted = 0, followed = 0;
+    $(el("ujs_PostBody_pch")).on("click", () => opened++);
+    el("ujs_PostBody_2").addEventListener("click", () => opened++);
+    $(el("ujs_VoteUpBtn_btn")).on("click", () => voted++);
+    $(el("postLink")).on("click", () => followed++);
+    ctx.setupForumAltClickReact();
+
+    click(dom, el("ujs_PostBody_pch"), false);
+    click(dom, el("ujs_Text_2_tmp"), false);
+    assert.equal(opened, 0);
+    click(dom, el("ujs_PostBody_pch"), true);
+    click(dom, el("ujs_Text_2_tmp"), true);
+    assert.equal(opened, 2);
+    click(dom, el("ujs_VoteUpBtn_btn"), false);
+    click(dom, el("postLink"), false);
+    assert.deepEqual([voted, followed], [1, 1]);
+});
+
+// War.app's post text writes a pasted URL as a plain <a href>, which war.app's own handler treats as text and opens React for.
+test("a plain click on a URL in a drawn forum post opens the URL, not React", () => {
+    const { dom, $, ctx, el } = forumPage();
+    let opened = 0;
+    el("ujs_PostBody").addEventListener("click", () => opened++);
+    ctx.setupForumAltClickReact();
+    const event = new dom.window.MouseEvent("click", { bubbles: true, cancelable: true });
+    el("postUrl").dispatchEvent(event);
+    assert.equal(opened, 0);
+    assert.equal(event.defaultPrevented, false, "the browser still follows the link");
 });

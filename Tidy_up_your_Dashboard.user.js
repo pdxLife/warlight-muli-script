@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.71.0
+// @version 3.71.1
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.1';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -681,7 +681,7 @@ function mainFeatures() {
         { name: "Highlight tournament invitations", section: "Tournaments", match: pageHasUjsScenes, run: setupTournamentInviteHighlight },
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
-        { name: "React button instead of clicking a post", match: isAnyForumThread, run: function () { readSettingValue('reactWithButton', true, function (on) { if (on) { setupReactButtons(); } }); } },
+        { name: "React button instead of clicking a post", match: isAnyForumThread, run: function () { readSettingValue('reactWithButton', true, function (on) { if (on) { setupReactButtons(); setupForumAltClickReact(); } }); } },
         { name: "Alt-click a chat message to react", match: pageCanOpenGame, run: function () { readSettingValue('chatAltClickReact', true, function (on) { if (on) { setupChatAltClickReact(); } }); } },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
@@ -1719,8 +1719,12 @@ function chatReactionBubble(target) {
 }
 
 function setupChatAltClickReact() {
+    altClickToReact(chatReactionBubble);
+}
+
+function altClickToReact(reactionTarget) {
     document.addEventListener("click", function (event) {
-        if (!chatReactionBubble(event.target)) {
+        if (!reactionTarget(event.target)) {
             return;
         }
         if (!event.altKey) {
@@ -6524,6 +6528,24 @@ function setupReactButtons() {
             window.ReactionPostClicked({ target: post }, Number(ids[1]), Number(ids[2]));
         }).appendTo($(post).closest("td").addClass("tuydReactCell"));
     });
+}
+
+// War.app draws Feature Requests threads itself (ujs_DiscussionScene), where a post's body (ujs_PostBody) opens React
+// the way a chat bubble does: from its click-catcher (<id>_pch), or from its text outside links.
+function forumPostReactionBody(target) {
+    var $target = $(target);
+    var body = $target.closest(".ujsPCH");
+    if (!body.length || !/^ujs_PostBody(?:_\d+)?$/.test(body[0].id) || !body.parent().closest("[id^='ujs_DiscussionPostControl']").length) {
+        return null;
+    }
+    if (target.id === body[0].id + "_pch") {
+        return body[0];
+    }
+    return $target.closest(".ujsTextInner").length && !$target.closest(".ujsTMPLink").length ? body[0] : null;
+}
+
+function setupForumAltClickReact() {
+    altClickToReact(forumPostReactionBody);
 }
 
 window.undoIgnore = function () {
@@ -15192,7 +15214,7 @@ window.userscriptSettings = [
         text: 'React With a Button Instead of Clicking a Post',
         selected: true,
         section: 'Forum',
-        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link at the bottom of each post, level with its Report link, opens the same pop-up. Reactions stay visible. Turn this off to get war.app\'s click-anywhere back. Takes effect when a thread loads.'
+        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link at the bottom of each post, level with its Report link, opens the same pop-up. In Feature Requests threads, which war.app draws differently, there\'s no React link: Alt-click a post (Option-click on a Mac) to react. Reactions stay visible. Turn this off to get war.app\'s click-anywhere back. Takes effect when a thread loads.'
     },
     {
         id: 'disableHideThreadOnDashboard',

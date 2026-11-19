@@ -67,6 +67,24 @@ function setupReactButtons() {
     });
 }
 
+// War.app draws Feature Requests threads itself (ujs_DiscussionScene), where a post's body (ujs_PostBody) opens React
+// the way a chat bubble does: from its click-catcher (<id>_pch), or from its text outside links.
+function forumPostReactionBody(target) {
+    var $target = $(target);
+    var body = $target.closest(".ujsPCH");
+    if (!body.length || !/^ujs_PostBody(?:_\d+)?$/.test(body[0].id) || !body.parent().closest("[id^='ujs_DiscussionPostControl']").length) {
+        return null;
+    }
+    if (target.id === body[0].id + "_pch") {
+        return body[0];
+    }
+    return $target.closest(".ujsTextInner").length && !$target.closest(".ujsTMPLink").length ? body[0] : null;
+}
+
+function setupForumAltClickReact() {
+    altClickToReact(forumPostReactionBody);
+}
+
 window.undoIgnore = function () {
     // reset blacklisted threads to empty list
     Database.clear(Database.Table.BlacklistedForumThreads, function () {

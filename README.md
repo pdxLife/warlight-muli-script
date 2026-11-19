@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.71.0  
+> **Version:** 3.71.1  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -191,7 +191,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | Auto-Hide Off-Topic Threads | Off | Automatically hide Off-Topic forum threads |
 | Auto-Hide Idle Threads | Off | Automatically hide War.app Idle forum threads |
 | Hide Feature Requests Threads | Off | Leave Feature Requests threads out of All Forum Posts while it's on |
-| React With a Button Instead of Clicking a Post | On | Clicking a forum post or mail message no longer opens the React pop-up; a React link at the bottom of each post does |
+| React With a Button Instead of Clicking a Post | On | Clicking a forum post or mail message no longer opens the React pop-up; a React link at the bottom of each post does (in Feature Requests threads, Alt-click a post) |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
 | Alt-Click a Chat Message to React | On | In game chat and the chat rooms, a plain click on a message no longer opens the React pop-up; Alt-click (Option-click on a Mac) does |
