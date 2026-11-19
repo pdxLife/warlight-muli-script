@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.70.4
+// @version 3.71.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.70.4';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -682,6 +682,7 @@ function mainFeatures() {
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
         { name: "React button instead of clicking a post", match: isAnyForumThread, run: function () { readSettingValue('reactWithButton', true, function (on) { if (on) { setupReactButtons(); } }); } },
+        { name: "Alt-click a chat message to react", match: pageCanOpenGame, run: function () { readSettingValue('chatAltClickReact', true, function (on) { if (on) { setupChatAltClickReact(); } }); } },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
@@ -1695,6 +1696,44 @@ function bindCustomContextMenu() {
     $(".context-menu li").click(function () {
         $(".context-menu").hide(100);
     });
+}
+// War.app opens its React picker from a click on a chat message's bubble: on the bubble's transparent
+// click-catcher (<bubble id>_pch), or on its text outside links. Game chat's bubble is RightCol, a chat room's BubbleImage.
+function chatReactionBubble(target) {
+    var $target = $(target);
+    var bubble = $target.closest(".ujsPCH");
+    if (!bubble.length || !/^ujs_(?:RightCol|BubbleImage)(?:_\d+)?$/.test(bubble[0].id)) {
+        return null;
+    }
+    if (!bubble.parent().closest("[id^='ujs_ChatMessage'], [id^='ujs_ChatRoomMessageControl']").length) {
+        return null;
+    }
+    if (target.id === bubble[0].id + "_pch") {
+        return bubble[0];
+    }
+    var text = $target.closest(".ujsTextInner");
+    if (text.length && /^ujs_Message(?:Label)?(?:_\d+)?_tmp$/.test(text[0].id) && !$target.closest(".ujsTMPLink").length) {
+        return bubble[0];
+    }
+    return null;
+}
+
+function setupChatAltClickReact() {
+    document.addEventListener("click", function (event) {
+        if (!chatReactionBubble(event.target)) {
+            return;
+        }
+        if (!event.altKey) {
+            event.stopImmediatePropagation();
+            event.stopPropagation();
+            return;
+        }
+        // War.app skips the click while any text is selected, and Alt-click doesn't clear a selection.
+        var selection = document.getSelection();
+        if (selection && !selection.isCollapsed) {
+            selection.removeAllRanges();
+        }
+    }, true);
 }
 // The messages of one chat tab, oldest first; war.app stacks them by `bottom`, the newest at the bottom.
 // Messages hidden by your block list are left out.
@@ -15189,6 +15228,13 @@ window.userscriptSettings = [
         selected: false,
         section: 'Games',
         help: 'While a game or the chat rooms are open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. In the chat rooms, only the tab you are looking at is read, and hidden notices and muted players never are. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
+    },
+    {
+        id: 'chatAltClickReact',
+        text: 'Alt-Click a Chat Message to React',
+        selected: true,
+        section: 'Games',
+        help: 'War.app opens its React pop-up when you click a message in game chat or the chat rooms. With this on, a click on a message does nothing, so you can click and select text freely, and Alt-click (Option-click on a Mac) opens the pop-up. Links in messages and player names still work with a plain click. Takes effect when the page loads.'
     },
     {
         id: 'chatSoundVolume',

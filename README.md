@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.70.4  
+> **Version:** 3.71.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -48,6 +48,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Copy a teammate's picks** — in a team game's picking stage, once a teammate has committed (war.app only shares their picks then), a "Copy *name*'s picks" button left of the Orders panel puts their picks, in their order, in place of yours, asking first if you'd picked something else. It never commits: you check the list and commit yourself.
 - **Past Games filters** — a bar above the list on Past Games that searches your whole history: by game or player name, games in progress, your turn, lobbies, finished games or games you're out of, your result (won, eliminated or surrendered, booted, ended by vote), the kind of game (Quickmatch, tournament, Seasonal Ladder, other ladders, MTL, Clan War, other), map (by name, with a count per map), 1 v 1 or more than two players, players from–to, and oldest first. The first search reads all of your Past Games from war.app (about 8 seconds for 5,000 games); the games that match replace war.app's list ("37 of 4,796 games") with their date, map, players, your result and turns, until **Back to war.app's list**.
 - **Read chat aloud** — a faint 🔊 at the left of each message in a game's chat reads it and the messages after it aloud, with your browser's own voice (who wrote it, then the text; links are read as "a link" and smileys as words). Click ■ to stop. With the setting **Read New Chat Messages Aloud** on, new messages from other players are read as they arrive, so you can listen while entering orders. Messages from players on your block list are never read.
+- **Alt-click to react in chat** (setting **Alt-Click a Chat Message to React**, on by default) — war.app opens its React pop-up when you click a message in game chat or the chat rooms; with this, a plain click does nothing, so you can click and select text freely, and Alt-click (Option-click on a Mac) opens it. Links in messages and player names still work with a plain click.
 - **Player pace in lobbies** — in a game's lobby, each player gets a line from their profile: multi-day games they're in, average multi-day turn, share of turns over a day, and boot rate. **Flag: avg turn > N h · booted > N %** marks slower or often-booted players with a red ⚠, so the host can remove them with war.app's Add/Remove Players. Real-time lobbies (boot time of an hour or less) show real-time turns instead, with a limit in minutes.
 - **Chat and turn sound volumes** (settings **Chat Sound Volume** and **Turn Sound Volume**, 100% by default) — each sets how loud one of war.app's sounds plays, as a share of war.app's own volume (App Settings → Sounds / Critical Sounds): the sound for a new chat message (in games and the chat rooms), and the turn sound (a game advancing to the next turn, or a Quickmatch starting). 0% silences it; war.app's other sounds are left alone. In a game or the chat rooms, a 🔔 next to war.app's speaker icon opens both sliders; the 🔔 again or a click elsewhere closes them. These sliders, and the menu's, takes effect at once in every open war.app tab, without a reload.
 - **Ask before committing** (setting, off by default) — pressing Commit, or Autopilot's Run+Commit, first asks "Commit your orders for this turn?", so a stray click or tap doesn't send unfinished orders.
@@ -193,6 +194,7 @@ Access settings via the **Muli's Userscript** entry in your account dropdown men
 | React With a Button Instead of Clicking a Post | On | Clicking a forum post or mail message no longer opens the React pop-up; a React link at the bottom of each post does |
 | Disable Right-Click Hide on Dashboard | Off | Disable the right-click-to-hide-thread feature |
 | Ask Before Committing Orders | Off | In a game, Commit and Run+Commit ask first |
+| Alt-Click a Chat Message to React | On | In game chat and the chat rooms, a plain click on a message no longer opens the React pop-up; Alt-click (Option-click on a Mac) does |
 | Read New Chat Messages Aloud | Off | Reads new chat messages from other players aloud while a game or the chat rooms are open |
 | Chat Sound Volume | 100% | How loud war.app's new-message sound plays (games and chat rooms), as a share of war.app's own volume; a slider |
 | Turn Sound Volume | 100% | How loud war.app's turn sound plays, as a share of its Critical Sounds volume; a slider |

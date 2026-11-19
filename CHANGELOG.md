@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.71.0
+
+- **Alt-click a chat message to react.** War.app opens its React pop-up when you click a message in game chat or the chat rooms. Now a plain click does nothing, so you can click around and select text without it popping up, and Alt-click (Option-click on a Mac) opens it. Links in messages and player names still work with a plain click. Settings menu → Games → "Alt-Click a Chat Message to React" (on; turn it off for war.app's single click).
+
 ## 3.70.4
 
 - **The React link is bigger and lines up with Report.** It's a size up (14px, between Report and the post text), and its letters sit on the same line as Report's instead of about 2 pixels higher.
