@@ -1,0 +1,60 @@
+[b]Update: all-time Clan Wars, teammate picks and quieter reactions[/b]
+
+The script went from 3.63.6 to 3.71.2 since the last update. If you installed it, you already have it: Tampermonkey updates by itself (the version is in the bottom-right corner of war.app). How to use each feature is in the guide: https://pdxlife.github.io/warlight-muli-script/guide.html
+
+[hr]
+[b]Clan Wars, all time[/b]
+War.app shows the current season. custom.wl-stats.com keeps every season, so the script now shows those too.
+[list]
+[*][b]Clan Wars history on clan pages[/b]: below Clan Wars, the seasons the clan played and won, its best finish, its all-time record, and its last five seasons with place, points and record.
+[*][b]Clan Wars on profiles[/b], with the other stat boxes: the player's Clan Wars rating and place, games (free wins counted apart), seasons, the clans they played for, and their three most played templates with record and rating.
+[*][b]All time on the Clan War page[/b]: "Your clan in Season N" adds the clan's best finish and seasons played. In a timeslot, each template also shows your all-time record and rating and your clan's ("All time: you 290–120, rating 2039 (1st); clan 220–110"). A clan's season records show each template's and opponent's all-time record next to this season's.
+[/list]
+Settings menu → Clans → "Clan Wars history on clan pages", and Profile → "Clan Wars stats".
+[img]https://pdxlife.github.io/warlight-muli-script/media/clan-wars-history.png[/img]
+[img]https://pdxlife.github.io/warlight-muli-script/media/profile-clan-wars.png[/img]
+
+[hr]
+[b]In your games[/b]
+[list]
+[*][b]Copy a teammate's picks[/b]: in a team game's picking stage, once a teammate has committed, a "Copy [i]name[/i]'s picks" button left of the Orders panel puts their picks, in their order, in place of yours. It asks first if you'd already picked something else, and it never commits: check the list, then commit yourself. Settings menu → Games → "Copy a teammate's picks".
+[*][b]Alt-click a chat message to react[/b]: war.app opens its React pop-up when you click a message in game chat or the chat rooms. Now a plain click does nothing, so you can click around and select text, and Alt-click (Option-click on a Mac) opens it. Links in messages and player names still work with a plain click. Settings menu → Games → "Alt-Click a Chat Message to React" (on; turn it off for war.app's single click).
+[/list]
+
+[hr]
+[b]Forum[/b]
+[list]
+[*][b]React with a link instead of clicking a post[/b]: war.app opens its React pop-up when you click anywhere in a forum post or mail message. With this setting, clicking a post does nothing, and a React link at the bottom of each post, level with Report, opens the same pop-up. Reactions still show as before. In Feature Requests threads, which war.app now draws differently, there's no React link: Alt-click (Option-click) a post to react, as in chat. Links and vote buttons work as usual. Settings menu → Forum → "React With a Button Instead of Clicking a Post" (on; turn it off for war.app's click-anywhere).
+[*][b]Hide Feature Requests threads[/b] on All Forum Posts. The Feature Requests forum itself still lists them. Settings menu → Forum → "Hide Feature Requests Threads" (off unless you turn it on).
+[*]"Automatically Hide War.app Idle Threads" works again: war.app renamed the Idle forum's label.
+[/list]
+[img]https://pdxlife.github.io/warlight-muli-script/media/forum-react-link.png[/img]
+
+[hr]
+[b]Tournaments[/b]
+[list]
+[*][b]Invitations stand out[/b]: a tournament you're invited to gets a gold outline in My Tournaments and Past Tournaments, and its "Waiting for you to join or decline." line becomes a gold badge, so it no longer blends in with the gold entry fee and prize lines. Settings menu → Tournaments → "Highlight tournament invitations".
+[*][b]AWP World Tour tournaments link to awp.wl-stats.com[/b]: next to Bookmark, "awp.wl-stats.com (Masters 1000)" opens the tournament there, the way community series already link to custom.wl-stats.com. Settings menu → Tournaments → "awp.wl-stats.com link".
+[/list]
+
+[hr]
+[b]War.app Idle[/b]
+[list]
+[*][b]Skip rubbing the sand off a dug-up artifact[/b], if you like: with this option on, the artifact's window opens with the artifact already in view. War.app keeps Claim disabled for 8 seconds after the window opens, so the button counts down ("8s", "7s"…) until it works. Settings menu → Idle → "Idle: Show Dug-Up Artifacts Without Rubbing Off the Sand" (off unless you turn it on).
+[/list]
+
+[hr]
+[b]Fixed[/b]
+War.app shipped three updates in November that renamed what some features read. After each one, these work again:
+[list]
+[*][b]Game notes[/b]: names in your notes become map links, 🔗 and Ctrl/Cmd/Shift+click put territories and bonuses in your notes, and the buttons under the notes find them on the map.
+[*][b]Copy a teammate's picks[/b].
+[*][b]Clan War[/b]: "Your clan in Season N", the players' win rates, the timeslot and clan records, and the dashboard's countdown.
+[*][b]Tournaments[/b]: Search all your past tournaments, and the Open Tournaments filter's check of which tournaments you're still in.
+[*][b]Dashboard game chat[/b]: a chat with only older messages says "No recent messages. Show all" instead of "No messages yet.", and Show all loads them.
+[/list]
+The script now finds war.app's game objects by what they are rather than by their short names, so the next rename should break less.
+
+[hr]
+Let me know if something is broken - here or on Discord: https://discord.gg/sc99xHNuE.
+The full list of changes: https://github.com/pdxLife/warlight-muli-script/blob/main/CHANGELOG.md
