@@ -159,8 +159,7 @@ function hideOffTopicThreads() {
 
 function hideWarzoneIdleThreads() {
     $.each($(".table tbody tr:visible"), function (key, row) {
-        var category = $(row).find("td:first-of-type").text().trim();
-        if (category == "Warzone Idle" || category == "War.app Idle") {
+        if ($(row).find("td:first-of-type").text().trim() == "Idle") {
             var threadId = $(row).html().match(/href="\/Forum\/([^-]*)/mi);
             Database.add(Database.Table.BlacklistedForumThreads, {
                 threadId: threadId[1],

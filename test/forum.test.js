@@ -82,3 +82,12 @@ test("running twice adds one React link per post", () => {
     ctx.setupReactButtons();
     assert.equal($(".tuydReact").length, 1);
 });
+
+test("the Idle setting hides war.app's Idle threads and saves them as hidden", () => {
+    const { dom, $ } = createDom(`<table class="table"><tbody>${[threadRow("Classic", 1, "ban"), threadRow("Idle", 443235, "cache"), threadRow("Feature Requests", 2, "rename")].join("")}</tbody></table>`, "https://war.app/Forum/Forum");
+    const saved = [];
+    const Database = { Table: { BlacklistedForumThreads: "BlacklistedForumThreads" }, add: (table, row, cb) => { saved.push(row.threadId); cb(); } };
+    load(["hideWarzoneIdleThreads"], { ...domGlobals(dom, $), Database }).hideWarzoneIdleThreads();
+    assert.deepEqual(Array.from($(".table tbody tr:visible a").map(function () { return $(this).text(); }).get()), ["ban", "rename"]);
+    assert.deepEqual(saved, ["443235"]);
+});
