@@ -103,6 +103,13 @@ window.userscriptSettings = [
         help: 'While a game or the chat rooms are open, new chat messages from other players are read aloud with your browser\'s own voice, so you can listen while entering orders. In the chat rooms, only the tab you are looking at is read, and hidden notices and muted players never are. Older messages are never read by themselves; use the 🔊 next to a message for those. Your browser only speaks after you have clicked somewhere on the page.'
     },
     {
+        id: 'chatAltClickReact',
+        text: 'Alt-Click a Chat Message to React',
+        selected: true,
+        section: 'Games',
+        help: 'War.app opens its React pop-up when you click a message in game chat or the chat rooms. With this on, a click on a message does nothing, so you can click and select text freely, and Alt-click (Option-click on a Mac) opens the pop-up. Links in messages and player names still work with a plain click. Takes effect when the page loads.'
+    },
+    {
         id: 'chatSoundVolume',
         text: 'Chat Sound Volume',
         volume: true,

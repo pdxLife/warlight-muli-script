@@ -90,6 +90,7 @@ function mainFeatures() {
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
         { name: "React button instead of clicking a post", match: isAnyForumThread, run: function () { readSettingValue('reactWithButton', true, function (on) { if (on) { setupReactButtons(); } }); } },
+        { name: "Alt-click a chat message to react", match: pageCanOpenGame, run: function () { readSettingValue('chatAltClickReact', true, function (on) { if (on) { setupChatAltClickReact(); } }); } },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
