@@ -21,12 +21,12 @@ function idMap(entries) {
 }
 
 // Mirrors the parts of war.app's UJS_Hooks this reads, with its class names and its minified names as of
-// November 2026's second update.
-function fakeHooks({ phase = 5, committed = false, active = true, sent = [[2, { pra: [7, 3, 9] }]], own = [], names = { 1: "Me", 2: "Ally", 3: "Other ally" } } = {}) {
+// November 2026's third update.
+function fakeHooks({ phase = 5, committed = false, active = true, sent = [[2, { qra: [7, 3, 9] }]], own = [], names = { 1: "Me", 2: "Ally", 3: "Other ally" } } = {}) {
     const calls = [];
     const turn = ujsObject("warlight.unity.live.livestates.buildingturn.BuildingTurnStateImplementation", {
         ac: own.map((territory, index) => ({ Qb: new Pick(1, territory, index) })),
-        o1: (orders) => calls.push(["o1", orders]),
+        n1: (orders) => calls.push(["n1", orders]),
         vv: () => calls.push(["vv"]),
         commit: () => calls.push(["commit"])
     });
@@ -39,20 +39,20 @@ function fakeHooks({ phase = 5, committed = false, active = true, sent = [[2, { 
     });
     const OrdersListItemVM = function () { };
     OrdersListItemVM.aa = "warlight.unity.viewmodels.live.OrdersListItemVM";
-    return { hooks: { xa: links, Rd: turn, WGd: OrdersListItemVM, LAd: Pick }, calls };
+    return { hooks: { xa: links, Rd: turn, dHd: OrdersListItemVM, TAd: Pick }, calls };
 }
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 test("a teammate's committed picks are read in their order, with their name and your own picks", () => {
     const ctx = load(FUNCTIONS);
-    const { hooks } = fakeHooks({ own: [4, 5], sent: [[2, { pra: [7, 3, 9] }], [3, { pra: [] }], [1, { pra: [8] }]] });
+    const { hooks } = fakeHooks({ own: [4, 5], sent: [[2, { qra: [7, 3, 9] }], [3, { qra: [] }], [1, { qra: [8] }]] });
     assert.deepStrictEqual(plain(ctx.teamPicksState(hooks)), { self: 1, own: [4, 5], teammates: [{ id: 2, name: "Ally", picks: [7, 3, 9] }] });
 });
 
 test("picks a teammate sent as orders are read when war.app sends no pick list", () => {
     const ctx = load(FUNCTIONS);
-    const { hooks } = fakeHooks({ sent: [[2, { pra: null, ac: [new Pick(2, 6, 0), { nc: 99 }, new Pick(2, 2, 1)] }]] });
+    const { hooks } = fakeHooks({ sent: [[2, { qra: null, ac: [new Pick(2, 6, 0), { nc: 99 }, new Pick(2, 2, 1)] }]] });
     assert.deepStrictEqual(plain(ctx.teamPicksState(hooks).teammates), [{ id: 2, name: "Ally", picks: [6, 2] }]);
 });
 
@@ -69,13 +69,13 @@ test("nothing to copy outside picking, after committing, away from your own orde
 test("renamed war.app data reads as nothing to copy, not an error", () => {
     const ctx = load(FUNCTIONS);
     const renamed = fakeHooks().hooks;
-    delete renamed.Rd.o1;
+    delete renamed.Rd.n1;
     assert.equal(ctx.teamPicksState(renamed), null);
     const throwing = fakeHooks().hooks;
     throwing.xa.kb = () => { throw new TypeError("x is undefined"); };
     assert.equal(ctx.teamPicksState(throwing), null);
     const noClass = fakeHooks().hooks;
-    delete noClass.LAd;
+    delete noClass.TAd;
     assert.equal(ctx.teamPicksState(noClass), null);
 });
 
@@ -83,7 +83,7 @@ test("copying loads the picks as yours, in order, and never commits", () => {
     const ctx = load(FUNCTIONS);
     const { hooks, calls } = fakeHooks();
     ctx.copyTeammatePicks(hooks, 1, [7, 3, 9]);
-    assert.deepStrictEqual(calls.map((call) => call[0]), ["o1", "vv"]);
+    assert.deepStrictEqual(calls.map((call) => call[0]), ["n1", "vv"]);
     const orders = calls[0][1];
     assert.ok(orders.every((order) => order instanceof Pick));
     assert.deepStrictEqual(plain(orders), [{ $a: 1, nc: 7, N8: 0 }, { $a: 1, nc: 3, N8: 1 }, { $a: 1, nc: 9, N8: 2 }]);
@@ -127,14 +127,14 @@ function setup(fake, { answer = true, panel = '<div id="ujs_OrdersList"><div id=
 }
 
 test("a Copy button per teammate appears while picking and fills in your picks on click", () => {
-    const fake = fakeHooks({ sent: [[2, { pra: [7, 3, 9] }], [3, { pra: [5] }]] });
+    const fake = fakeHooks({ sent: [[2, { qra: [7, 3, 9] }], [3, { qra: [5] }]] });
     const { $, tick, questions } = setup(fake);
     tick();
     const buttons = $("#tuydTeamPicks .tuydTeamPicksBtn");
     assert.deepStrictEqual(buttons.get().map((button) => button.textContent), ["Copy Ally's picks", "Copy Other ally's picks"]);
     buttons.eq(0).trigger("click");
     assert.deepStrictEqual(questions, [], "no picks of your own to replace");
-    assert.deepStrictEqual(fake.calls.map((call) => call[0]), ["o1", "vv"]);
+    assert.deepStrictEqual(fake.calls.map((call) => call[0]), ["n1", "vv"]);
     assert.deepStrictEqual(plain(fake.calls[0][1]).map((order) => order.nc), [7, 3, 9]);
     assert.match($("#tuydTeamPicks .tuydTeamPicksBtn").eq(0).text(), /^Copied: check, then commit$/);
 });
@@ -163,7 +163,7 @@ test("the buttons go when there's nothing to copy or no Orders panel", () => {
 
 test("a war.app error while copying is logged and nothing else happens", () => {
     const fake = fakeHooks();
-    fake.hooks.Rd.o1 = () => { throw new Error("broken"); };
+    fake.hooks.Rd.n1 = () => { throw new Error("broken"); };
     const { $, tick, errors } = setup(fake);
     tick();
     $("#tuydTeamPicks .tuydTeamPicksBtn").trigger("click");

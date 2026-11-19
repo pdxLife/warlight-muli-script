@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.71.2
+
+- **Game notes' place buttons and "Copy teammate's picks" work again after war.app's update.** War.app renamed a few of its in-game functions on 18 November, so the buttons under your notes for the territories and bonuses they name stopped appearing, and so did the Copy picks buttons in team games.
+
 ## 3.71.1
 
 - **Feature Requests threads no longer open React on every click.** War.app now draws Feature Requests threads itself, so "React With a Button Instead of Clicking a Post" didn't reach them, and any click in a post opened the React pop-up. With that setting on (the default), a plain click there now does nothing, and Alt-click (Option-click on a Mac) on a post opens the pop-up, as in chat. Links and vote buttons work as before.

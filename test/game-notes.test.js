@@ -289,7 +289,7 @@ const LIVE_VM = "warlight.unity.viewmodels.live.LiveVM";
 const withGame = (game) => ({ Rd: ujsObject(TURN, { ta: ujsObject(LIVE_VM, game) }) });
 
 // Shaped like war.app's game data and game object on a game page (window.UJS_Hooks), with invented places
-// and the minified names of November 2026's second update.
+// and the minified names of November 2026's third update.
 function fakeHooks(calls) {
     const dict = (entries) => ({ keys: Object.keys(entries).map(Number), Aa: (id) => entries[id] });
     const territory = (name) => ({ Va: name, Ch: () => ({ x: 1, y: 2, name }) });
@@ -300,7 +300,7 @@ function fakeHooks(calls) {
         } },
         ...withGame({
             Cv: (id) => calls.push("highlight " + id), Ou: (bonus) => calls.push("highlight bonus " + bonus.Va),
-            Yb: { ZI: (at) => calls.push("move to " + at.name), SSa: (bonus) => calls.push("move to bonus " + bonus.Va) }
+            Yb: { ZI: (at) => calls.push("move to " + at.name), TSa: (bonus) => calls.push("move to bonus " + bonus.Va) }
         })
     };
 }

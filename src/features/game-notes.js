@@ -172,10 +172,10 @@ function highlightPlace(hooks, place) {
             view.ZI(territory.Ch());
             return true;
         }
-        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.SSa === "function") {
+        if (place.kind === "bonus" && game && typeof game.Ou === "function" && view && typeof view.TSa === "function") {
             var bonus = map.qd.Aa(place.id);
             game.Ou(bonus);
-            view.SSa(bonus);
+            view.TSa(bonus);
             return true;
         }
     } catch (e) {
@@ -216,7 +216,7 @@ function gameLive(hooks) {
 
 function canHighlightPlaces(hooks) {
     var game = ujsLiveGame(hooks);
-    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.SSa === "function");
+    return !!(game && typeof game.Cv === "function" && typeof game.Ou === "function" && game.Yb && typeof game.Yb.ZI === "function" && typeof game.Yb.TSa === "function");
 }
 
 function readGameNotesPanel(panel, name) {
