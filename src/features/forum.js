@@ -9,6 +9,7 @@ function setupForumOverviewFilters() {
     ifSettingIsEnabled("hideWarzoneIdle", function () {
         hideWarzoneIdleThreads()
     });
+    ifSettingIsEnabled("hideFeatureRequests", hideFeatureRequestThreads);
     formatHiddenThreads();
 }
 
@@ -32,6 +33,31 @@ function setupForumThreadTweaks() {
             width: 25px;
         }
     `)
+}
+
+// War.app opens its React pop-up from a click anywhere in a post (ReactionPostClicked), and only for signed-in players.
+function setupReactButtons() {
+    addCSS(`
+        .tuydReact {
+            margin-top: 4px;
+            font-size: 12px;
+        }
+    `);
+    $(".DiscussionPostDiv[onclick*='ReactionPostClicked']").each(function () {
+        var post = this;
+        var ids = /ReactionPostClicked\(\s*event\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/.exec(post.getAttribute("onclick"));
+        if (!ids) {
+            return;
+        }
+        post.removeAttribute("onclick");
+        var link = $('<a href="#">React</a>').on("click", function (event) {
+            event.preventDefault();
+            // A fake event targeting the post, since war.app ignores clicks that land on links.
+            window.ReactionPostClicked({ target: post }, Number(ids[1]), Number(ids[2]));
+        });
+        var reactions = $("#Reactions_" + ids[2]);
+        $('<div class="tuydReact"></div>').append(link).insertAfter(reactions.length ? reactions : post);
+    });
 }
 
 window.undoIgnore = function () {
@@ -144,6 +170,12 @@ function hideWarzoneIdleThreads() {
             })
         }
     })
+}
+
+function hideFeatureRequestThreads() {
+    $(".table tbody tr").filter(function () {
+        return $(this).children("td:first-of-type").text().trim() === "Feature Requests";
+    }).hide();
 }
 
 function formatHiddenThreads() {

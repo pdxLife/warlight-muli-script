@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.69.0
+// @version 3.70.0
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.69.0';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.70.0';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -681,6 +681,7 @@ function mainFeatures() {
         { name: "Highlight tournament invitations", section: "Tournaments", match: pageHasUjsScenes, run: setupTournamentInviteHighlight },
         { name: "Notes in games", section: "Games", match: pageCanOpenGame, run: setupGameNotes },
         { name: "Copy a teammate's picks", section: "Games", match: pageCanOpenGame, run: setupTeamPicksCopy },
+        { name: "React button instead of clicking a post", match: isAnyForumThread, run: function () { ifSettingIsEnabled('reactWithButton', setupReactButtons); } },
         { name: "commit confirmation", match: pageIsGame, run: function () { ifSettingIsEnabled('confirmCommit', setupCommitConfirm); } },
         { name: "Volume of the chat and turn sounds", section: "Games", match: function () { return !pageIsIdle(); }, run: setupGameSoundVolume },
         { name: "Read chat messages aloud", section: "Games", match: function () { return pageIsGame() || pageIsChatRoom(); }, run: setupChatSpeech },
@@ -6428,6 +6429,7 @@ function setupForumOverviewFilters() {
     ifSettingIsEnabled("hideWarzoneIdle", function () {
         hideWarzoneIdleThreads()
     });
+    ifSettingIsEnabled("hideFeatureRequests", hideFeatureRequestThreads);
     formatHiddenThreads();
 }
 
@@ -6451,6 +6453,31 @@ function setupForumThreadTweaks() {
             width: 25px;
         }
     `)
+}
+
+// War.app opens its React pop-up from a click anywhere in a post (ReactionPostClicked), and only for signed-in players.
+function setupReactButtons() {
+    addCSS(`
+        .tuydReact {
+            margin-top: 4px;
+            font-size: 12px;
+        }
+    `);
+    $(".DiscussionPostDiv[onclick*='ReactionPostClicked']").each(function () {
+        var post = this;
+        var ids = /ReactionPostClicked\(\s*event\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/.exec(post.getAttribute("onclick"));
+        if (!ids) {
+            return;
+        }
+        post.removeAttribute("onclick");
+        var link = $('<a href="#">React</a>').on("click", function (event) {
+            event.preventDefault();
+            // A fake event targeting the post, since war.app ignores clicks that land on links.
+            window.ReactionPostClicked({ target: post }, Number(ids[1]), Number(ids[2]));
+        });
+        var reactions = $("#Reactions_" + ids[2]);
+        $('<div class="tuydReact"></div>').append(link).insertAfter(reactions.length ? reactions : post);
+    });
 }
 
 window.undoIgnore = function () {
@@ -6563,6 +6590,12 @@ function hideWarzoneIdleThreads() {
             })
         }
     })
+}
+
+function hideFeatureRequestThreads() {
+    $(".table tbody tr").filter(function () {
+        return $(this).children("td:first-of-type").text().trim() === "Feature Requests";
+    }).hide();
 }
 
 function formatHiddenThreads() {
@@ -15101,6 +15134,20 @@ window.userscriptSettings = [
         selected: false,
         section: 'Forum',
         help: 'This option automatically hides all War.app Idle threads everytime you visit the All Forum Posts page'
+    },
+    {
+        id: 'hideFeatureRequests',
+        text: 'Hide Feature Requests Threads',
+        selected: false,
+        section: 'Forum',
+        help: 'Hides threads from the Feature Requests forum on the All Forum Posts page. Turning this off shows them again. The Feature Requests forum itself and the Forum Posts box on your dashboard still list them.'
+    },
+    {
+        id: 'reactWithButton',
+        text: 'React With a Button Instead of Clicking a Post',
+        selected: false,
+        section: 'Forum',
+        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link under each post opens the same pop-up. Reactions stay visible. Takes effect when a thread loads.'
     },
     {
         id: 'disableHideThreadOnDashboard',

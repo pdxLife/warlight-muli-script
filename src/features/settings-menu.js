@@ -54,6 +54,20 @@ window.userscriptSettings = [
         help: 'This option automatically hides all War.app Idle threads everytime you visit the All Forum Posts page'
     },
     {
+        id: 'hideFeatureRequests',
+        text: 'Hide Feature Requests Threads',
+        selected: false,
+        section: 'Forum',
+        help: 'Hides threads from the Feature Requests forum on the All Forum Posts page. Turning this off shows them again. The Feature Requests forum itself and the Forum Posts box on your dashboard still list them.'
+    },
+    {
+        id: 'reactWithButton',
+        text: 'React With a Button Instead of Clicking a Post',
+        selected: false,
+        section: 'Forum',
+        help: 'War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a React link under each post opens the same pop-up. Reactions stay visible. Takes effect when a thread loads.'
+    },
+    {
         id: 'disableHideThreadOnDashboard',
         text: 'Disable Right-Click on the Forum Table',
         selected: false,

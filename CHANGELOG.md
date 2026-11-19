@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.70.0
+
+- **Hide Feature Requests threads.** All Forum Posts can leave out the threads from the Feature Requests forum. Turning it off shows them again, and the Feature Requests forum itself still lists them. Settings menu → Forum → "Hide Feature Requests Threads" (off unless you turn it on).
+- **React with a button instead of clicking a post.** War.app opens its React pop-up when you click anywhere in a forum post or mail message. With this on, clicking a post does nothing, and a small React link under each post opens the same pop-up. Settings menu → Forum → "React With a Button Instead of Clicking a Post" (off unless you turn it on).
+
 ## 3.69.0
 
 - **AWP World Tour tournaments link to awp.wl-stats.com.** On an AWP tournament's war.app page, "awp.wl-stats.com (Masters 1000)" next to Bookmark opens the tournament there, the way community series already link to custom.wl-stats.com. Settings menu → Tournaments → "awp.wl-stats.com link".
