@@ -38,6 +38,7 @@ function setupForumThreadTweaks() {
 // War.app opens its React pop-up from a click anywhere in a post (ReactionPostClicked), and only for signed-in players.
 function setupReactButtons() {
     // Pinned to the bottom of the post's cell, where war.app's Report link sits in the author column; the padding keeps it clear of long posts.
+    // bottom and line-height put its baseline on Report's, measured on war.app, since the two fonts differ in size.
     addCSS(`
         td.tuydReactCell {
             position: relative;
@@ -46,8 +47,9 @@ function setupReactButtons() {
         .tuydReact {
             position: absolute;
             left: 3px;
-            bottom: 6px;
-            font-size: 12px;
+            bottom: 5.4px;
+            font-size: 14px;
+            line-height: 16px;
         }
     `);
     $(".DiscussionPostDiv[onclick*='ReactionPostClicked']").each(function () {

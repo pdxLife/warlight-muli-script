@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.70.3
+// @version 3.70.4
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.70.3';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.70.4';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -6458,6 +6458,7 @@ function setupForumThreadTweaks() {
 // War.app opens its React pop-up from a click anywhere in a post (ReactionPostClicked), and only for signed-in players.
 function setupReactButtons() {
     // Pinned to the bottom of the post's cell, where war.app's Report link sits in the author column; the padding keeps it clear of long posts.
+    // bottom and line-height put its baseline on Report's, measured on war.app, since the two fonts differ in size.
     addCSS(`
         td.tuydReactCell {
             position: relative;
@@ -6466,8 +6467,9 @@ function setupReactButtons() {
         .tuydReact {
             position: absolute;
             left: 3px;
-            bottom: 6px;
-            font-size: 12px;
+            bottom: 5.4px;
+            font-size: 14px;
+            line-height: 16px;
         }
     `);
     $(".DiscussionPostDiv[onclick*='ReactionPostClicked']").each(function () {

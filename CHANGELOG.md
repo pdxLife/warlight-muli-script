@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.70.4
+
+- **The React link is bigger and lines up with Report.** It's a size up (14px, between Report and the post text), and its letters sit on the same line as Report's instead of about 2 pixels higher.
+
 ## 3.70.3
 
 - **The React link is a little larger and in war.app's teal link colour** instead of grey, so it's easier to see and click at the bottom of each post.
