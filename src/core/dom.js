@@ -73,6 +73,57 @@ function shownUjsElement(element) {
     return !!element;
 }
 
+// war.app's client-side pager (warlight.unity.util.Paging): "Friends 41 - 80 of 98", its page buttons and
+// "<< Prev" / "Next >>". Only the label is read: its page buttons ("1 2 3") would otherwise run into the count.
+function ujsPagerState(pager) {
+    var label = $(pager).find(".ujsTextInner").filter(function () {
+        return /\bof\s+\d+\s*$/.test($(this).text());
+    }).first();
+    return ladderFriendsPagerState(label.text());
+}
+
+function ujsPageOf(state, perPage) {
+    return state ? Math.floor((state.first - 1) / perPage) + 1 : 1;
+}
+
+// Clicks the pager button with this label, then waits until war.app shows the new page.
+function pressUjsPager(pager, label) {
+    pager = $(pager);
+    var before = pager.text();
+    var button = pager.find("a.ujsBtnInner").filter(function () {
+        return $(this).parent().text().trim() === label;
+    }).first();
+    if (!button.length) {
+        return $.Deferred().reject().promise();
+    }
+    button.trigger("click");
+    var done = $.Deferred();
+    var started = Date.now();
+    var wait = setInterval(function () {
+        if (pager.text() !== before || Date.now() - started > 3000) {
+            clearInterval(wait);
+            done.resolve();
+        }
+    }, 50);
+    return done.promise();
+}
+
+// war.app's pager shows only some page numbers, so a page it doesn't show is reached with Next or Prev.
+function goToUjsPage(pager, page, perPage) {
+    var state = ujsPagerState(pager);
+    var current = ujsPageOf(state, perPage);
+    if (!state || current === page) {
+        return $.Deferred().resolve().promise();
+    }
+    var label = String(page);
+    var direct = $(pager).find("a.ujsBtnInner").filter(function () {
+        return $(this).parent().text().trim() === label;
+    }).length;
+    return pressUjsPager(pager, direct ? label : page > current ? "Next >>" : "<< Prev").then(function () {
+        return goToUjsPage(pager, page, perPage);
+    });
+}
+
 function addCSS(css) {
     var head = document.head || document.getElementsByTagName('head')[0];
     var style = document.createElement('style');

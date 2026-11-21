@@ -197,60 +197,15 @@ function setupLadderFriendSearch() {
             return friend ? $.extend(friend, { element: element }) : null;
         }).filter(Boolean);
     };
-    // Only the pager's label: its page buttons ("1 2 3") would otherwise run into the count ("of 98123").
-    var pagerState = function (found) {
-        var label = found.pager.find(".ujsTextInner").filter(function () {
-            return /\bof\s+\d+\s*$/.test($(this).text());
-        }).first();
-        return ladderFriendsPagerState(label.text());
-    };
-    // Clicks the pager button with this label, then waits until war.app shows the new page.
-    var press = function (found, label) {
-        var before = found.pager.text();
-        var button = found.pager.find("a.ujsBtnInner").filter(function () {
-            return $(this).parent().text().trim() === label;
-        }).first();
-        if (!button.length) {
-            return $.Deferred().reject().promise();
-        }
-        button.trigger("click");
-        var done = $.Deferred();
-        var started = Date.now();
-        var wait = setInterval(function () {
-            if (found.pager.text() !== before || Date.now() - started > 3000) {
-                clearInterval(wait);
-                done.resolve();
-            }
-        }, 50);
-        return done.promise();
-    };
-    // war.app pages the friends 40 at a time (the last page has fewer).
-    var pageOf = function (state) {
-        return state ? Math.floor((state.first - 1) / LADDER_FRIENDS_PER_PAGE) + 1 : 1;
-    };
-    var goTo = function (found, page) {
-        var state = pagerState(found);
-        var current = pageOf(state);
-        if (!state || current === page) {
-            return $.Deferred().resolve().promise();
-        }
-        var label = String(page);
-        var direct = found.pager.find("a.ujsBtnInner").filter(function () {
-            return $(this).parent().text().trim() === label;
-        }).length;
-        return press(found, direct ? label : page > current ? "Next >>" : "<< Prev").then(function () {
-            return goTo(found, page);
-        });
-    };
     // Every friend, with the page they're on; the pager is put back on the page you were looking at.
     var readAll = function (found, status) {
-        var state = pagerState(found);
-        var start = pageOf(state);
+        var state = ujsPagerState(found.pager);
+        var start = ujsPageOf(state, LADDER_FRIENDS_PER_PAGE);
         var pages = state ? Math.max(1, Math.ceil(state.total / LADDER_FRIENDS_PER_PAGE)) : 1;
         var friends = [];
         var step = function (page) {
             status("Reading your friends: page " + page + " of " + pages);
-            return goTo(found, page).then(function () {
+            return goToUjsPage(found.pager, page, LADDER_FRIENDS_PER_PAGE).then(function () {
                 rows(found).forEach(function (friend) {
                     friends.push({ name: friend.name, level: friend.level, locked: friend.locked, page: page });
                 });
@@ -258,7 +213,7 @@ function setupLadderFriendSearch() {
             });
         };
         return step(1).then(function () {
-            return goTo(found, start);
+            return goToUjsPage(found.pager, start, LADDER_FRIENDS_PER_PAGE);
         }).then(function () {
             return { total: state ? state.total : friends.length, friends: friends };
         });
@@ -282,7 +237,7 @@ function setupLadderFriendSearch() {
             list.hide();
             return;
         }
-        var state = pagerState(found);
+        var state = ujsPagerState(found.pager);
         if (index && state && index.total !== state.total) {
             index = null;
         }
@@ -349,7 +304,7 @@ function setupLadderFriendSearch() {
                     return;
                 }
                 box.children(".tuydFriendResults").hide();
-                goTo(found, friend.page).done(function () {
+                goToUjsPage(found.pager, friend.page, LADDER_FRIENDS_PER_PAGE).done(function () {
                     var row = rows(found).filter(function (candidate) {
                         return candidate.name === friend.name;
                     })[0];

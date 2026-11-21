@@ -46,6 +46,7 @@ function pageFeatures() {
         { name: "Open a pasted profile link from player search", section: "Community", match: pageIsPlayerSearch, run: setupPlayerSearchShortcuts },
         { name: "Your rank next to your rating on Quickmatch leaderboards", section: "Community", match: pageIsQuickmatch, run: setupLeaderboardRank },
         { name: "Your Quickmatch record and stats", section: "Community", match: pageIsQuickmatch, run: setupQuickmatchStats },
+        { name: "Search templates in Quickmatch Voting", section: "Community", match: pageIsQuickmatch, run: setupQuickmatchVotingSearch },
         { name: "Player pace in game lobbies", section: "Games", match: pageIsGame, run: setupLobbyPace },
         { name: "Idle volume slider", section: "Idle", match: pageIsIdle, run: setupIdleVolume },
         { name: "Log of Idle's pop-ups", section: "Idle", match: pageIsIdle, run: setupIdlePopupLog },
