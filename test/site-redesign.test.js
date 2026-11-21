@@ -172,6 +172,19 @@ test("sorting reuses war.app's row spacing and combines with search", () => {
     assert.deepEqual(topToBottom(), ["Bobby@159", "Bob@107"]);
 });
 
+test("Most Losses and Most Wins group equal counts by the other column", () => {
+    const { ctx, $, topToBottom } = playersTab([["Alphazomgy", 1, 1], ["Buttercup", 0, 1], ["Chicobelix", 0, 2],
+        ["David", 1, 1], ["Hatter", 2, 1], ["inoek", 0, 1], ["Pq1408", 1, 0], ["Weener", 1, 2]]);
+    const names = () => topToBottom().map((entry) => entry.split("@")[0]);
+    ctx.setupUjsPlayerControls();
+    $("#ujsPlayerSort").val("losses-desc").trigger("change");
+    assert.deepEqual(names(), ["Weener", "Chicobelix", "Hatter", "Alphazomgy", "David", "Buttercup", "inoek", "Pq1408"],
+        "most wins first among equal losses, then war.app's order");
+    $("#ujsPlayerSort").val("wins-desc").trigger("change");
+    assert.deepEqual(names(), ["Hatter", "Pq1408", "Alphazomgy", "David", "Weener", "Buttercup", "inoek", "Chicobelix"],
+        "fewest losses first among equal wins, then war.app's order");
+});
+
 test("tournament player names skip the level badge", () => {
     const { dom, $ } = createDom(`<div id="ujs_TournamentPlayersPlayer_2"><div id="ujs_RankLabel_2"><div class="ujsTextInner"></div></div>`
         + `<div id="ujs_Text_17"><div class="ujsTextInner" id="ujs_Text_17_tmp"><span style="max-width: 100%"><span style="color: yellow">L63</span> big poison L2 <img src="x.png"></span></div></div></div>`);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.71.3
+
+- **Most Losses and Most Wins group players with the same count.** On a tournament's Players tab, Most Losses now puts players with more wins first among those with the same number of losses, and Most Wins puts players with fewer losses first among those with the same number of wins. Before, equal counts stayed in name order, so a 1-win player could sit below a 0-win one.
+
 ## 3.71.2
 
 - **Game notes' place buttons and "Copy teammate's picks" work again after war.app's update.** War.app renamed a few of its in-game functions on 18 November, so the buttons under your notes for the territories and bonuses they name stopped appearing, and so did the Copy picks buttons in team games.
