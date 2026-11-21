@@ -5,7 +5,7 @@
 // @run-at document-start
 // @match https://*.war.app/*
 // @description Tidy Up Your Dashboard is a Userscript which brings along a lot of features for improving the user experience on War.app (formerly Warzone).
-// @version 3.71.2
+// @version 3.71.3
 // @author KKND (maintainer); Muli (original creator)
 // @icon https://raw.githubusercontent.com/pdxLife/warlight-muli-script/main/assets/icon.png
 // @homepageURL https://pdxlife.github.io/warlight-muli-script/
@@ -20,7 +20,7 @@
 // Built from src/ by tools/build.js. Edit src/, then run npm run build.
 window.timeUserscriptStart = new Date().getTime();
 window.MULIS_USERSCRIPT = true;
-var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.2';
+var version = (typeof GM_info !== 'undefined') ? GM_info.script.version : '3.71.3';
 var DISABLED_FEATURES_KEY = "tidyUpYourDashboard.disabledFeatures";
 // Every domain war.app has used; the old ones now redirect to war.app. Bookmarks saved on any of them open on the current domain.
 var SITE_HOSTS = ["war.app", "warzone.com", "warlight.net"];
@@ -16475,11 +16475,21 @@ function layoutUjsPlayers(query, sortKey) {
             if (parts[0] === "name") return getUjsPlayerName($(row)).toLowerCase();
             return getUjsPlayerStat($(row), parts[0] === "wins" ? "ujs_WinsLabel" : "ujs_LossesLabel");
         };
+        var tieBreak = function () { return 0; };
+        if (sortKey === "losses-desc") {
+            tieBreak = function (a, b) {
+                return getUjsPlayerStat($(b.row), "ujs_WinsLabel") - getUjsPlayerStat($(a.row), "ujs_WinsLabel");
+            };
+        } else if (sortKey === "wins-desc") {
+            tieBreak = function (a, b) {
+                return getUjsPlayerStat($(a.row), "ujs_LossesLabel") - getUjsPlayerStat($(b.row), "ujs_LossesLabel");
+            };
+        }
         rows = rows.map(function (row, i) {
             return { row: row, i: i, v: value(row) };
         }).sort(function (a, b) {
             var cmp = typeof a.v === "string" ? a.v.localeCompare(b.v) : a.v - b.v;
-            return cmp * dir || a.i - b.i;
+            return cmp * dir || tieBreak(a, b) || a.i - b.i;
         }).map(function (entry) {
             return entry.row;
         });
