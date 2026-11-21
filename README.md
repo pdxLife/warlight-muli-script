@@ -2,7 +2,7 @@
 
 A feature-rich userscript for [War.app](https://war.app) (formerly Warzone) that enhances the UI, adds search/sort capabilities, and brings quality-of-life improvements across the site.
 
-> **Version:** 3.71.3  
+> **Version:** 3.72.0  
 > **Requires:** [Tampermonkey](https://www.tampermonkey.net/) or [Greasemonkey](https://www.greasespot.net/)  
 > **Supported sites:** `war.app` and its subdomains (warzone.com and warlight.net now redirect there)
 
@@ -81,6 +81,7 @@ The script is for war.app in a desktop browser; it's used in Firefox, Zen and Ch
 - **Community page** — war.app's Community page gets, in its Community Events box, Titled Tuesday's last winner (or the event being played) and the next start in your time zone, P/R League's games played and leader, the Seasonal Ladder's leader, Clan League's progress and leader (or winner), and the stage Nations Cup is at, with the blog list above cut to its 5 latest posts to make room; and above New Maps, the [Multi-Template Ladder](https://custom.wl-stats.com/ladders/mtl)'s top 10 with links to the full ladder and warlight-mtl.com, and your rank when you're signed in and ranked lower. From custom.wl-stats.com; no maak.ch needed.
 - **Your Quickmatch record and stats** — on the Quickmatch screen, your record over every Quickmatch game you've played ("559 W – 117 L (82.7%)") in the Settings dialog's header, and on war.app's Templates screen your record on each template next to "Your rating". **Stats** opens a dialog in war.app's style with your record by template and by opponent: games, won, lost, win % and average turns, sortable and searchable; click a row for its games. **Last 20 games** lists your newest Quickmatch games with date, template, opponents, result and turns, each linking to the game. Boot losses are left out unless you tick **Count boot losses**. The games come from your Past Games: each time you come to the Quickmatch screen the script reads your newest games, so a game just played counts at once, and **Rescan** reads all of them (until you do, the stats cover your newest 200 games); the templates are read from each game once, in the background, and remembered. **Copy** copies your record and top templates and opponents as text, **CSV** downloads every Quickmatch game, with its date, as a spreadsheet.
 - **Your rank on Quickmatch leaderboards** — on Quickmatch → Leaderboards, next to war.app's "Your rating: 1,309.8", your place: "Rank #104 of 190,968", for Global and for each template you pick. war.app only lists the players 50 at a time, so the script looks your rating up page by page, halving the range each time (about a dozen requests, a few seconds), and remembers the answer for 10 minutes. "≈" means your name wasn't on the page with your rating, so the rank counts the players rated above it.
+- **Search templates in Quickmatch Voting** — Quickmatch → Voting lists the templates 25 at a time, with no search. A box at the right of "All templates:" finds every template whose name has all the words you type, in any order ("ffa commerce"), on any page, with its rank, votes, your votes and page; clicking one takes you to its row.
 
 ### Clans
 

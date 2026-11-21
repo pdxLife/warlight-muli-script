@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.72.0
+
+- **Search templates in Quickmatch Voting.** War.app lists the Quickmatch templates 25 at a time, over 200 of them, with no search. A **Search templates** box now sits at the right of "All templates:". It lists every template whose name has all the words you type, in any order, on any page, with its rank, votes, your votes and page ("ffa commerce" finds "Four Castles FFA Commerce"). Click one, or press Enter, to go to its page, where its row is outlined in gold. The ✕ in the box clears it. The first search reads war.app's pages in about a second, without sending anything. Settings menu → Ladders & community → "Search templates in Quickmatch Voting" (on).
+
 ## 3.71.3
 
 - **Most Losses and Most Wins group players with the same count.** On a tournament's Players tab, Most Losses now puts players with more wins first among those with the same number of losses, and Most Wins puts players with fewer losses first among those with the same number of wins. Before, equal counts stayed in name order, so a 1-win player could sit below a 0-win one.
